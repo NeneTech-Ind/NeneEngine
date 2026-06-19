@@ -173,7 +173,7 @@ namespace NeneEngine
 			// 1. Logger
 			CustomLogger::GetInstance().Initialize(ResolveLogFilePath().string(), false, spdlog::level::info,
 			                                       true);
-			NENE_LOG_INFO("===== NeneEngine v0.3 starting =====");
+			NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
 			ResourceManager::GetInstance().RegisterDefaultLoaders();
 			RunExternalLibrarySmokeTests();
 
