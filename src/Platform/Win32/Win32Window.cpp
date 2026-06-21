@@ -1,4 +1,4 @@
-#include "Platform/Windows32/Windows32Window.h"
+#include "Platform/Win32/Win32Window.h"
 #include "Resource.h"
 
 #include <windowsx.h>
@@ -21,7 +21,7 @@ namespace
 			WNDCLASSEXW windowClass{};
 			windowClass.cbSize = sizeof(windowClass);
 			windowClass.style = CS_HREDRAW | CS_VREDRAW;
-			windowClass.lpfnWndProc = NeneEngine::Windows32Window::WndProc;
+			windowClass.lpfnWndProc = NeneEngine::Win32Window::WndProc;
 			windowClass.hInstance = GetModuleHandleW(nullptr);
 			windowClass.hIcon = LoadAppIcon(SM_CXICON);
 			windowClass.hIconSm = LoadAppIcon(SM_CXSMICON);
@@ -52,12 +52,12 @@ namespace NeneEngine
 		}
 	} // namespace
 
-	Windows32Window::~Windows32Window()
+	Win32Window::~Win32Window()
 	{
 		Destroy();
 	}
 
-	bool Windows32Window::Create(uint32_t width, uint32_t height, const std::string& title)
+	bool Win32Window::Create(uint32_t width, uint32_t height, const std::string& title)
 	{
 		if (!EnsureWindowClassRegistered()) return false;
 
@@ -90,7 +90,7 @@ namespace NeneEngine
 		return true;
 	}
 
-	void Windows32Window::Destroy()
+	void Win32Window::Destroy()
 	{
 		if (!m_hwnd) return;
 
@@ -100,7 +100,7 @@ namespace NeneEngine
 		DestroyWindow(hwnd);
 	}
 
-	void Windows32Window::PumpMessages()
+	void Win32Window::PumpMessages()
 	{
 		MSG message{};
 		while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
@@ -110,24 +110,24 @@ namespace NeneEngine
 		}
 	}
 
-	LRESULT CALLBACK Windows32Window::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+	LRESULT CALLBACK Win32Window::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		if (message == WM_NCCREATE)
 		{
 			const auto* createStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
-			auto* window = static_cast<Windows32Window*>(createStruct->lpCreateParams);
+			auto* window = static_cast<Win32Window*>(createStruct->lpCreateParams);
 			// Store the instance pointer so the static Win32 callback can forward messages to this object.
 			SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(window));
 			window->m_hwnd = hwnd;
 		}
 
-		auto* window = reinterpret_cast<Windows32Window*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+		auto* window = reinterpret_cast<Win32Window*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 		if (!window) return DefWindowProcW(hwnd, message, wParam, lParam);
 
 		return window->HandleMessage(message, wParam, lParam);
 	}
 
-	LRESULT Windows32Window::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
+	LRESULT Win32Window::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		switch (message)
 		{
@@ -212,7 +212,7 @@ namespace NeneEngine
 		return DefWindowProcW(m_hwnd, message, wParam, lParam);
 	}
 
-	KeyCode Windows32Window::TranslateKey(WPARAM wParam, LPARAM lParam)
+	KeyCode Win32Window::TranslateKey(WPARAM wParam, LPARAM lParam)
 	{
 		switch (wParam)
 		{
@@ -233,7 +233,7 @@ namespace NeneEngine
 		return KeyCode::None;
 	}
 
-	void Windows32Window::BeginMouseLeaveTracking()
+	void Win32Window::BeginMouseLeaveTracking()
 	{
 		if (m_isTrackingMouseLeave || !m_hwnd) return;
 
@@ -244,7 +244,7 @@ namespace NeneEngine
 		m_isTrackingMouseLeave = TrackMouseEvent(&trackMouseEvent) == TRUE;
 	}
 
-	KeyCode Windows32Window::TranslateMouseButton(UINT message, WPARAM wParam)
+	KeyCode Win32Window::TranslateMouseButton(UINT message, WPARAM wParam)
 	{
 		switch (message)
 		{

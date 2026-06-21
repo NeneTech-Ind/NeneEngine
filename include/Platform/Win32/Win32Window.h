@@ -7,11 +7,11 @@
 
 namespace NeneEngine
 {
-	class Windows32Window final : public IWindow
+	class Win32Window final : public IWindow
 	{
 	  public:
-		Windows32Window() = default;
-		~Windows32Window() override;
+		Win32Window() = default;
+		~Win32Window() override;
 
 		bool Create(uint32_t width, uint32_t height, const std::string& title) override;
 		void Destroy() override;

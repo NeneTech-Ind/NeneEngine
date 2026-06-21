@@ -10,7 +10,7 @@
 #include "ECS/Systems/CameraControllerSystem.h"
 #include "ECS/Systems/PrimitiveControlSystem.h"
 #include "ECS/World.h"
-#include "Platform/Windows32/Windows32Window.h"
+#include "Platform/Win32/Win32Window.h"
 #include "RenderAdapters/DiligentDX12Adapter.h"
 
 #include <Windows.h>
@@ -117,7 +117,7 @@ namespace NeneEngine
 		WindowContext windowContext{};
 		windowContext.title = title;
 		windowContext.cameraEntity = cameraEntity;
-		windowContext.window = eastl::make_unique<Windows32Window>();
+		windowContext.window = eastl::make_unique<Win32Window>();
 		if (!windowContext.window->Create(width, height, title))
 		{
 			NENE_LOG_ERROR("Failed to create window '{}'", title);
