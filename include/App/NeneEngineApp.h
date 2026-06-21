@@ -76,7 +76,6 @@ namespace NeneEngine
 		void PumpWindowMessagesPhase();
 		void InputPhase(float deltaTime);
 		void GameplayPhase(float deltaTime);
-		void PhysicsPhase(float deltaTime);
 		void SyncPhase(float deltaTime);
 		void RenderPhase();
 		void EndFramePhase();

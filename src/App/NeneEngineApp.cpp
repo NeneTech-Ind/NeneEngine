@@ -11,10 +11,9 @@
 #include "Core/ResourceManager.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
-#include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/TransformComponent.h"
-#include "ECS/Events/CollisionEvent.h"
 #include "ECS/Systems/CameraControllerSystem.h"
+#include "ECS/Systems/CollisionSystem.h"
 #include "ECS/Systems/MovementSystem.h"
 #include "ECS/Systems/PrimitiveControlSystem.h"
 #include "Platform/Windows32/Windows32Window.h"
@@ -23,11 +22,7 @@
 #include "Input/KeyCodeStrings.h"
 #include "States/PlayState.h"
 
-#include <algorithm>
 #include <filesystem>
-#include <glm/common.hpp>
-#include <glm/geometric.hpp>
-#include <iterator>
 #include <sstream>
 #include <stdexcept>
 
@@ -36,75 +31,6 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr float kConfigReloadIntervalSeconds = 0.5f;
-
-		struct CollisionBounds
-		{
-			glm::vec3 center = {0.0f, 0.0f, 0.0f};
-			glm::vec3 halfExtents = {0.0f, 0.0f, 0.0f};
-			float radius = 0.0f;
-		};
-
-		[[nodiscard]] glm::vec3 ComputeColliderCenter(const ECS::TransformComponent& transform,
-		                                              const ECS::ColliderComponent& collider)
-		{
-			return transform.position + collider.offset;
-		}
-
-		[[nodiscard]] CollisionBounds ComputeCollisionBounds(const ECS::TransformComponent& transform,
-		                                                     const ECS::ColliderComponent& collider)
-		{
-			const glm::vec3 absoluteScale = glm::abs(transform.scale);
-			const float maxScaleAxis = (std::max)(absoluteScale.x, (std::max)(absoluteScale.y, absoluteScale.z));
-
-			CollisionBounds bounds{};
-			bounds.center = ComputeColliderCenter(transform, collider);
-			bounds.halfExtents = collider.halfExtents * absoluteScale;
-			bounds.radius = collider.radius * maxScaleAxis;
-			return bounds;
-		}
-
-		[[nodiscard]] bool CheckSphereSphereCollision(const CollisionBounds& lhs, const CollisionBounds& rhs)
-		{
-			const float combinedRadius = lhs.radius + rhs.radius;
-			const glm::vec3 delta = lhs.center - rhs.center;
-			return glm::dot(delta, delta) <= combinedRadius * combinedRadius;
-		}
-
-		[[nodiscard]] bool CheckBoxBoxCollision(const CollisionBounds& lhs, const CollisionBounds& rhs)
-		{
-			const glm::vec3 delta = glm::abs(lhs.center - rhs.center);
-			const glm::vec3 allowedDelta = lhs.halfExtents + rhs.halfExtents;
-			return delta.x <= allowedDelta.x && delta.y <= allowedDelta.y && delta.z <= allowedDelta.z;
-		}
-
-		[[nodiscard]] bool CheckBoxSphereCollision(const CollisionBounds& box, const CollisionBounds& sphere)
-		{
-			const glm::vec3 minBounds = box.center - box.halfExtents;
-			const glm::vec3 maxBounds = box.center + box.halfExtents;
-			const glm::vec3 closestPoint = glm::clamp(sphere.center, minBounds, maxBounds);
-			const glm::vec3 delta = closestPoint - sphere.center;
-			return glm::dot(delta, delta) <= sphere.radius * sphere.radius;
-		}
-
-		[[nodiscard]] bool CheckCollision(const ECS::TransformComponent& lhsTransform,
-		                                  const ECS::ColliderComponent& lhsCollider,
-		                                  const ECS::TransformComponent& rhsTransform,
-		                                  const ECS::ColliderComponent& rhsCollider)
-		{
-			const CollisionBounds lhsBounds = ComputeCollisionBounds(lhsTransform, lhsCollider);
-			const CollisionBounds rhsBounds = ComputeCollisionBounds(rhsTransform, rhsCollider);
-
-			if (lhsCollider.type == ECS::ColliderType::Sphere && rhsCollider.type == ECS::ColliderType::Sphere)
-				return CheckSphereSphereCollision(lhsBounds, rhsBounds);
-
-			if (lhsCollider.type == ECS::ColliderType::Box && rhsCollider.type == ECS::ColliderType::Box)
-				return CheckBoxBoxCollision(lhsBounds, rhsBounds);
-
-			if (lhsCollider.type == ECS::ColliderType::Box && rhsCollider.type == ECS::ColliderType::Sphere)
-				return CheckBoxSphereCollision(lhsBounds, rhsBounds);
-
-			return CheckBoxSphereCollision(rhsBounds, lhsBounds);
-		}
 
 		std::string FormatBindings(const std::vector<KeyCode>& keyCodes)
 		{
@@ -186,6 +112,7 @@ namespace NeneEngine
 
 			// 3. ECS
 			m_world.AddSystem(std::make_unique<ECS::MovementSystem>());
+			m_world.AddSystem(std::make_unique<ECS::CollisionSystem>());
 			TestScene::LoadOrCreate(m_world, width, height);
 			NENE_LOG_INFO("Test scene loaded from {}", TestScene::DefaultScenePath().string());
 
@@ -539,26 +466,6 @@ namespace NeneEngine
 		ReloadAppConfigIfChanged(deltaTime);
 	}
 
-	void NeneEngineApp::PhysicsPhase(float /*deltaTime*/)
-	{
-		auto view = m_world.GetRegistry().view<const ECS::TransformComponent, const ECS::ColliderComponent>();
-		const auto entities = view.each();
-
-		for (auto first = entities.begin(); first != entities.end(); ++first)
-		{
-			const auto [firstEntity, firstTransform, firstCollider] = *first;
-
-			for (auto second = std::next(first); second != entities.end(); ++second)
-			{
-				const auto [secondEntity, secondTransform, secondCollider] = *second;
-
-				if (!CheckCollision(firstTransform, firstCollider, secondTransform, secondCollider)) continue;
-
-				m_world.GetEventBus().Publish(ECS::CollisionEvent{firstEntity, secondEntity});
-			}
-		}
-	}
-
 	void NeneEngineApp::SyncPhase(float /*deltaTime*/)
 	{
 		// Reserved explicit phase for synchronizing physics/runtime state back into scene transforms.
@@ -603,7 +510,6 @@ namespace NeneEngine
 			{
 				InputPhase(deltaTime);
 				GameplayPhase(deltaTime);
-				PhysicsPhase(deltaTime);
 				SyncPhase(deltaTime);
 				RenderPhase();
 				EndFramePhase();
