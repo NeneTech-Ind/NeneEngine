@@ -10,7 +10,7 @@
 #include "Rendering/MeshLoader.h"
 #include "Rendering/ModelInstanceConfig.h"
 #include "Rendering/ModelSpawnManifest.h"
-#include "Rendering/RenderRuntimeBinder.h"
+#include "Rendering/MeshRenderBinding.h"
 
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>

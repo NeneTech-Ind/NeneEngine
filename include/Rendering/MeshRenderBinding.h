@@ -1,4 +1,4 @@
-// RenderRuntimeBinder.h
+// MeshRenderBinding.h
 
 #pragma once
 

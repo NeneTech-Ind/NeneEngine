@@ -1,4 +1,4 @@
-// RenderResizeHandler.h
+// RenderResize.h
 
 #pragma once
 
