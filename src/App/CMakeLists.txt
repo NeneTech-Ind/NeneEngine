@@ -1,6 +1,7 @@
 target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/AppConfig.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/AppRuntimeConfigService.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/AppWindowRuntimeService.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/AppRuntimeConfigPolicy.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/AppStartupConfigService.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/DemoBootstrapRunner.h"
@@ -8,6 +9,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/NeneEngineApp.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/AppConfig.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AppRuntimeConfigService.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/AppWindowRuntimeService.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AppRuntimeConfigPolicy.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AppStartupConfigService.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DemoBootstrapRunner.cpp"
