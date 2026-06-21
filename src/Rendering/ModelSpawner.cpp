@@ -6,7 +6,7 @@
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
-#include "RenderAdapters/IRenderAdapter.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 #include "Rendering/MeshLoader.h"
 #include "Rendering/ModelInstanceConfig.h"
 #include "Rendering/ModelSpawnManifest.h"

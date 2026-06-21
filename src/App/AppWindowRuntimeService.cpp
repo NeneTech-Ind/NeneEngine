@@ -11,7 +11,7 @@
 #include "ECS/Systems/PrimitiveControlSystem.h"
 #include "ECS/World.h"
 #include "Platform/Win32/Win32Window.h"
-#include "RenderAdapters/DiligentDX12Adapter.h"
+#include "Graphics/Backend/DiligentDX12Adapter.h"
 
 #include <Windows.h>
 

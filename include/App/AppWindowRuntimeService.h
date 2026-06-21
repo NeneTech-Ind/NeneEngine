@@ -10,7 +10,7 @@
 #include "Input/InputDevice.h"
 #include "Input/InputManager.h"
 #include "Platform/IWindow.h"
-#include "RenderAdapters/IRenderAdapter.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 
 #include <EASTL/unique_ptr.h>
 #include <memory>

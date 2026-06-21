@@ -1,6 +1,6 @@
 // DiligentDX12Adapter.cpp
 
-#include "RenderAdapters/DiligentDX12Adapter.h"
+#include "Graphics/Backend/DiligentDX12Adapter.h"
 
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Shader.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngineD3D12/interface/EngineFactoryD3D12.h"

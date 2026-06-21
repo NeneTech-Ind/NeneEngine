@@ -4,7 +4,7 @@
 
 #include "ECS/Entity.h"
 #include "ECS/Systems/ISystem.h"
-#include "RenderAdapters/IRenderAdapter.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 
 namespace NeneEngine::ECS
 {

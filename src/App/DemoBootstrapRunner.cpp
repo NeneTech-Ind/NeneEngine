@@ -2,7 +2,7 @@
 
 #include "Core/CustomLogger.h"
 #include "Core/PathResolver.h"
-#include "RenderAdapters/IRenderAdapter.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 #include "Rendering/ModelSpawner.h"
 
 namespace NeneEngine
