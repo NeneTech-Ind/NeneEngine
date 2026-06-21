@@ -13,7 +13,7 @@
 #include "ECS/Systems/CollisionSystem.h"
 #include "ECS/Systems/MovementSystem.h"
 #include "Scene/DemoScene.h"
-#include "States/PlayState.h"
+#include "GameStates/PlayState.h"
 
 namespace NeneEngine
 {

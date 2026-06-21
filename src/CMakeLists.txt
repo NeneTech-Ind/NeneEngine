@@ -17,7 +17,7 @@ add_subdirectory(Platform)
 add_subdirectory(RenderAdapters)
 add_subdirectory(Rendering)
 add_subdirectory(Scene)
-add_subdirectory(States)
+add_subdirectory(GameStates)
 
 target_include_directories(NeneEngine
     PRIVATE

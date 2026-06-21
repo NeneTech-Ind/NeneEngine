@@ -1,12 +1,12 @@
 // PlayState.cpp
 
-#include "States/PlayState.h"
+#include "GameStates/PlayState.h"
 #include "App/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
 #include "Core/CustomLogger.h"
 #include "Input/InputActions.h"
 #include "Input/InputManager.h"
-#include "States/PauseState.h"
+#include "GameStates/PauseState.h"
 
 void NeneEngine::PlayState::OnEnter()
 {

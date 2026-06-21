@@ -1,6 +1,6 @@
 #pragma once
 
-#include "States/IGameState.h"
+#include "GameStates/IGameState.h"
 
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
