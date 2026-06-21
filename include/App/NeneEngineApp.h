@@ -3,7 +3,7 @@
 #pragma once
 
 #include "App/AppConfig.h"
-#include "App/AppStartupConfigService.h"
+#include "App/AppRuntimeConfigService.h"
 #include "App/GameStateMachine.h"
 #include "Core/Delegate.h"
 #include "Core/GameTimer.h"
@@ -61,8 +61,7 @@ namespace NeneEngine
 		GameStateMachine m_gameStateMachine;
 		ECS::World m_world;
 		InputManager m_inputManager;
-		LoadedAppConfigState m_loadedAppConfigState{};
-		float m_configReloadAccumulator = 0.0f;
+		AppRuntimeConfigService m_runtimeConfigService;
 
 		std::atomic<bool> m_running{false};
 		std::atomic<bool> m_isPaused{false};
@@ -82,7 +81,6 @@ namespace NeneEngine
 		void CalculateFrameStats();
 		void LogDeltaTimeStats(float deltaTime);
 		void HandleWindowResize(size_t windowIndex, uint32_t width, uint32_t height);
-		void ReloadAppConfigIfChanged(float deltaTime);
 	};
 
 } // namespace NeneEngine

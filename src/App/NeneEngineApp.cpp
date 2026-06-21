@@ -2,8 +2,6 @@
 
 #include "App/NeneEngineApp.h"
 #include "App/AppConfig.h"
-#include "App/AppRuntimeConfigPolicy.h"
-#include "App/AppStartupConfigService.h"
 #include "App/DemoBootstrapRunner.h"
 #include "Core/CustomLogger.h"
 #include "Core/ExternalLibrarySmokeTest.h"
@@ -30,8 +28,6 @@ namespace NeneEngine
 {
 	namespace
 	{
-		constexpr float kConfigReloadIntervalSeconds = 0.5f;
-
 		std::string FormatBindings(const std::vector<KeyCode>& keyCodes)
 		{
 			std::ostringstream stream;
@@ -103,8 +99,8 @@ namespace NeneEngine
 			ResourceManager::GetInstance().RegisterDefaultLoaders();
 			RunExternalLibrarySmokeTests();
 
-			m_loadedAppConfigState = LoadStartupAppConfigState();
-			const AppConfig& appConfig = m_loadedAppConfigState.config;
+			m_runtimeConfigService.LoadStartupConfig();
+			const AppConfig& appConfig = m_runtimeConfigService.GetConfig();
 
 			// 2. States
 			AppStateContext stateContext{*this, m_world, m_gameStateMachine};
@@ -399,43 +395,6 @@ namespace NeneEngine
 		timeElapsed += 1.0f;
 	}
 
-	void NeneEngineApp::ReloadAppConfigIfChanged(float deltaTime)
-	{
-		m_configReloadAccumulator += deltaTime;
-		if (m_configReloadAccumulator < kConfigReloadIntervalSeconds) return;
-
-		m_configReloadAccumulator = 0.0f;
-
-		const std::filesystem::path resolvedConfigPath = ResolveStartupAppConfigPath();
-		const bool pathChanged = resolvedConfigPath != m_loadedAppConfigState.path;
-
-		if (pathChanged)
-		{
-			NENE_LOG_INFO("App config path updated to '{}'", resolvedConfigPath.string());
-		}
-
-		if (!std::filesystem::exists(resolvedConfigPath)) return;
-
-		const auto currentWriteTime = std::filesystem::last_write_time(resolvedConfigPath);
-		if (!pathChanged && currentWriteTime == m_loadedAppConfigState.lastWriteTime) return;
-
-		const LoadedAppConfigState resolvedConfigState = LoadStartupAppConfigState(resolvedConfigPath);
-
-		const auto hotReloadResult =
-		    EvaluateAppConfigHotReload(m_loadedAppConfigState.config, resolvedConfigState.config);
-		if (hotReloadResult.requiresRestart)
-		{
-			NENE_LOG_WARN("App config hot-reload: window definitions changed, but window creation, resizing, titles, "
-			              "and main-window reassignment require application restart");
-		}
-
-		ApplyRuntimeAppConfig(hotReloadResult.runtimeAppliedConfig);
-		m_loadedAppConfigState = resolvedConfigState;
-
-		NENE_LOG_INFO("App config hot-reloaded from '{}'; applied runtime-supported changes only",
-		              m_loadedAppConfigState.path.string());
-	}
-
 	void NeneEngineApp::PumpWindowMessagesPhase()
 	{
 		for (auto& windowContext : m_windows)
@@ -463,7 +422,8 @@ namespace NeneEngine
 		m_gameStateMachine.HandleInput();
 		m_gameStateMachine.Update(deltaTime);
 		LogDeltaTimeStats(deltaTime);
-		ReloadAppConfigIfChanged(deltaTime);
+		m_runtimeConfigService.Update(deltaTime,
+		                              [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); });
 	}
 
 	void NeneEngineApp::SyncPhase(float /*deltaTime*/)
