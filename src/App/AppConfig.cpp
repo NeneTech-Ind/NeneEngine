@@ -250,17 +250,6 @@ namespace NeneEngine
 			return config;
 		}
 
-		[[nodiscard]] std::string FormatBindings(const std::vector<KeyCode>& bindings)
-		{
-			std::string formattedBindings;
-			for (size_t index = 0; index < bindings.size(); ++index)
-			{
-				if (index > 0) formattedBindings += ", ";
-				formattedBindings += ToString(bindings[index]);
-			}
-
-			return formattedBindings;
-		}
 	} // namespace
 
 	std::filesystem::path DefaultAppConfigPath()

@@ -3,6 +3,7 @@
 #include "App/AppBootstrapService.h"
 
 #include "App/AppConfig.h"
+#include "App/NeneEngineApp.h"
 #include "App/AppRuntimeConfigService.h"
 #include "App/AppWindowRuntimeService.h"
 #include "App/DemoBootstrapRunner.h"
