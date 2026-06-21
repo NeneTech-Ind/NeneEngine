@@ -37,7 +37,9 @@ namespace NeneEngine
 		try
 		{
 			return m_bootstrapService.Initialize(*this, m_gameStateMachine, m_world, m_runtimeConfigService,
-			                                     m_windowRuntimeService, ResolveLogFilePath().string(), width, height);
+			                                     m_windowRuntimeService,
+			                                     [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
+			                                     ResolveLogFilePath().string(), width, height);
 		}
 		catch (const std::exception& e)
 		{
@@ -58,22 +60,12 @@ namespace NeneEngine
 		m_frameLoopService.Run(
 		    m_running, m_isPaused, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService,
 		    m_windowRuntimeService, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
-		    [this]() { return GetFocusedInput(); });
+		    [this]() { return m_windowRuntimeService.GetFocusedInput(); });
 	}
 
 	void NeneEngineApp::RequestShutdown()
 	{
 		m_running = false;
-	}
-
-	InputDevice* NeneEngineApp::GetFocusedInput()
-	{
-		return m_windowRuntimeService.GetFocusedInput();
-	}
-
-	const InputDevice* NeneEngineApp::GetFocusedInput() const
-	{
-		return m_windowRuntimeService.GetFocusedInput();
 	}
 
 } // namespace NeneEngine

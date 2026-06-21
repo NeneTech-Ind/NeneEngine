@@ -2,8 +2,6 @@
 
 #include "App/AppBootstrapService.h"
 
-#include "App/AppConfig.h"
-#include "App/NeneEngineApp.h"
 #include "App/AppRuntimeConfigService.h"
 #include "App/AppWindowRuntimeService.h"
 #include "App/DemoBootstrapRunner.h"
@@ -37,7 +35,8 @@ namespace NeneEngine
 	bool AppBootstrapService::Initialize(NeneEngineApp& app, GameStateMachine& gameStateMachine, ECS::World& world,
 	                                     AppRuntimeConfigService& runtimeConfigService,
 	                                     AppWindowRuntimeService& windowRuntimeService,
-	                                     const std::string& logFilePath, uint32_t width, uint32_t height)
+	                                     ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath,
+	                                     uint32_t width, uint32_t height)
 	{
 		CustomLogger::GetInstance().Initialize(logFilePath, false, spdlog::level::info, true);
 		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
@@ -65,7 +64,7 @@ namespace NeneEngine
 		if (!windowRuntimeService.Initialize(appConfig, world, primaryCameraEntity, width, height)) return false;
 
 		RunDemoBootstrap(world, windowRuntimeService.GetPrimaryRenderer());
-		app.ApplyRuntimeAppConfig(appConfig);
+		applyRuntimeConfig(appConfig);
 
 		NENE_LOG_INFO("Application initialized successfully ({}x{})", width, height);
 		return true;
