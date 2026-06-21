@@ -2,17 +2,9 @@
 
 #include "App/NeneEngineApp.h"
 #include "App/AppConfig.h"
-#include "App/DemoBootstrapRunner.h"
 #include "Core/CustomLogger.h"
-#include "Core/ExternalLibrarySmokeTest.h"
 #include "Core/PathResolver.h"
-#include "Core/ResourceManager.h"
-#include "ECS/Components/CameraComponent.h"
-#include "ECS/Systems/CollisionSystem.h"
-#include "ECS/Systems/MovementSystem.h"
-#include "Scene/TestScene.h"
 #include "Input/KeyCodeStrings.h"
-#include "States/PlayState.h"
 
 #include <filesystem>
 #include <sstream>
@@ -74,45 +66,11 @@ namespace NeneEngine
 
 	bool NeneEngineApp::Init(uint32_t width, uint32_t height, const std::string& title)
 	{
+		(void)title;
 		try
 		{
-			// 1. Logger
-			CustomLogger::GetInstance().Initialize(ResolveLogFilePath().string(), false, spdlog::level::info,
-			                                       true);
-			NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
-			ResourceManager::GetInstance().RegisterDefaultLoaders();
-			RunExternalLibrarySmokeTests();
-
-			m_runtimeConfigService.LoadStartupConfig();
-			const AppConfig& appConfig = m_runtimeConfigService.GetConfig();
-
-			// 2. States
-			AppStateContext stateContext{*this, m_world, m_gameStateMachine};
-			m_gameStateMachine.PushState(eastl::make_unique<PlayState>(stateContext));
-
-			// 3. ECS
-			m_world.AddSystem(std::make_unique<ECS::MovementSystem>());
-			m_world.AddSystem(std::make_unique<ECS::CollisionSystem>());
-			TestScene::LoadOrCreate(m_world, width, height);
-			NENE_LOG_INFO("Test scene loaded from {}", TestScene::DefaultScenePath().string());
-
-			const ECS::Entity primaryCameraEntity = FindPrimaryCameraEntity();
-			if (primaryCameraEntity == ECS::NullEntity)
-			{
-				NENE_LOG_ERROR("Init failed: no primary camera found after loading scene");
-				return false;
-			}
-
-			if (!m_windowRuntimeService.Initialize(appConfig, m_world, primaryCameraEntity, width, height))
-				return false;
-
-			RunDemoBootstrap(m_world, m_windowRuntimeService.GetPrimaryRenderer());
-
-			ApplyRuntimeAppConfig(appConfig);
-
-			NENE_LOG_INFO("Application initialized successfully ({}x{})", width, height);
-
-			return true;
+			return m_bootstrapService.Initialize(*this, m_gameStateMachine, m_world, m_runtimeConfigService,
+			                                     m_windowRuntimeService, ResolveLogFilePath().string(), width, height);
 		}
 		catch (const std::exception& e)
 		{
@@ -120,18 +78,6 @@ namespace NeneEngine
 
 			return false;
 		}
-	}
-
-	ECS::Entity NeneEngineApp::FindPrimaryCameraEntity() const
-	{
-		const auto cameraView = m_world.GetRegistry().view<const ECS::CameraComponent>();
-		for (auto entity : cameraView)
-		{
-			const auto& camera = cameraView.get<ECS::CameraComponent>(entity);
-			if (camera.isPrimary) return entity;
-		}
-
-		return ECS::NullEntity;
 	}
 
 	void NeneEngineApp::ApplyRuntimeAppConfig(const AppConfig& config)

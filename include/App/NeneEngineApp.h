@@ -3,18 +3,16 @@
 #pragma once
 
 #include "App/AppConfig.h"
+#include "App/AppBootstrapService.h"
 #include "App/AppRuntimeConfigService.h"
 #include "App/AppWindowRuntimeService.h"
 #include "App/GameStateMachine.h"
-#include "Core/Delegate.h"
 #include "Core/GameTimer.h"
-#include "ECS/Entity.h"
 #include "ECS/World.h"
 #include "Input/InputDevice.h"
 #include "Input/InputManager.h"
 
 #include <atomic>
-#include <filesystem>
 #include <string>
 
 namespace NeneEngine
@@ -22,6 +20,8 @@ namespace NeneEngine
 
 	class NeneEngineApp
 	{
+		friend class AppBootstrapService;
+
 	  public:
 		NeneEngineApp();
 		~NeneEngineApp();
@@ -39,13 +39,13 @@ namespace NeneEngine
 		GameStateMachine m_gameStateMachine;
 		ECS::World m_world;
 		InputManager m_inputManager;
+		AppBootstrapService m_bootstrapService;
 		AppRuntimeConfigService m_runtimeConfigService;
 		AppWindowRuntimeService m_windowRuntimeService;
 
 		std::atomic<bool> m_running{false};
 		std::atomic<bool> m_isPaused{false};
 
-		ECS::Entity FindPrimaryCameraEntity() const;
 		void ApplyRuntimeAppConfig(const AppConfig& config);
 		void PumpWindowMessagesPhase();
 		void InputPhase(float deltaTime);
