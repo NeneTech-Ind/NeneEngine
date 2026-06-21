@@ -34,8 +34,21 @@ neneengine_set_default_option(DILIGENT_NO_GLES       ON  "Disable GLES backend")
 neneengine_set_default_option(DILIGENT_NO_METAL      ON  "Disable Metal backend")
 neneengine_set_default_option(DILIGENT_NO_DIRECT3D12 OFF "Disable Direct3D12 backend")
 
+set(NENEENGINE_DILIGENT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/DiligentEngine")
+set(NENEENGINE_DILIGENT_CORE_DIR "${NENEENGINE_DILIGENT_ROOT}/DiligentCore")
+set(NENEENGINE_DILIGENT_TOOLS_DIR "${NENEENGINE_DILIGENT_ROOT}/DiligentTools")
+
+if(NOT EXISTS "${NENEENGINE_DILIGENT_CORE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR
+        "DiligentEngine sources were not found at '${NENEENGINE_DILIGENT_CORE_DIR}'.\n"
+        "The 'external/DiligentEngine' submodule is probably not initialized.\n"
+        "Run:\n"
+        "  git submodule update --init --recursive"
+    )
+endif()
+
 add_subdirectory("external/DiligentEngine/DiligentCore")
-set(DILIGENT_TOOLS_DIR "external/DiligentEngine/DiligentTools")
+set(DILIGENT_TOOLS_DIR "${NENEENGINE_DILIGENT_TOOLS_DIR}")
 add_subdirectory("external/DiligentEngine/DiligentTools/ThirdParty")
 add_subdirectory("external/DiligentEngine/DiligentTools/TextureLoader")
 
