@@ -86,124 +86,12 @@ namespace NeneEngine
 		m_windowRuntimeService.ApplyRuntimeConfig(config);
 	}
 
-	void NeneEngineApp::CalculateFrameStats()
-	{
-		// Code computes the average frames per second, and also the
-		// average time it takes to render one frame.  These stats
-		// are appended to the window caption bar.
-
-		static int frameCnt = 0;
-		static float timeElapsed = 0.0f;
-
-		frameCnt++;
-		// Compute averages over one-second period.
-		if ((m_timer.TotalTime() - timeElapsed) >= 1.0f)
-		{
-			float fps = (float)frameCnt; // fps = frameCnt / 1
-			float mspf = 1000.0f / fps;
-
-			std::wstringstream wss;
-			wss << std::fixed << std::setprecision(0);
-			wss << fps;
-			std::wstring fpsStr = wss.str();
-			wss.str(L""); // Reset wstringstream
-			wss << std::setprecision(6);
-			wss << mspf;
-			std::wstring mspfStr = wss.str();
-
-			m_windowRuntimeService.UpdateFrameStatsText(fpsStr, mspfStr);
-
-			// Reset for next average.
-			frameCnt = 0;
-			timeElapsed += 1.0f;
-		}
-	}
-
-	void NeneEngineApp::LogDeltaTimeStats(float deltaTime)
-	{
-		static int sampleCount = 0;
-		static float accumulatedDeltaTime = 0.0f;
-		static float timeElapsed = 0.0f;
-		static float lastDeltaTime = 0.0f;
-
-		++sampleCount;
-		accumulatedDeltaTime += deltaTime;
-		lastDeltaTime = deltaTime;
-
-		if ((m_timer.TotalTime() - timeElapsed) < 1.0f) return;
-
-		const float averageDeltaTime = sampleCount > 0 ? accumulatedDeltaTime / static_cast<float>(sampleCount) : 0.0f;
-
-		NENE_LOG_INFO("deltaTime: last={:.6f} s ({:.3f} ms), avg={:.6f} s ({:.3f} ms), samples={}", lastDeltaTime,
-		              lastDeltaTime * 1000.0f, averageDeltaTime, averageDeltaTime * 1000.0f, sampleCount);
-
-		sampleCount = 0;
-		accumulatedDeltaTime = 0.0f;
-		timeElapsed += 1.0f;
-	}
-
-	void NeneEngineApp::PumpWindowMessagesPhase()
-	{
-		m_windowRuntimeService.PumpWindowMessages();
-	}
-
-	void NeneEngineApp::InputPhase(float deltaTime)
-	{
-		m_inputManager.SetInputDevice(GetFocusedInput());
-		m_inputManager.UpdateState();
-		m_windowRuntimeService.UpdateInputManagers();
-		m_windowRuntimeService.UpdateWindowSystems(deltaTime);
-	}
-
-	void NeneEngineApp::GameplayPhase(float deltaTime)
-	{
-		m_gameStateMachine.HandleInput();
-		m_gameStateMachine.Update(deltaTime);
-		LogDeltaTimeStats(deltaTime);
-		m_runtimeConfigService.Update(deltaTime,
-		                              [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); });
-	}
-
-	void NeneEngineApp::SyncPhase(float /*deltaTime*/)
-	{
-		// Reserved explicit phase for synchronizing physics/runtime state back into scene transforms.
-	}
-
-	void NeneEngineApp::RenderPhase()
-	{
-		m_windowRuntimeService.Render();
-	}
-
-	void NeneEngineApp::EndFramePhase()
-	{
-		CalculateFrameStats();
-		m_windowRuntimeService.EndFrameInputs();
-	}
-
 	void NeneEngineApp::Run()
 	{
-		m_running = true;
-		m_timer.Reset();
-
-		while (m_running && !m_windowRuntimeService.AreAllWindowsClosed())
-		{
-			PumpWindowMessagesPhase();
-			m_timer.Tick();
-			const float deltaTime = m_timer.DeltaTime();
-
-			if (!m_isPaused)
-			{
-				InputPhase(deltaTime);
-				GameplayPhase(deltaTime);
-				SyncPhase(deltaTime);
-				RenderPhase();
-				EndFramePhase();
-			}
-			else
-			{
-				Sleep(100);
-			}
-		}
+		m_frameLoopService.Run(
+		    m_running, m_isPaused, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService,
+		    m_windowRuntimeService, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
+		    [this]() { return GetFocusedInput(); });
 	}
 
 	void NeneEngineApp::RequestShutdown()
