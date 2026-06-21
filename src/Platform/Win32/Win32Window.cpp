@@ -1,5 +1,5 @@
 #include "Platform/Win32/Win32Window.h"
-#include "Resource.h"
+#include "Win32ResourceIds.h"
 
 #include <windowsx.h>
 

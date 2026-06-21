@@ -1,4 +1,4 @@
-// TestScene.h
+// DemoScene.h
 
 #pragma once
 
@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <filesystem>
 
-namespace NeneEngine::TestScene
+namespace NeneEngine::DemoScene
 {
 
 	std::filesystem::path DefaultScenePath();
@@ -18,4 +18,4 @@ namespace NeneEngine::TestScene
 	                  const std::filesystem::path& scenePath = DefaultScenePath(),
 	                  const std::filesystem::path& sceneConfigPath = DefaultSceneConfigPath());
 
-} // namespace NeneEngine::TestScene
+} // namespace NeneEngine::DemoScene

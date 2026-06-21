@@ -12,7 +12,7 @@
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Systems/CollisionSystem.h"
 #include "ECS/Systems/MovementSystem.h"
-#include "Scene/TestScene.h"
+#include "Scene/DemoScene.h"
 #include "States/PlayState.h"
 
 namespace NeneEngine
@@ -51,8 +51,8 @@ namespace NeneEngine
 
 		world.AddSystem(std::make_unique<ECS::MovementSystem>());
 		world.AddSystem(std::make_unique<ECS::CollisionSystem>());
-		TestScene::LoadOrCreate(world, width, height);
-		NENE_LOG_INFO("Test scene loaded from {}", TestScene::DefaultScenePath().string());
+		DemoScene::LoadOrCreate(world, width, height);
+		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::DefaultScenePath().string());
 
 		const ECS::Entity primaryCameraEntity = FindPrimaryCameraEntity(world);
 		if (primaryCameraEntity == ECS::NullEntity)

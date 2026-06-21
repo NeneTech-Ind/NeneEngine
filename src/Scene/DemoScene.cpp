@@ -1,6 +1,6 @@
-// TestScene.cpp
+// DemoScene.cpp
 
-#include "Scene/TestScene.h"
+#include "Scene/DemoScene.h"
 
 #include "Core/PathResolver.h"
 #include "ECS/Components/CameraComponent.h"
@@ -13,7 +13,7 @@
 #include "Scene/SceneConfig.h"
 #include "Scene/SceneSerializer.h"
 
-namespace NeneEngine::TestScene
+namespace NeneEngine::DemoScene
 {
 	namespace
 	{
@@ -124,4 +124,4 @@ namespace NeneEngine::TestScene
 		ApplySceneConfig(world, LoadSceneConfig(effectiveSceneConfigPath));
 	}
 
-} // namespace NeneEngine::TestScene
+} // namespace NeneEngine::DemoScene

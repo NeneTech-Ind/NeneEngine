@@ -6,7 +6,7 @@ add_executable(NeneEngine WIN32
 )
 
 target_sources(NeneEngine PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../include/Resource.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include/Win32ResourceIds.h"
 )
 
 add_subdirectory(App)
