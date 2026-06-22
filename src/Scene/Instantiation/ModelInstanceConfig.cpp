@@ -1,4 +1,4 @@
-#include "Rendering/ModelInstanceConfig.h"
+#include "Scene/Instantiation/ModelInstanceConfig.h"
 
 #include "Core/CustomLogger.h"
 

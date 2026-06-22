@@ -1,4 +1,4 @@
-#include "Rendering/ModelSpawnManifest.h"
+#include "Scene/Instantiation/ModelSpawnManifest.h"
 
 #include "Core/CustomLogger.h"
 

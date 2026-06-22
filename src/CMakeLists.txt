@@ -15,7 +15,6 @@ add_subdirectory(ECS)
 add_subdirectory(Graphics)
 add_subdirectory(Input)
 add_subdirectory(Platform)
-add_subdirectory(Rendering)
 add_subdirectory(Scene)
 add_subdirectory(GameStates)
 

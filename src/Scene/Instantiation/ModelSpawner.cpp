@@ -1,4 +1,4 @@
-#include "Rendering/ModelSpawner.h"
+#include "Scene/Instantiation/ModelSpawner.h"
 
 #include "Core/CustomLogger.h"
 #include "Core/PathResolver.h"
@@ -8,8 +8,8 @@
 #include "ECS/World.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Graphics/Loaders/MeshLoader.h"
-#include "Rendering/ModelInstanceConfig.h"
-#include "Rendering/ModelSpawnManifest.h"
+#include "Scene/Instantiation/ModelInstanceConfig.h"
+#include "Scene/Instantiation/ModelSpawnManifest.h"
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <fstream>

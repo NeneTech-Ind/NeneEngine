@@ -3,7 +3,7 @@
 #include "Core/CustomLogger.h"
 #include "Core/PathResolver.h"
 #include "Graphics/Backend/IRenderAdapter.h"
-#include "Rendering/ModelSpawner.h"
+#include "Scene/Instantiation/ModelSpawner.h"
 
 namespace NeneEngine
 {
