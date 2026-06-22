@@ -7,10 +7,10 @@
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
 #include "Graphics/Backend/IRenderAdapter.h"
-#include "Rendering/MeshLoader.h"
+#include "Graphics/Loaders/MeshLoader.h"
 #include "Rendering/ModelInstanceConfig.h"
 #include "Rendering/ModelSpawnManifest.h"
-#include "Rendering/MeshRenderBinding.h"
+#include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>

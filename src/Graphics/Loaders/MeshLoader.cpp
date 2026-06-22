@@ -1,6 +1,6 @@
 // MeshLoader.cpp
 
-#include "Rendering/MeshLoader.h"
+#include "Graphics/Loaders/MeshLoader.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>

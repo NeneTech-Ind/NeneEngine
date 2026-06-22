@@ -5,7 +5,7 @@
 #include "Core/CustomLogger.h"
 #include "Core/PathResolver.h"
 #include "Core/ResourceManager.h"
-#include "Rendering/RenderTypes.h"
+#include "Graphics/Runtime/RenderTypes.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>

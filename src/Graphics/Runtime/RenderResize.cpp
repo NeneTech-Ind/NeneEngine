@@ -1,6 +1,6 @@
 // RenderResize.cpp
 
-#include "Rendering/RenderResize.h"
+#include "Graphics/Runtime/RenderResize.h"
 
 #include "Core/CustomLogger.h"
 #include "ECS/Components/CameraComponent.h"

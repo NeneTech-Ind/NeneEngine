@@ -1,6 +1,6 @@
 // ShaderLoader.cpp
 
-#include "Rendering/ShaderLoader.h"
+#include "Graphics/Loaders/ShaderLoader.h"
 
 #include <filesystem>
 #include <fstream>

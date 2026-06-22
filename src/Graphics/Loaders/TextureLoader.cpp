@@ -1,6 +1,6 @@
 // TextureLoader.cpp
 
-#include "Rendering/TextureLoader.h"
+#include "Graphics/Loaders/TextureLoader.h"
 
 #include <filesystem>
 #include <fstream>

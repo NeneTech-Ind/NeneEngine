@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Rendering/RenderTypes.h"
+#include "Graphics/Runtime/RenderTypes.h"
 
 #include <Windows.h>
 #include <cstdint>

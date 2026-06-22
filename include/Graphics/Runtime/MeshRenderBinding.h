@@ -3,7 +3,7 @@
 #pragma once
 
 #include "ECS/Entity.h"
-#include "Rendering/RenderTypes.h"
+#include "Graphics/Runtime/RenderTypes.h"
 
 namespace NeneEngine
 {

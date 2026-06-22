@@ -4,7 +4,7 @@
 
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Shader.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngineD3D12/interface/EngineFactoryD3D12.h"
-#include "TextureLoader.h"
+#include "Graphics/Loaders/TextureLoader.h"
 
 #include "Core/CustomLogger.h"
 

@@ -2,9 +2,9 @@
 
 #include "Core/ResourceManager.h"
 
-#include "Rendering/MeshLoader.h"
-#include "Rendering/ShaderLoader.h"
-#include "Rendering/TextureLoader.h"
+#include "Graphics/Loaders/MeshLoader.h"
+#include "Graphics/Loaders/ShaderLoader.h"
+#include "Graphics/Loaders/TextureLoader.h"
 
 namespace NeneEngine
 {

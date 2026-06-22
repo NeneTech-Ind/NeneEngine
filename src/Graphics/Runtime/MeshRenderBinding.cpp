@@ -1,4 +1,4 @@
-#include "Rendering/MeshRenderBinding.h"
+#include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/World.h"
