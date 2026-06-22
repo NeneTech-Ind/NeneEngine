@@ -21,9 +21,18 @@ namespace NeneEngine
 	{
 		std::wstring AnsiToWString(const std::string& str)
 		{
-			WCHAR buffer[512];
-			MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
-			return std::wstring(buffer);
+			if (str.empty()) return {};
+
+			const int requiredSize = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0);
+			if (requiredSize <= 0) return {};
+
+			std::wstring wideString(static_cast<size_t>(requiredSize), L'\0');
+			const int convertedSize =
+			    MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, wideString.data(), requiredSize);
+			if (convertedSize <= 0) return {};
+
+			wideString.resize(static_cast<size_t>(convertedSize - 1));
+			return wideString;
 		}
 	} // namespace
 
