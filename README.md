@@ -13,6 +13,8 @@
 
 NeneEngine is an experimental game engine built with modern C++ practices by BennySpace (Vlasov Daniil) and Wesdmond (Timofey Shabanov). It features an Entity-Component-System (EnTT), a flexible game state machine, data-driven scene serialization in JSON, and DirectX 12 rendering through Diligent Engine.
 
+Current module naming and incremental folder cleanup rules are tracked in [docs/architecture/naming-conventions.md](docs/architecture/naming-conventions.md).
+
 ### Key Features
 - Win32 multi-window application framework with per-window input focus
 - DirectX 12 renderer powered by Diligent Engine
