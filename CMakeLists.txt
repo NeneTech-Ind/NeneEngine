@@ -19,6 +19,25 @@ function(neneengine_set_default_option option_name option_value description)
     endif()
 endfunction()
 
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    if(NOT DEFINED ENV{VCPKG_ROOT} OR "$ENV{VCPKG_ROOT}" STREQUAL "")
+        message(FATAL_ERROR
+            "VCPKG_ROOT is not set and CMAKE_TOOLCHAIN_FILE was not provided.\n"
+            "Configure the project with vcpkg, for example:\n"
+            "  set VCPKG_ROOT=C:/path/to/vcpkg\n"
+            "  cmake --preset x64-debug"
+        )
+    endif()
+
+    if(NOT EXISTS "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+        message(FATAL_ERROR
+            "VCPKG_ROOT is set to '$ENV{VCPKG_ROOT}', but the vcpkg toolchain file was not found.\n"
+            "Expected:\n"
+            "  $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        )
+    endif()
+endif()
+
 include(cmake/Diligent.cmake)
 
 add_subdirectory("src")

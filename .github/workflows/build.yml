@@ -73,6 +73,10 @@ jobs:
         shell: pwsh
         run: cmake --build out/build/x64-debug --config Debug --target NeneEngine
 
+      - name: Install runtime package
+        shell: pwsh
+        run: cmake --install out/build/x64-debug --config Debug --component Runtime
+
       - name: Show sccache stats
         shell: pwsh
         run: sccache --show-stats
