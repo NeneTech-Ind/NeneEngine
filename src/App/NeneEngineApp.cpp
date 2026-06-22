@@ -27,7 +27,6 @@ namespace NeneEngine
 	{
 		if (m_running) RequestShutdown();
 		m_gameStateMachine.Clear();
-		m_windowRuntimeService.Shutdown();
 		CustomLogger::GetInstance().Shutdown();
 	}
 

@@ -35,6 +35,7 @@ namespace NeneEngine
 	bool AppWindowRuntimeService::Initialize(const AppConfig& config, ECS::World& world, ECS::Entity primaryCameraEntity,
 	                                         uint32_t width, uint32_t height)
 	{
+		Shutdown();
 		m_world = &world;
 
 		if (config.windows.empty())
