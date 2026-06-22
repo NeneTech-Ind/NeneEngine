@@ -77,6 +77,12 @@ jobs:
         shell: pwsh
         run: cmake --install out/build/x64-debug --config Debug --component Runtime
 
+      - name: Smoke test installed build
+        shell: pwsh
+        run: >
+          & ".\out\install\x64-debug\bin\NeneEngine.exe" --smoke-test;
+          exit $LASTEXITCODE
+
       - name: Show sccache stats
         shell: pwsh
         run: sccache --show-stats
