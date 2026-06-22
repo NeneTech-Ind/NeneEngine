@@ -53,10 +53,12 @@ namespace NeneEngine
 			std::unique_ptr<ECS::RenderSystem> renderSystem;
 			DelegateHandle resizeHandle;
 			ECS::Entity cameraEntity = ECS::NullEntity;
+			bool isMain = false;
 			std::string title;
 		};
 
-		bool CreateWindowContext(uint32_t width, uint32_t height, const std::string& title, ECS::Entity cameraEntity);
+		bool CreateWindowContext(uint32_t width, uint32_t height, const std::string& title, ECS::Entity cameraEntity,
+		                         bool isMain);
 		std::vector<ECS::Entity> CreateAdditionalWindowCameras(ECS::Entity primaryCameraEntity, size_t count,
 		                                                       uint32_t width, uint32_t height) const;
 		void AddAppSystem(std::unique_ptr<ECS::ISystem> system);

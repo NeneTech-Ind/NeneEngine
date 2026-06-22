@@ -67,29 +67,46 @@ namespace NeneEngine
 
 		const auto secondaryCameraEntities =
 		    CreateAdditionalWindowCameras(primaryCameraEntity, secondaryWindowCount, width, height);
+
+		const auto rollbackInitialization = [&]()
+		{
+			for (const ECS::Entity entity : secondaryCameraEntities)
+			{
+				world.DestroyEntity(entity);
+			}
+			Shutdown();
+		};
+
 		size_t secondaryCameraIndex = 0;
 		bool mainWindowCreated = false;
 
 		for (const auto& windowConfig : config.windows)
 		{
 			ECS::Entity cameraEntity = primaryCameraEntity;
+			bool isMainWindow = false;
 			if (windowConfig.isMain && !mainWindowCreated)
 			{
 				mainWindowCreated = true;
+				isMainWindow = true;
 			}
 			else
 			{
 				if (secondaryCameraIndex >= secondaryCameraEntities.size())
 				{
 					NENE_LOG_ERROR("Init failed: not enough secondary cameras for configured windows");
+					rollbackInitialization();
 					return false;
 				}
 
 				cameraEntity = secondaryCameraEntities[secondaryCameraIndex++];
 			}
 
-			if (!CreateWindowContext(windowConfig.width, windowConfig.height, windowConfig.title, cameraEntity))
+			if (!CreateWindowContext(windowConfig.width, windowConfig.height, windowConfig.title, cameraEntity,
+			                         isMainWindow))
+			{
+				rollbackInitialization();
 				return false;
+			}
 		}
 
 		return true;
@@ -112,11 +129,12 @@ namespace NeneEngine
 	}
 
 	bool AppWindowRuntimeService::CreateWindowContext(uint32_t width, uint32_t height, const std::string& title,
-	                                                  ECS::Entity cameraEntity)
+	                                                  ECS::Entity cameraEntity, bool isMain)
 	{
 		WindowContext windowContext{};
 		windowContext.title = title;
 		windowContext.cameraEntity = cameraEntity;
+		windowContext.isMain = isMain;
 		windowContext.window = eastl::make_unique<Win32Window>();
 		if (!windowContext.window->Create(width, height, title))
 		{
@@ -324,6 +342,11 @@ namespace NeneEngine
 
 	IRenderAdapter* AppWindowRuntimeService::GetPrimaryRenderer()
 	{
+		for (auto& windowContext : m_windows)
+		{
+			if (windowContext.isMain) return windowContext.renderer.get();
+		}
+
 		if (m_windows.empty()) return nullptr;
 		return m_windows.front().renderer.get();
 	}
