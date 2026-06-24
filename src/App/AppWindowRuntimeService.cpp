@@ -5,8 +5,6 @@
 #include "App/AppInputBindingUtils.h"
 #include "Core/CustomLogger.h"
 #include "ECS/Components/CameraComponent.h"
-#include "ECS/Components/CameraControllerComponent.h"
-#include "ECS/Components/TransformComponent.h"
 #include "ECS/Systems/CameraControllerSystem.h"
 #include "ECS/Systems/PrimitiveControlSystem.h"
 #include "ECS/World.h"
@@ -76,7 +74,8 @@ namespace NeneEngine
 		m_windows.reserve(config.windows.size());
 
 		const auto secondaryCameraEntities =
-		    CreateAdditionalWindowCameras(primaryCameraEntity, secondaryWindowCount, width, height);
+		    m_secondaryCameraService.CreateAdditionalWindowCameras(world, primaryCameraEntity, secondaryWindowCount,
+		                                                          width, height);
 
 		const auto rollbackInitialization = [&]()
 		{
@@ -179,44 +178,6 @@ namespace NeneEngine
 	void AppWindowRuntimeService::AddAppSystem(std::unique_ptr<ECS::ISystem> system)
 	{
 		m_appSystems.push_back(std::move(system));
-	}
-
-	std::vector<ECS::Entity> AppWindowRuntimeService::CreateAdditionalWindowCameras(ECS::Entity primaryCameraEntity,
-	                                                                                 size_t count, uint32_t width,
-	                                                                                 uint32_t height) const
-	{
-		std::vector<ECS::Entity> secondaryCameraEntities;
-		secondaryCameraEntities.reserve(count);
-
-		if (m_world == nullptr) return secondaryCameraEntities;
-		if (primaryCameraEntity == ECS::NullEntity) return secondaryCameraEntities;
-
-		const auto* primaryTransform = m_world->GetComponent<ECS::TransformComponent>(primaryCameraEntity);
-		const auto* primaryCamera = m_world->GetComponent<ECS::CameraComponent>(primaryCameraEntity);
-		const auto* primaryController = m_world->GetComponent<ECS::CameraControllerComponent>(primaryCameraEntity);
-		if (primaryTransform == nullptr || primaryCamera == nullptr || primaryController == nullptr)
-			return secondaryCameraEntities;
-
-		for (size_t cameraIndex = 0; cameraIndex < count; ++cameraIndex)
-		{
-			const ECS::Entity secondaryCameraEntity =
-			    m_world->CreateEntity("SecondaryCamera" + std::to_string(cameraIndex + 1));
-			auto& secondaryTransform = m_world->AddComponent<ECS::TransformComponent>(secondaryCameraEntity);
-			secondaryTransform = *primaryTransform;
-			secondaryTransform.position.x += 2.0f * static_cast<float>(cameraIndex + 1);
-
-			auto& secondaryCamera = m_world->AddComponent<ECS::CameraComponent>(secondaryCameraEntity);
-			secondaryCamera = *primaryCamera;
-			secondaryCamera.aspectRatio = height == 0 ? 1.0f : static_cast<float>(width) / static_cast<float>(height);
-			secondaryCamera.isPrimary = false;
-
-			auto& secondaryController = m_world->AddComponent<ECS::CameraControllerComponent>(secondaryCameraEntity);
-			secondaryController = *primaryController;
-
-			secondaryCameraEntities.push_back(secondaryCameraEntity);
-		}
-
-		return secondaryCameraEntities;
 	}
 
 	bool AppWindowRuntimeService::AreAllWindowsClosed() const

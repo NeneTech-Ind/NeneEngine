@@ -3,6 +3,7 @@
 #pragma once
 
 #include "App/AppConfig.h"
+#include "App/AppSecondaryCameraService.h"
 #include "Core/Delegate.h"
 #include "ECS/Entity.h"
 #include "ECS/Systems/ISystem.h"
@@ -59,12 +60,11 @@ namespace NeneEngine
 
 		bool CreateWindowContext(uint32_t width, uint32_t height, const std::string& title, ECS::Entity cameraEntity,
 		                         bool isMain);
-		std::vector<ECS::Entity> CreateAdditionalWindowCameras(ECS::Entity primaryCameraEntity, size_t count,
-		                                                       uint32_t width, uint32_t height) const;
 		void AddAppSystem(std::unique_ptr<ECS::ISystem> system);
 		void HandleWindowResize(size_t windowIndex, uint32_t width, uint32_t height);
 
 		ECS::World* m_world = nullptr;
+		AppSecondaryCameraService m_secondaryCameraService;
 		std::vector<WindowContext> m_windows;
 		std::vector<std::unique_ptr<ECS::ISystem>> m_appSystems;
 	};
