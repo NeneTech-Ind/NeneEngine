@@ -4,16 +4,11 @@
 
 #include "App/AppConfig.h"
 #include "App/AppSecondaryCameraService.h"
-#include "Core/Delegate.h"
-#include "ECS/Entity.h"
+#include "App/AppWindowContext.h"
+#include "App/AppWindowContextFactory.h"
 #include "ECS/Systems/ISystem.h"
-#include "ECS/Systems/RenderSystem.h"
 #include "Input/InputDevice.h"
-#include "Input/InputManager.h"
-#include "Platform/IWindow.h"
-#include "Graphics/Backend/IRenderAdapter.h"
 
-#include <EASTL/unique_ptr.h>
 #include <memory>
 #include <vector>
 
@@ -46,18 +41,6 @@ namespace NeneEngine
 		[[nodiscard]] IRenderAdapter* GetPrimaryRenderer();
 
 	  private:
-		struct WindowContext
-		{
-			eastl::unique_ptr<IWindow> window;
-			InputManager inputManager;
-			eastl::unique_ptr<IRenderAdapter> renderer;
-			std::unique_ptr<ECS::RenderSystem> renderSystem;
-			DelegateHandle resizeHandle;
-			ECS::Entity cameraEntity = ECS::NullEntity;
-			bool isMain = false;
-			std::string title;
-		};
-
 		bool CreateWindowContext(uint32_t width, uint32_t height, const std::string& title, ECS::Entity cameraEntity,
 		                         bool isMain);
 		void AddAppSystem(std::unique_ptr<ECS::ISystem> system);
@@ -65,7 +48,8 @@ namespace NeneEngine
 
 		ECS::World* m_world = nullptr;
 		AppSecondaryCameraService m_secondaryCameraService;
-		std::vector<WindowContext> m_windows;
+		AppWindowContextFactory m_windowContextFactory;
+		std::vector<AppWindowContext> m_windows;
 		std::vector<std::unique_ptr<ECS::ISystem>> m_appSystems;
 	};
 

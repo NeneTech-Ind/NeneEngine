@@ -8,8 +8,6 @@
 #include "ECS/Systems/CameraControllerSystem.h"
 #include "ECS/Systems/PrimitiveControlSystem.h"
 #include "ECS/World.h"
-#include "Platform/Win32/Win32Window.h"
-#include "Graphics/Backend/DiligentDX12Adapter.h"
 
 #include <Windows.h>
 
@@ -140,34 +138,16 @@ namespace NeneEngine
 	bool AppWindowRuntimeService::CreateWindowContext(uint32_t width, uint32_t height, const std::string& title,
 	                                                  ECS::Entity cameraEntity, bool isMain)
 	{
-		WindowContext windowContext{};
-		windowContext.title = title;
-		windowContext.cameraEntity = cameraEntity;
-		windowContext.isMain = isMain;
-		windowContext.window = eastl::make_unique<Win32Window>();
-		if (!windowContext.window->Create(width, height, title))
-		{
-			NENE_LOG_ERROR("Failed to create window '{}'", title);
-			return false;
-		}
-
-		windowContext.renderer = eastl::make_unique<DiligentDX12Adapter>();
-		if (!windowContext.renderer->Init(windowContext.window->GetHWND(), width, height))
-		{
-			NENE_LOG_ERROR("Failed to initialize renderer for window '{}'", title);
-			return false;
-		}
+		auto windowContext = m_windowContextFactory.Create(width, height, title, cameraEntity, isMain);
+		if (!windowContext.has_value()) return false;
 
 		const size_t windowIndex = m_windows.size();
-		windowContext.resizeHandle =
-		    windowContext.window->OnResized().AddLambda([this, windowIndex](uint32_t newWidth, uint32_t newHeight)
-		                                                { HandleWindowResize(windowIndex, newWidth, newHeight); });
+		windowContext->resizeHandle =
+		    windowContext->window->OnResized().AddLambda([this, windowIndex](uint32_t newWidth, uint32_t newHeight)
+		                                                 { HandleWindowResize(windowIndex, newWidth, newHeight); });
 
-		m_windows.push_back(std::move(windowContext));
+		m_windows.push_back(std::move(*windowContext));
 		auto& storedWindowContext = m_windows.back();
-		storedWindowContext.inputManager.SetInputDevice(&storedWindowContext.window->GetInput());
-		storedWindowContext.renderSystem =
-		    std::make_unique<ECS::RenderSystem>(storedWindowContext.renderer.get(), cameraEntity);
 		AddAppSystem(std::make_unique<ECS::CameraControllerSystem>(storedWindowContext.inputManager, cameraEntity));
 		AddAppSystem(std::make_unique<ECS::PrimitiveControlSystem>(storedWindowContext.inputManager));
 
