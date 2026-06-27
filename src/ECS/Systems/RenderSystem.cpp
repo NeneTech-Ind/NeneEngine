@@ -95,8 +95,10 @@ namespace NeneEngine::ECS
 		const glm::mat4 cameraWorldMatrix =
 		    ComputeWorldMatrix(world, activeCameraEntity, worldMatrixCache, recursionStack);
 		const glm::vec3 cameraPosition = glm::vec3(cameraWorldMatrix[3]);
-		const glm::vec3 cameraForward = glm::normalize(glm::vec3(cameraWorldMatrix * glm::vec4(activeCamera->forward, 0.0f)));
-		const glm::vec3 cameraUp = glm::normalize(glm::vec3(cameraWorldMatrix * glm::vec4(activeCamera->up, 0.0f)));
+		// CameraComponent stores world-space orientation vectors updated by CameraControllerSystem,
+		// so applying the world transform again would rotate the view direction twice.
+		const glm::vec3 cameraForward = glm::normalize(activeCamera->forward);
+		const glm::vec3 cameraUp = glm::normalize(activeCamera->up);
 		const glm::mat4 viewMatrix = glm::lookAt(cameraPosition, cameraPosition + cameraForward, cameraUp);
 		const glm::mat4 projectionMatrix = activeCamera->GetProjectionMatrix();
 		const glm::mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
