@@ -7,6 +7,8 @@
 
 namespace NeneEngine
 {
+	class IRenderAdapter;
+
 	namespace ECS
 	{
 		class World;
@@ -20,7 +22,10 @@ namespace NeneEngine
 		TextureId textureId{};
 	};
 
-	void BindMeshRenderRuntime(ECS::World& world, ECS::Entity entity, const MeshRenderRuntimeBinding& binding);
+	void BindMeshRenderRuntime(ECS::World& world, ECS::Entity entity, const MeshRenderRuntimeBinding& binding,
+	                           const IRenderAdapter* renderer = nullptr);
+	[[nodiscard]] const MeshRenderRuntimeBinding* GetMeshRenderRuntimeBinding(const ECS::World& world, ECS::Entity entity,
+	                                                                          const IRenderAdapter* renderer = nullptr);
 	void ClearMeshRenderRuntimeBinding(ECS::World& world, ECS::Entity entity);
 
 } // namespace NeneEngine

@@ -39,6 +39,7 @@ namespace NeneEngine
 		[[nodiscard]] InputDevice* GetFocusedInput();
 		[[nodiscard]] const InputDevice* GetFocusedInput() const;
 		[[nodiscard]] IRenderAdapter* GetPrimaryRenderer();
+		[[nodiscard]] std::vector<IRenderAdapter*> GetRenderers() const;
 
 	  private:
 		bool CreateWindowContext(uint32_t width, uint32_t height, const std::string& title, ECS::Entity cameraEntity,

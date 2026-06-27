@@ -7,11 +7,11 @@
 
 namespace NeneEngine
 {
-	void RunDemoBootstrap(ECS::World& world, IRenderAdapter* primaryRenderer)
+	void RunDemoBootstrap(ECS::World& world, std::span<IRenderAdapter* const> renderers)
 	{
-		if (primaryRenderer == nullptr)
+		if (renderers.empty())
 		{
-			NENE_LOG_INFO("Demo bootstrap skipped: no primary renderer is available");
+			NENE_LOG_INFO("Demo bootstrap skipped: no renderers are available");
 			return;
 		}
 
@@ -26,9 +26,9 @@ namespace NeneEngine
 			return;
 		}
 
-		NENE_LOG_INFO("Demo bootstrap: spawning demo models from '{}'", manifestPath.string());
-		const ShaderId shaderId = CreateTexturedMeshShader(*primaryRenderer, shaderPath);
-		SpawnModelsFromManifest(world, *primaryRenderer, shaderId, manifestPath);
+		NENE_LOG_INFO("Demo bootstrap: spawning demo models from '{}' for {} renderer(s)", manifestPath.string(),
+		              renderers.size());
+		SpawnModelsFromManifest(world, renderers, shaderPath, manifestPath);
 		NENE_LOG_INFO("Demo bootstrap completed");
 	}
 } // namespace NeneEngine

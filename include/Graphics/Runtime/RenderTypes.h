@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -141,7 +142,7 @@ namespace NeneEngine
 	struct Mesh
 	{
 		MeshData data;
-		std::optional<GPUMesh> gpuMesh;
+		std::unordered_map<uintptr_t, GPUMesh> gpuMeshesByRenderer;
 	};
 
 	struct Material

@@ -4,10 +4,10 @@
 #include "Core/CustomLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
-#include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
+#include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
@@ -121,7 +121,7 @@ namespace NeneEngine::ECS
 			item.primitiveType = meshRenderer.primitiveType;
 			item.tint = meshRenderer.tint;
 
-			if (const auto* renderRuntime = world.GetComponent<MeshRenderRuntimeComponent>(entity);
+			if (const auto* renderRuntime = GetMeshRenderRuntimeBinding(world, entity, m_renderer);
 			    renderRuntime != nullptr)
 			{
 				item.meshId = renderRuntime->meshId;

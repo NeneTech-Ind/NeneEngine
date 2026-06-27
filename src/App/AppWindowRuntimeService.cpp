@@ -302,4 +302,16 @@ namespace NeneEngine
 		return m_windows.front().renderer.get();
 	}
 
+	std::vector<IRenderAdapter*> AppWindowRuntimeService::GetRenderers() const
+	{
+		std::vector<IRenderAdapter*> renderers;
+		renderers.reserve(m_windows.size());
+		for (const auto& windowContext : m_windows)
+		{
+			if (windowContext.renderer) renderers.push_back(windowContext.renderer.get());
+		}
+
+		return renderers;
+	}
+
 } // namespace NeneEngine

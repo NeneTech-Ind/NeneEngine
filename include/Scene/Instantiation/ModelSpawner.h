@@ -3,6 +3,7 @@
 #include "Graphics/Runtime/RenderTypes.h"
 
 #include <filesystem>
+#include <span>
 
 namespace NeneEngine
 {
@@ -14,7 +15,7 @@ namespace NeneEngine
 	}
 
 	[[nodiscard]] ShaderId CreateTexturedMeshShader(IRenderAdapter& renderer, const std::filesystem::path& shaderPath);
-	void SpawnModelsFromManifest(ECS::World& world, IRenderAdapter& renderer, ShaderId shaderId,
-	                             const std::filesystem::path& manifestPath);
+	void SpawnModelsFromManifest(ECS::World& world, std::span<IRenderAdapter* const> renderers,
+	                             const std::filesystem::path& shaderPath, const std::filesystem::path& manifestPath);
 
 } // namespace NeneEngine

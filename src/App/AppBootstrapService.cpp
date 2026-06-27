@@ -63,7 +63,7 @@ namespace NeneEngine
 
 		if (!windowRuntimeService.Initialize(appConfig, world, primaryCameraEntity, width, height)) return false;
 
-		RunDemoBootstrap(world, windowRuntimeService.GetPrimaryRenderer());
+		RunDemoBootstrap(world, windowRuntimeService.GetRenderers());
 		applyRuntimeConfig(appConfig);
 
 		NENE_LOG_INFO("Application initialized successfully ({}x{})", width, height);

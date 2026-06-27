@@ -2,17 +2,16 @@
 
 #pragma once
 
-#include "Graphics/Runtime/RenderTypes.h"
+#include "Graphics/Runtime/MeshRenderBinding.h"
+
+#include <unordered_map>
 
 namespace NeneEngine::ECS
 {
 
 	struct MeshRenderRuntimeComponent
 	{
-		MeshId meshId{};
-		MaterialId materialId{};
-		ShaderId shaderId{};
-		TextureId textureId{};
+		std::unordered_map<uintptr_t, MeshRenderRuntimeBinding> bindingsByRenderer;
 	};
 
 } // namespace NeneEngine::ECS
