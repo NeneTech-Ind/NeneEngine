@@ -19,6 +19,24 @@ function(neneengine_set_default_option option_name option_value description)
     endif()
 endfunction()
 
+function(neneengine_try_set_python3_executable candidate_path)
+    if(DEFINED Python3_EXECUTABLE AND NOT "${Python3_EXECUTABLE}" STREQUAL "")
+        return()
+    endif()
+
+    if(EXISTS "${candidate_path}")
+        set(Python3_EXECUTABLE "${candidate_path}" CACHE FILEPATH "Python 3 interpreter" FORCE)
+    endif()
+endfunction()
+
+if(WIN32 AND (NOT DEFINED Python3_EXECUTABLE OR "${Python3_EXECUTABLE}" STREQUAL ""))
+    neneengine_try_set_python3_executable("C:/Program Files/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/Python3/Win64/python.exe")
+    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python313/python.exe")
+    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python312/python.exe")
+    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python311/python.exe")
+    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python310/python.exe")
+endif()
+
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(NOT DEFINED ENV{VCPKG_ROOT} OR "$ENV{VCPKG_ROOT}" STREQUAL "")
         message(FATAL_ERROR

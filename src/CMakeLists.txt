@@ -23,6 +23,20 @@ target_include_directories(NeneEngine
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
 )
 
+set(NENEENGINE_VCPKG_TRIPLET "${VCPKG_TARGET_TRIPLET}")
+if(NOT NENEENGINE_VCPKG_TRIPLET)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(NENEENGINE_VCPKG_TRIPLET "x64-windows")
+    else()
+        set(NENEENGINE_VCPKG_TRIPLET "x86-windows")
+    endif()
+endif()
+
+set(NENEENGINE_VCPKG_ROOT_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/${NENEENGINE_VCPKG_TRIPLET}")
+if(EXISTS "${NENEENGINE_VCPKG_ROOT_DIR}")
+    list(PREPEND CMAKE_PREFIX_PATH "${NENEENGINE_VCPKG_ROOT_DIR}")
+endif()
+
 find_package(spdlog         CONFIG REQUIRED)
 find_package(assimp         CONFIG REQUIRED)
 find_package(nlohmann_json  CONFIG REQUIRED)
@@ -46,16 +60,6 @@ target_link_libraries(NeneEngine
         Diligent-TextureLoader
 )
 
-set(NENEENGINE_VCPKG_TRIPLET "${VCPKG_TARGET_TRIPLET}")
-if(NOT NENEENGINE_VCPKG_TRIPLET)
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(NENEENGINE_VCPKG_TRIPLET "x64-windows")
-    else()
-        set(NENEENGINE_VCPKG_TRIPLET "x86-windows")
-    endif()
-endif()
-
-set(NENEENGINE_VCPKG_ROOT_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/${NENEENGINE_VCPKG_TRIPLET}")
 file(GLOB NENEENGINE_VCPKG_DEBUG_DLLS   "${NENEENGINE_VCPKG_ROOT_DIR}/debug/bin/*.dll")
 file(GLOB NENEENGINE_VCPKG_RELEASE_DLLS "${NENEENGINE_VCPKG_ROOT_DIR}/bin/*.dll")
 
