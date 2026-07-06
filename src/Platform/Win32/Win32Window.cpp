@@ -145,12 +145,12 @@ namespace NeneEngine
 
 		case WM_CLOSE:
 			m_shouldClose = true;
-			m_input.ResetState();
-			DestroyWindow(m_hwnd);
+			Destroy();
 			return 0;
 
 		case WM_DESTROY:
 			m_shouldClose = true;
+			m_hwnd = nullptr;
 			m_input.ResetState();
 			m_isTrackingMouseLeave = false;
 			return 0;
