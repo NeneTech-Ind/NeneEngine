@@ -1,6 +1,7 @@
 #include "App/AppStartupConfigService.h"
 
 #include <filesystem>
+#include <system_error>
 
 namespace NeneEngine
 {
@@ -15,7 +16,11 @@ namespace NeneEngine
 		state.path = configPath;
 		state.config = LoadAppConfig(state.path);
 
-		if (std::filesystem::exists(state.path)) state.lastWriteTime = std::filesystem::last_write_time(state.path);
+		std::error_code fileError;
+		if (std::filesystem::exists(state.path, fileError))
+		{
+			state.lastWriteTime = std::filesystem::last_write_time(state.path, fileError);
+		}
 
 		return state;
 	}

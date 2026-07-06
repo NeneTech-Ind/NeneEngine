@@ -6,6 +6,7 @@
 #include "Core/CustomLogger.h"
 
 #include <filesystem>
+#include <system_error>
 
 namespace NeneEngine
 {
@@ -35,9 +36,23 @@ namespace NeneEngine
 			NENE_LOG_INFO("App config path updated to '{}'", resolvedConfigPath.string());
 		}
 
-		if (!std::filesystem::exists(resolvedConfigPath)) return;
+		std::error_code fileError;
+		if (!std::filesystem::exists(resolvedConfigPath, fileError))
+		{
+			if (fileError)
+				NENE_LOG_WARN("App config hot-reload: failed to inspect '{}': {}", resolvedConfigPath.string(),
+				              fileError.message());
+			return;
+		}
 
-		const auto currentWriteTime = std::filesystem::last_write_time(resolvedConfigPath);
+		const auto currentWriteTime = std::filesystem::last_write_time(resolvedConfigPath, fileError);
+		if (fileError)
+		{
+			NENE_LOG_WARN("App config hot-reload: failed to read timestamp for '{}': {}", resolvedConfigPath.string(),
+			              fileError.message());
+			return;
+		}
+
 		if (!pathChanged && currentWriteTime == m_loadedAppConfigState.lastWriteTime) return;
 
 		const LoadedAppConfigState resolvedConfigState = LoadStartupAppConfigState(resolvedConfigPath);
