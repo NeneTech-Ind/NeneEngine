@@ -2,6 +2,7 @@
 
 #include "Scene/DemoScene.h"
 
+#include "Core/CustomLogger.h"
 #include "Core/PathResolver.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
@@ -12,6 +13,8 @@
 #include "ECS/Components/TransformComponent.h"
 #include "Scene/SceneConfig.h"
 #include "Scene/SceneSerializer.h"
+
+#include <exception>
 
 namespace NeneEngine::DemoScene
 {
@@ -30,6 +33,16 @@ namespace NeneEngine::DemoScene
 			renderer.tint = tint;
 
 			return entity;
+		}
+
+		void SaveDefaultScene(ECS::World& world, uint32_t width, uint32_t height, const std::filesystem::path& scenePath)
+		{
+			Create(world, width, height);
+
+			const std::filesystem::path parentPath = scenePath.parent_path();
+			if (!parentPath.empty()) std::filesystem::create_directories(parentPath);
+
+			SceneSerializer::SaveToFile(world, scenePath);
 		}
 
 	} // namespace
@@ -109,16 +122,20 @@ namespace NeneEngine::DemoScene
 
 		if (std::filesystem::exists(effectiveScenePath))
 		{
-			SceneSerializer::LoadFromFile(effectiveScenePath, world);
+			try
+			{
+				SceneSerializer::LoadFromFile(effectiveScenePath, world);
+			}
+			catch (const std::exception& ex)
+			{
+				NENE_LOG_WARN("Demo scene '{}' failed to load: {}. Recreating default scene",
+				              effectiveScenePath.string(), ex.what());
+				SaveDefaultScene(world, width, height, effectiveScenePath);
+			}
 		}
 		else
 		{
-			Create(world, width, height);
-
-			const std::filesystem::path parentPath = effectiveScenePath.parent_path();
-			if (!parentPath.empty()) std::filesystem::create_directories(parentPath);
-
-			SceneSerializer::SaveToFile(world, effectiveScenePath);
+			SaveDefaultScene(world, width, height, effectiveScenePath);
 		}
 
 		ApplySceneConfig(world, LoadSceneConfig(effectiveSceneConfigPath));
