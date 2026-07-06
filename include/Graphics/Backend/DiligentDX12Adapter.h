@@ -37,7 +37,7 @@ namespace NeneEngine
 		GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram) override;
 		void BeginFrame() override;
 		void SubmitRenderItem(const RenderItem& item) override;
-		void CreateResources();
+		bool CreateResources();
 		void EndFrame() override;
 		void Present() override;
 		void Resize(uint32_t width, uint32_t height) override;

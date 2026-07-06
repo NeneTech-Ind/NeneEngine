@@ -64,7 +64,12 @@ namespace NeneEngine
 		              static_cast<int>(swapChainDesc.ColorBufferFormat),
 		              static_cast<int>(swapChainDesc.DepthBufferFormat));
 
-		CreateResources();
+		if (!CreateResources())
+		{
+			NENE_LOG_ERROR("Failed to create D3D12 render resources");
+			Shutdown();
+			return false;
+		}
 
 		NENE_LOG_INFO("Diligent DX12 Adapter initialized successfully ({}x{})", width, height);
 
@@ -561,7 +566,7 @@ namespace NeneEngine
 	}
 
 	// Create built-in primitive pipelines plus the fallback mesh pipeline.
-	void DiligentDX12Adapter::CreateResources()
+	bool DiligentDX12Adapter::CreateResources()
 	{
 		const auto createPipelineState =
 		    [this](PrimitiveType primitiveType, const char* name, const char* vertexShaderSource)
@@ -630,7 +635,7 @@ namespace NeneEngine
 			if (!pVS || !pPS)
 			{
 				NENE_LOG_ERROR("Failed to create shaders for primitive pipeline '{}'", name);
-				return;
+				return false;
 			}
 
 			PSOCreateInfo.pVS = pVS;
@@ -643,7 +648,7 @@ namespace NeneEngine
 			if (!m_pPrimitivePSOs[primitiveIndex])
 			{
 				NENE_LOG_ERROR("Failed to create Graphics Pipeline State '{}'", name);
-				return;
+				return false;
 			}
 
 			BufferDesc constantBufferDesc{};
@@ -657,7 +662,7 @@ namespace NeneEngine
 			if (!m_pPrimitiveConstantBuffers[primitiveIndex])
 			{
 				NENE_LOG_ERROR("Failed to create constant buffer for '{}'", name);
-				return;
+				return false;
 			}
 
 			auto* constantsVariable =
@@ -665,11 +670,18 @@ namespace NeneEngine
 			if (constantsVariable == nullptr)
 			{
 				NENE_LOG_ERROR("Failed to get shader constant variable for '{}'", name);
-				return;
+				return false;
 			}
 
 			constantsVariable->Set(m_pPrimitiveConstantBuffers[primitiveIndex]);
 			m_pPrimitivePSOs[primitiveIndex]->CreateShaderResourceBinding(&m_pPrimitiveSRBs[primitiveIndex], true);
+			if (!m_pPrimitiveSRBs[primitiveIndex])
+			{
+				NENE_LOG_ERROR("Failed to create shader resource binding for '{}'", name);
+				return false;
+			}
+
+			return true;
 		};
 
 		static const char* LineVSSource = R"raw(
@@ -851,10 +863,13 @@ namespace NeneEngine
             }
         )raw";
 
-		createPipelineState(PrimitiveType::Line, "Simple Line PSO", LineVSSource);
-		createPipelineState(PrimitiveType::Triangle, "Simple Triangle PSO", TriangleVSSource);
-		createPipelineState(PrimitiveType::Quad, "Simple Quad PSO", QuadVSSource);
-		createPipelineState(PrimitiveType::Cube, "Simple Cube PSO", CubeVSSource);
+		if (!createPipelineState(PrimitiveType::Line, "Simple Line PSO", LineVSSource) ||
+		    !createPipelineState(PrimitiveType::Triangle, "Simple Triangle PSO", TriangleVSSource) ||
+		    !createPipelineState(PrimitiveType::Quad, "Simple Quad PSO", QuadVSSource) ||
+		    !createPipelineState(PrimitiveType::Cube, "Simple Cube PSO", CubeVSSource))
+		{
+			return false;
+		}
 
 		GraphicsPipelineStateCreateInfo meshPSOCreateInfo{};
 		meshPSOCreateInfo.PSODesc.Name = "Mesh PSO";
@@ -901,7 +916,7 @@ namespace NeneEngine
 		if (!meshVS || !meshPS)
 		{
 			NENE_LOG_ERROR("Failed to create mesh shaders");
-			return;
+			return false;
 		}
 
 		meshPSOCreateInfo.pVS = meshVS;
@@ -911,7 +926,7 @@ namespace NeneEngine
 		if (!m_pMeshPSO)
 		{
 			NENE_LOG_ERROR("Failed to create mesh graphics pipeline state");
-			return;
+			return false;
 		}
 
 		BufferDesc meshConstantBufferDesc{};
@@ -925,18 +940,25 @@ namespace NeneEngine
 		if (!m_pMeshConstantBuffer)
 		{
 			NENE_LOG_ERROR("Failed to create mesh constant buffer");
-			return;
+			return false;
 		}
 
 		auto* meshConstantsVariable = m_pMeshPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
 		if (meshConstantsVariable == nullptr)
 		{
 			NENE_LOG_ERROR("Failed to get mesh constant buffer variable");
-			return;
+			return false;
 		}
 
 		meshConstantsVariable->Set(m_pMeshConstantBuffer);
 		m_pMeshPSO->CreateShaderResourceBinding(&m_pMeshSRB, true);
+		if (!m_pMeshSRB)
+		{
+			NENE_LOG_ERROR("Failed to create mesh shader resource binding");
+			return false;
+		}
+
+		return true;
 	}
 
 	IPipelineState* DiligentDX12Adapter::GetPipelineState(PrimitiveType primitiveType) const
