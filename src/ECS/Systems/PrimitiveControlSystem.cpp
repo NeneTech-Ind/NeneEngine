@@ -57,8 +57,6 @@ namespace NeneEngine::ECS
 			const glm::quat targetRotation = glm::angleAxis(control.targetRotationRadians, glm::vec3{0.0f, 0.0f, 1.0f});
 			const float rotationAlpha = std::clamp(control.rotationSmoothing * deltaTime, 0.0f, 1.0f);
 			transform.rotation = glm::normalize(glm::slerp(transform.rotation, targetRotation, rotationAlpha));
-
-			return;
 		}
 	}
 
