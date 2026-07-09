@@ -30,7 +30,6 @@ function(neneengine_try_set_python3_executable candidate_path)
 endfunction()
 
 if(WIN32 AND (NOT DEFINED Python3_EXECUTABLE OR "${Python3_EXECUTABLE}" STREQUAL ""))
-    neneengine_try_set_python3_executable("C:/Program Files/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/Python3/Win64/python.exe")
     neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python313/python.exe")
     neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python312/python.exe")
     neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python311/python.exe")
@@ -60,9 +59,9 @@ include(cmake/Diligent.cmake)
 
 add_subdirectory("src")
 
-# include(CTest)
-# if(BUILD_TESTING)
-#     add_subdirectory("tests")
-# endif()
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory("tests")
+endif()
 
 set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NeneEngine)
