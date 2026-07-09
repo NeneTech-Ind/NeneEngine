@@ -14,6 +14,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace NeneEngine::ECS
 {
@@ -71,6 +72,13 @@ namespace NeneEngine::ECS
 			const float radius = std::max(meshRenderer.cullingRadius, 0.001f) * MaxScaleAxis(worldMatrix);
 			const glm::vec3 extent = glm::vec3(radius);
 			return SpatialBounds{center - extent, center + extent};
+		}
+
+		SpatialBounds ComputeCameraQueryBounds(const glm::vec3& cameraPosition, const CameraComponent& camera)
+		{
+			const float queryRadius = std::max(camera.farPlane, camera.nearPlane);
+			const glm::vec3 extent = glm::vec3(queryRadius);
+			return SpatialBounds{cameraPosition - extent, cameraPosition + extent};
 		}
 	} // namespace
 
@@ -133,14 +141,17 @@ namespace NeneEngine::ECS
 			m_visibleObjectGrid.Insert(entity, ComputeRenderableBounds(modelMatrix, meshRenderer));
 		}
 
+		const std::vector<Entity> renderCandidates =
+		    m_visibleObjectGrid.Query(ComputeCameraQueryBounds(cameraPosition, *activeCamera));
+
 		NENE_LOG_DEBUG("RenderSystem: starting render pass");
 
-		for (auto entity : view)
+		for (auto entity : renderCandidates)
 		{
-			const auto& transform = view.get<TransformComponent>(entity);
-			const auto& meshRenderer = view.get<MeshRendererComponent>(entity);
+			const auto* meshRenderer = world.GetComponent<MeshRendererComponent>(entity);
+			if (world.GetComponent<TransformComponent>(entity) == nullptr || meshRenderer == nullptr) continue;
 
-			if (!meshRenderer.visible) continue;
+			if (!meshRenderer->visible) continue;
 
 			RenderItem item{};
 			item.modelMatrix = ComputeWorldMatrix(world, entity, worldMatrixCache, recursionStack);
@@ -148,8 +159,8 @@ namespace NeneEngine::ECS
 			item.projectionMatrix = projectionMatrix;
 			item.viewProjectionMatrix = viewProjectionMatrix;
 			item.modelViewProjectionMatrix = viewProjectionMatrix * item.modelMatrix;
-			item.primitiveType = meshRenderer.primitiveType;
-			item.tint = meshRenderer.tint;
+			item.primitiveType = meshRenderer->primitiveType;
+			item.tint = meshRenderer->tint;
 
 			if (const auto* renderRuntime = GetMeshRenderRuntimeBinding(world, entity, m_renderer);
 			    renderRuntime != nullptr)
