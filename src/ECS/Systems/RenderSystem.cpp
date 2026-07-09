@@ -11,6 +11,7 @@
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <algorithm>
+#include <array>
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
 #include <unordered_set>
@@ -20,6 +21,12 @@ namespace NeneEngine::ECS
 {
 	namespace
 	{
+		struct FrustumPlane
+		{
+			glm::vec3 normal = {0.0f, 0.0f, 0.0f};
+			float distance = 0.0f;
+		};
+
 		uint32_t ToEntityId(Entity entity)
 		{
 			return static_cast<uint32_t>(entt::to_integral(entity));
@@ -79,6 +86,42 @@ namespace NeneEngine::ECS
 			const float queryRadius = std::max(camera.farPlane, camera.nearPlane);
 			const glm::vec3 extent = glm::vec3(queryRadius);
 			return SpatialBounds{cameraPosition - extent, cameraPosition + extent};
+		}
+
+		FrustumPlane NormalizePlane(const glm::vec4& plane)
+		{
+			const glm::vec3 normal = glm::vec3(plane);
+			const float length = std::max(glm::length(normal), 0.001f);
+			return FrustumPlane{normal / length, plane.w / length};
+		}
+
+		std::array<FrustumPlane, 6> ExtractFrustumPlanes(const glm::mat4& viewProjectionMatrix)
+		{
+			const glm::vec4 row0{viewProjectionMatrix[0][0], viewProjectionMatrix[1][0], viewProjectionMatrix[2][0],
+			                    viewProjectionMatrix[3][0]};
+			const glm::vec4 row1{viewProjectionMatrix[0][1], viewProjectionMatrix[1][1], viewProjectionMatrix[2][1],
+			                    viewProjectionMatrix[3][1]};
+			const glm::vec4 row2{viewProjectionMatrix[0][2], viewProjectionMatrix[1][2], viewProjectionMatrix[2][2],
+			                    viewProjectionMatrix[3][2]};
+			const glm::vec4 row3{viewProjectionMatrix[0][3], viewProjectionMatrix[1][3], viewProjectionMatrix[2][3],
+			                    viewProjectionMatrix[3][3]};
+
+			return {NormalizePlane(row3 + row0), NormalizePlane(row3 - row0), NormalizePlane(row3 + row1),
+			        NormalizePlane(row3 - row1), NormalizePlane(row3 + row2), NormalizePlane(row3 - row2)};
+		}
+
+		bool IntersectsFrustum(const SpatialBounds& bounds, const std::array<FrustumPlane, 6>& planes)
+		{
+			for (const FrustumPlane& plane : planes)
+			{
+				const glm::vec3 positiveVertex{plane.normal.x >= 0.0f ? bounds.max.x : bounds.min.x,
+				                               plane.normal.y >= 0.0f ? bounds.max.y : bounds.min.y,
+				                               plane.normal.z >= 0.0f ? bounds.max.z : bounds.min.z};
+
+				if (glm::dot(plane.normal, positiveVertex) + plane.distance < 0.0f) return false;
+			}
+
+			return true;
 		}
 	} // namespace
 
@@ -143,6 +186,7 @@ namespace NeneEngine::ECS
 
 		const std::vector<Entity> renderCandidates =
 		    m_visibleObjectGrid.Query(ComputeCameraQueryBounds(cameraPosition, *activeCamera));
+		const std::array<FrustumPlane, 6> frustumPlanes = ExtractFrustumPlanes(viewProjectionMatrix);
 
 		NENE_LOG_DEBUG("RenderSystem: starting render pass");
 
@@ -155,6 +199,8 @@ namespace NeneEngine::ECS
 
 			RenderItem item{};
 			item.modelMatrix = ComputeWorldMatrix(world, entity, worldMatrixCache, recursionStack);
+			if (!IntersectsFrustum(ComputeRenderableBounds(item.modelMatrix, *meshRenderer), frustumPlanes)) continue;
+
 			item.viewMatrix = viewMatrix;
 			item.projectionMatrix = projectionMatrix;
 			item.viewProjectionMatrix = viewProjectionMatrix;
