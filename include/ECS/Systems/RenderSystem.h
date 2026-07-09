@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ECS/Entity.h"
+#include "ECS/SpatialGrid.h"
 #include "ECS/Systems/ISystem.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 
@@ -25,6 +26,7 @@ namespace NeneEngine::ECS
 	  private:
 		IRenderAdapter* m_renderer;
 		Entity m_cameraEntity = NullEntity;
+		SpatialGrid m_visibleObjectGrid;
 	};
 
 } // namespace NeneEngine::ECS

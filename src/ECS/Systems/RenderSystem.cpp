@@ -6,9 +6,11 @@
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TransformComponent.h"
+#include "ECS/SpatialGrid.h"
 #include "ECS/World.h"
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
+#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
 #include <unordered_set>
@@ -53,6 +55,22 @@ namespace NeneEngine::ECS
 			const glm::mat4 worldMatrix = parentWorldMatrix * localMatrix;
 			cache[entityId] = worldMatrix;
 			return worldMatrix;
+		}
+
+		float MaxScaleAxis(const glm::mat4& matrix)
+		{
+			const float xScale = glm::length(glm::vec3(matrix[0]));
+			const float yScale = glm::length(glm::vec3(matrix[1]));
+			const float zScale = glm::length(glm::vec3(matrix[2]));
+			return std::max({xScale, yScale, zScale, 0.001f});
+		}
+
+		SpatialBounds ComputeRenderableBounds(const glm::mat4& worldMatrix, const MeshRendererComponent& meshRenderer)
+		{
+			const glm::vec3 center = glm::vec3(worldMatrix[3]);
+			const float radius = std::max(meshRenderer.cullingRadius, 0.001f) * MaxScaleAxis(worldMatrix);
+			const glm::vec3 extent = glm::vec3(radius);
+			return SpatialBounds{center - extent, center + extent};
 		}
 	} // namespace
 
@@ -104,6 +122,16 @@ namespace NeneEngine::ECS
 		const glm::mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
 		auto view = world.GetRegistry().view<const TransformComponent, const MeshRendererComponent>();
+		m_visibleObjectGrid.Clear();
+
+		for (auto entity : view)
+		{
+			const auto& meshRenderer = view.get<MeshRendererComponent>(entity);
+			if (!meshRenderer.visible) continue;
+
+			const glm::mat4 modelMatrix = ComputeWorldMatrix(world, entity, worldMatrixCache, recursionStack);
+			m_visibleObjectGrid.Insert(entity, ComputeRenderableBounds(modelMatrix, meshRenderer));
+		}
 
 		NENE_LOG_DEBUG("RenderSystem: starting render pass");
 
