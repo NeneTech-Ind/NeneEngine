@@ -70,20 +70,20 @@ namespace NeneEngine::ECS
 			const float xScale = glm::length(glm::vec3(matrix[0]));
 			const float yScale = glm::length(glm::vec3(matrix[1]));
 			const float zScale = glm::length(glm::vec3(matrix[2]));
-			return std::max({xScale, yScale, zScale, 0.001f});
+			return (std::max)({xScale, yScale, zScale, 0.001f});
 		}
 
 		SpatialBounds ComputeRenderableBounds(const glm::mat4& worldMatrix, const MeshRendererComponent& meshRenderer)
 		{
 			const glm::vec3 center = glm::vec3(worldMatrix[3]);
-			const float radius = std::max(meshRenderer.cullingRadius, 0.001f) * MaxScaleAxis(worldMatrix);
+			const float radius = (std::max)(meshRenderer.cullingRadius, 0.001f) * MaxScaleAxis(worldMatrix);
 			const glm::vec3 extent = glm::vec3(radius);
 			return SpatialBounds{center - extent, center + extent};
 		}
 
 		SpatialBounds ComputeCameraQueryBounds(const glm::vec3& cameraPosition, const CameraComponent& camera)
 		{
-			const float queryRadius = std::max(camera.farPlane, camera.nearPlane);
+			const float queryRadius = (std::max)(camera.farPlane, camera.nearPlane);
 			const glm::vec3 extent = glm::vec3(queryRadius);
 			return SpatialBounds{cameraPosition - extent, cameraPosition + extent};
 		}
@@ -91,7 +91,7 @@ namespace NeneEngine::ECS
 		FrustumPlane NormalizePlane(const glm::vec4& plane)
 		{
 			const glm::vec3 normal = glm::vec3(plane);
-			const float length = std::max(glm::length(normal), 0.001f);
+			const float length = (std::max)(glm::length(normal), 0.001f);
 			return FrustumPlane{normal / length, plane.w / length};
 		}
 

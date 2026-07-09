@@ -92,7 +92,7 @@ namespace NeneEngine
 		{
 			float radiusSquared = 1.0f;
 			for (const Vertex& vertex : meshData.vertices)
-				radiusSquared = std::max(radiusSquared, glm::dot(vertex.position, vertex.position));
+				radiusSquared = (std::max)(radiusSquared, glm::dot(vertex.position, vertex.position));
 
 			return std::sqrt(radiusSquared);
 		}

@@ -21,7 +21,7 @@ namespace NeneEngine::ECS
 		}
 	} // namespace
 
-	SpatialGrid::SpatialGrid(float cellSize) : m_cellSize(std::max(cellSize, 0.001f)) {}
+	SpatialGrid::SpatialGrid(float cellSize) : m_cellSize((std::max)(cellSize, 0.001f)) {}
 
 	void SpatialGrid::Clear()
 	{
