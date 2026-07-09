@@ -11,6 +11,7 @@ namespace NeneEngine::ECS
 	{
 		PrimitiveType primitiveType = PrimitiveType::Triangle;
 		bool visible = true;
+		float cullingRadius = 1.0f;
 		glm::vec4 tint = {1.0f, 1.0f, 1.0f, 1.0f};
 	};
 

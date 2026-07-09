@@ -124,6 +124,7 @@ namespace NeneEngine
 		{
 			return {{"primitiveType", ToString(renderer.primitiveType)},
 			        {"visible", renderer.visible},
+			        {"cullingRadius", renderer.cullingRadius},
 			        {"material", {{"tint", ToJson(renderer.tint)}}}};
 		}
 
@@ -221,6 +222,7 @@ namespace NeneEngine
 			auto& renderer = world.AddComponent<ECS::MeshRendererComponent>(entity);
 			renderer.primitiveType = ReadPrimitiveType(value.at("primitiveType").get<std::string>());
 			renderer.visible = value.at("visible").get<bool>();
+			renderer.cullingRadius = value.value("cullingRadius", renderer.cullingRadius);
 
 			const auto& material = value.at("material");
 			renderer.tint = ReadVec4(material.at("tint"));
