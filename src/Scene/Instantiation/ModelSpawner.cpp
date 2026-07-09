@@ -12,6 +12,8 @@
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
+#include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
 #include <sstream>
@@ -86,10 +88,19 @@ namespace NeneEngine
 			return it != mesh.gpuMeshesByRenderer.end() ? &it->second : nullptr;
 		}
 
+		float ComputeMeshCullingRadius(const MeshData& meshData)
+		{
+			float radiusSquared = 1.0f;
+			for (const Vertex& vertex : meshData.vertices)
+				radiusSquared = std::max(radiusSquared, glm::dot(vertex.position, vertex.position));
+
+			return std::sqrt(radiusSquared);
+		}
+
 		ECS::Entity CreateUploadedModelEntity(ECS::World& world, std::string_view name, const glm::vec3& position,
 		                                      const glm::vec3& scale, const glm::vec3& worldOffset = {0.0f, 0.0f, 0.0f},
 		                                      const glm::vec3& rotationOffsetDegrees = {0.0f, 0.0f, 0.0f},
-		                                      bool visible = true)
+		                                      bool visible = true, float cullingRadius = 1.0f)
 		{
 			const ECS::Entity modelEntity = world.CreateEntity(std::string(name));
 			auto& modelTransform = world.AddComponent<ECS::TransformComponent>(modelEntity);
@@ -100,6 +111,7 @@ namespace NeneEngine
 			auto& modelRenderer = world.AddComponent<ECS::MeshRendererComponent>(modelEntity);
 			modelRenderer.tint = {1.0f, 1.0f, 1.0f, 1.0f};
 			modelRenderer.visible = visible;
+			modelRenderer.cullingRadius = cullingRadius;
 
 			return modelEntity;
 		}
@@ -187,7 +199,9 @@ namespace NeneEngine
 					auto texturePath = FindDiffuseTextureFromObjMaterial(meshPath);
 					if (!texturePath.empty() && !std::filesystem::exists(texturePath)) texturePath.clear();
 					const ECS::Entity modelEntity =
-					    CreateUploadedModelEntity(world, modelEntry.entityName, modelConfig.position, modelConfig.scale);
+					    CreateUploadedModelEntity(world, modelEntry.entityName, modelConfig.position, modelConfig.scale,
+					                              {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, true,
+					                              ComputeMeshCullingRadius(mesh.data));
 					bool boundForAnyRenderer = false;
 
 					for (size_t rendererIndex = 0; rendererIndex < validRenderers.size(); ++rendererIndex)
@@ -239,7 +253,7 @@ namespace NeneEngine
 				const bool visible = overrideConfig != nullptr ? overrideConfig->visible : true;
 				const ECS::Entity modelEntity = CreateUploadedModelEntity(
 				    world, modelEntry.entityName + "_" + std::to_string(meshPartIndex), modelConfig.position, scale,
-				    worldOffset, rotationOffsetDegrees, visible);
+				    worldOffset, rotationOffsetDegrees, visible, ComputeMeshCullingRadius(meshPart.data));
 				bool boundForAnyRenderer = false;
 
 				for (size_t rendererIndex = 0; rendererIndex < validRenderers.size(); ++rendererIndex)
