@@ -38,8 +38,14 @@ namespace NeneEngine
 	                                     ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath,
 	                                     uint32_t width, uint32_t height)
 	{
-		CustomLogger::GetInstance().Initialize(logFilePath, false, spdlog::level::info, true);
+#ifndef NDEBUG
+		constexpr spdlog::level::level_enum startupLogLevel = spdlog::level::debug;
+#else
+		constexpr spdlog::level::level_enum startupLogLevel = spdlog::level::info;
+#endif
+		CustomLogger::GetInstance().Initialize(logFilePath, false, startupLogLevel, true);
 		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
+		NENE_LOG_DEBUG("Debug logging enabled");
 		ResourceManager::GetInstance().RegisterDefaultLoaders();
 		RunExternalLibrarySmokeTests();
 

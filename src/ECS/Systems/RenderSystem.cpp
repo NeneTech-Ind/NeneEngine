@@ -2,6 +2,7 @@
 
 #include "ECS/Systems/RenderSystem.h"
 #include "Core/CustomLogger.h"
+#include "Core/DebugConsole.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
@@ -175,20 +176,27 @@ namespace NeneEngine::ECS
 		auto view = world.GetRegistry().view<const TransformComponent, const MeshRendererComponent>();
 		m_visibleObjectGrid.Clear();
 
+		uint32_t totalRenderableCount = 0;
+		uint32_t indexedRenderableCount = 0;
+
 		for (auto entity : view)
 		{
+			++totalRenderableCount;
+
 			const auto& meshRenderer = view.get<MeshRendererComponent>(entity);
 			if (!meshRenderer.visible) continue;
 
 			const glm::mat4 modelMatrix = ComputeWorldMatrix(world, entity, worldMatrixCache, recursionStack);
 			m_visibleObjectGrid.Insert(entity, ComputeRenderableBounds(modelMatrix, meshRenderer));
+			++indexedRenderableCount;
 		}
 
 		const std::vector<Entity> renderCandidates =
 		    m_visibleObjectGrid.Query(ComputeCameraQueryBounds(cameraPosition, *activeCamera));
 		const std::array<FrustumPlane, 6> frustumPlanes = ExtractFrustumPlanes(viewProjectionMatrix);
 
-		NENE_LOG_DEBUG("RenderSystem: starting render pass");
+		uint32_t frustumAcceptedCount = 0;
+		uint32_t submittedCount = 0;
 
 		for (auto entity : renderCandidates)
 		{
@@ -200,6 +208,7 @@ namespace NeneEngine::ECS
 			RenderItem item{};
 			item.modelMatrix = ComputeWorldMatrix(world, entity, worldMatrixCache, recursionStack);
 			if (!IntersectsFrustum(ComputeRenderableBounds(item.modelMatrix, *meshRenderer), frustumPlanes)) continue;
+			++frustumAcceptedCount;
 
 			item.viewMatrix = viewMatrix;
 			item.projectionMatrix = projectionMatrix;
@@ -218,12 +227,12 @@ namespace NeneEngine::ECS
 			}
 
 			m_renderer->SubmitRenderItem(item);
+			++submittedCount;
 
-			NENE_LOG_DEBUG("RenderSystem: submitted entity {} | primitive={} | mesh={} | material={} | shader={} | "
-			               "texture={}",
-			               static_cast<uint32_t>(entt::to_integral(entity)), static_cast<int>(item.primitiveType),
-			               item.meshId.value, item.materialId.value, item.shaderId.value, item.textureId.value);
 		}
+
+		DebugConsole::UpdateSpatialCullingStats(totalRenderableCount, indexedRenderableCount, renderCandidates.size(),
+		                                        frustumAcceptedCount, submittedCount);
 	}
 
 } // namespace NeneEngine::ECS

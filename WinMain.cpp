@@ -1,4 +1,8 @@
 #include "App/NeneEngineApp.h"
+#include "Core/DebugConsole.h"
+
+#include <Windows.h>
+
 #include <iostream>
 #include <sstream>
 #include <string_view>
@@ -22,6 +26,10 @@ namespace
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR commandLine, int)
 {
+#ifndef NDEBUG
+	NeneEngine::DebugConsole::Initialize();
+#endif
+
 	try
 	{
 		const bool smokeTestMode = HasCommandLineFlag(commandLine, L"--smoke-test");
