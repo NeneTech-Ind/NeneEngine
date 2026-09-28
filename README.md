@@ -61,6 +61,30 @@ Install a runnable package:
 cmake --install out/build/x64-debug --component Runtime
 ```
 
+### CPU profiling with Tracy
+
+The Tracy client is provided by vcpkg. Profiling is enabled by default.
+Configure a profiling build in an x64 MSVC developer shell:
+
+```bash
+cmake --preset x64-release -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNENEENGINE_ENABLE_TRACY=ON
+cmake --build out/build/x64-release
+```
+
+Run the engine and connect the [Tracy profiler](https://github.com/wolfpld/tracy/releases)
+to `localhost`. Use a profiler version matching the client installed by the pinned
+vcpkg registry; its version is listed in the vcpkg configure output. The GUI is
+downloaded separately and is not installed by this project's manifest.
+
+The initial CPU zones cover Frame, Input, Gameplay, Sync, Render, and EndFrame.
+Render measures CPU work, including any waits; GPU timestamps are not instrumented.
+To instrument more scopes, include `Core/Profiler.h` and add
+`NENE_PROFILE_SCOPE("Name");`. The main loop emits `NENE_PROFILE_FRAME()` once per
+iteration, including paused iterations.
+
+Configure again with `-DNENEENGINE_ENABLE_TRACY=OFF` to disable the zones and
+Tracy client linkage. The dependency remains in the vcpkg manifest.
+
 ### Licenses
 
 - Project license: [LICENSE.txt](LICENSE.txt)

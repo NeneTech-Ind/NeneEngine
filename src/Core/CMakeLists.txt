@@ -4,6 +4,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/ExternalLibrarySmokeTest.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/GameTimer.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/PathResolver.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Profiler.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Resource.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/ResourceManager.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/CustomLogger.cpp"

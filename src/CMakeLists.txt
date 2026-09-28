@@ -45,6 +45,21 @@ find_package(EnTT           CONFIG REQUIRED)
 find_package(glm            CONFIG REQUIRED)
 find_package(Stb            MODULE REQUIRED)
 
+option(NENEENGINE_ENABLE_TRACY "Enable Tracy CPU profiling" ON)
+if(NENEENGINE_ENABLE_TRACY)
+    find_package(Tracy CONFIG REQUIRED)
+    target_link_libraries(NeneEngine PRIVATE Tracy::TracyClient)
+    target_compile_definitions(NeneEngine PRIVATE NENEENGINE_ENABLE_TRACY)
+
+    # vcpkg installs the debug TracyClient.dll into debug/bin/Debug, which the runtime DLL globs below do not cover.
+    add_custom_command(TARGET NeneEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:Tracy::TracyClient>
+            $<TARGET_FILE_DIR:NeneEngine>
+    )
+    install(FILES $<TARGET_FILE:Tracy::TracyClient> DESTINATION bin COMPONENT Runtime)
+endif()
+
 target_include_directories(NeneEngine PRIVATE ${Stb_INCLUDE_DIR})
 
 target_link_libraries(NeneEngine

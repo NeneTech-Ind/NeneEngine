@@ -7,6 +7,7 @@
 #include "App/GameStateMachine.h"
 #include "Core/CustomLogger.h"
 #include "Core/GameTimer.h"
+#include "Core/Profiler.h"
 #include "Input/InputDevice.h"
 #include "Input/InputManager.h"
 
@@ -27,6 +28,7 @@ namespace NeneEngine
 
 		while (running.load() && !windowRuntimeService.AreAllWindowsClosed())
 		{
+			NENE_PROFILE_SCOPE("Frame");
 			windowRuntimeService.PumpWindowMessages();
 			timer.Tick();
 			const float deltaTime = timer.DeltaTime();
@@ -36,13 +38,17 @@ namespace NeneEngine
 				InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput);
 				GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig);
 				SyncPhase(deltaTime);
-				windowRuntimeService.Render();
+				{
+					NENE_PROFILE_SCOPE("Render");
+					windowRuntimeService.Render();
+				}
 				EndFramePhase(timer, windowRuntimeService);
 			}
 			else
 			{
 				Sleep(100);
 			}
+			NENE_PROFILE_FRAME();
 		}
 	}
 
@@ -50,6 +56,7 @@ namespace NeneEngine
 	                                     AppWindowRuntimeService& windowRuntimeService,
 	                                     FocusedInputCallback getFocusedInput)
 	{
+		NENE_PROFILE_SCOPE("Input");
 		inputManager.SetInputDevice(getFocusedInput());
 		inputManager.UpdateState();
 		windowRuntimeService.UpdateInputManagers();
@@ -60,6 +67,7 @@ namespace NeneEngine
 	                                        AppRuntimeConfigService& runtimeConfigService,
 	                                        ApplyConfigCallback applyRuntimeConfig)
 	{
+		NENE_PROFILE_SCOPE("Gameplay");
 		gameStateMachine.HandleInput();
 		gameStateMachine.Update(deltaTime);
 		LogDeltaTimeStats(timer, deltaTime);
@@ -69,10 +77,12 @@ namespace NeneEngine
 	void AppFrameLoopService::SyncPhase(float /*deltaTime*/)
 	{
 		// Reserved explicit phase for synchronizing physics/runtime state back into scene transforms.
+		NENE_PROFILE_SCOPE("Sync");
 	}
 
 	void AppFrameLoopService::EndFramePhase(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService)
 	{
+		NENE_PROFILE_SCOPE("EndFrame");
 		CalculateFrameStats(timer, windowRuntimeService);
 		windowRuntimeService.EndFrameInputs();
 	}

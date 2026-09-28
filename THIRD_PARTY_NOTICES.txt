@@ -100,6 +100,15 @@ INCLUDED COMPONENTS
    assets/models/parappa_anime/LICENSE.txt
 
 
+11. Tracy
+   Purpose:
+   CPU frame and scope profiling
+   License:
+   BSD 3-Clause
+   Local license file:
+   out/build/x64-debug/vcpkg_installed/x64-windows/share/tracy/copyright
+
+
 NOTES
 =====
 
