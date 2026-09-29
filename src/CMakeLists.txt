@@ -44,6 +44,7 @@ find_package(EASTL          CONFIG REQUIRED)
 find_package(EnTT           CONFIG REQUIRED)
 find_package(glm            CONFIG REQUIRED)
 find_package(Stb            MODULE REQUIRED)
+find_package(Jolt           CONFIG REQUIRED)
 
 option(NENEENGINE_ENABLE_TRACY "Enable Tracy CPU profiling" ON)
 if(NENEENGINE_ENABLE_TRACY)
@@ -70,6 +71,7 @@ target_link_libraries(NeneEngine
         EASTL
         EnTT::EnTT
         glm::glm
+        Jolt::Jolt
         Diligent-Win32Platform
         Diligent-GraphicsEngineD3D12-shared
         Diligent-TextureLoader

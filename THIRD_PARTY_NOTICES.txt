@@ -109,6 +109,15 @@ INCLUDED COMPONENTS
    out/build/x64-debug/vcpkg_installed/x64-windows/share/tracy/copyright
 
 
+12. Jolt Physics
+   Purpose:
+   Rigid body simulation and collision detection
+   License:
+   MIT
+   Local license file:
+   out/build/x64-debug/vcpkg_installed/x64-windows/share/joltphysics/copyright
+
+
 NOTES
 =====
 
