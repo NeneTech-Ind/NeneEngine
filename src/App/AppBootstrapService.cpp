@@ -10,8 +10,10 @@
 #include "Core/ExternalLibrarySmokeTest.h"
 #include "Core/ResourceManager.h"
 #include "ECS/Components/CameraComponent.h"
-#include "ECS/Systems/CollisionSystem.h"
+#include "ECS/Components/TagComponent.h"
+#include "ECS/Events/CollisionEvent.h"
 #include "ECS/Systems/MovementSystem.h"
+#include "ECS/Systems/PhysicsSystem.h"
 #include "Scene/DemoScene.h"
 #include "GameStates/PlayState.h"
 
@@ -29,6 +31,26 @@ namespace NeneEngine
 			}
 
 			return ECS::NullEntity;
+		}
+
+		std::string DescribeEntity(const ECS::World& world, ECS::Entity entity)
+		{
+			const auto* tag = world.GetRegistry().try_get<ECS::TagComponent>(entity);
+			if (tag != nullptr && !tag->name.empty()) return tag->name;
+			return "Entity#" + std::to_string(entt::to_integral(entity));
+		}
+
+		void SubscribeCollisionLogger(ECS::World& world)
+		{
+			world.GetEventBus().Subscribe<ECS::CollisionEvent>(
+			    [&world](const ECS::CollisionEvent& event)
+			    {
+				    NENE_LOG_INFO(
+				        "Collision: '{}' <-> '{}' at ({:.2f}, {:.2f}, {:.2f}), normal ({:.2f}, {:.2f}, {:.2f})",
+				        DescribeEntity(world, event.entityA), DescribeEntity(world, event.entityB),
+				        event.contactPoint.x, event.contactPoint.y, event.contactPoint.z, event.normal.x,
+				        event.normal.y, event.normal.z);
+			    });
 		}
 	} // namespace
 
@@ -50,7 +72,8 @@ namespace NeneEngine
 		gameStateMachine.PushState(eastl::make_unique<PlayState>(stateContext));
 
 		world.AddSystem(std::make_unique<ECS::MovementSystem>());
-		world.AddSystem(std::make_unique<ECS::CollisionSystem>());
+		world.AddSystem(std::make_unique<ECS::PhysicsSystem>());
+		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, width, height);
 		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::DefaultScenePath().string());
 
