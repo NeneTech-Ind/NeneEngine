@@ -29,6 +29,12 @@ namespace NeneEngine
 
 		virtual void BeginFrame() = 0;
 		virtual void SubmitRenderItem(const RenderItem& item) = 0;
+
+		// Debug helpers built on top of SubmitRenderItem with the DebugLine primitive; backends may override them.
+		virtual void DrawDebugLine(const glm::vec3& from, const glm::vec3& to, const glm::vec4& color,
+		                           const glm::mat4& viewProjection);
+		virtual void DrawDebugAABB(const glm::vec3& min, const glm::vec3& max, const glm::vec4& color,
+		                           const glm::mat4& viewProjection);
 		virtual void EndFrame() = 0;
 		virtual void Present() = 0;
 

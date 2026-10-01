@@ -44,7 +44,7 @@ namespace NeneEngine
 		void SetClearColor(const glm::vec4& color) override;
 
 	  private:
-		static constexpr size_t PrimitiveTypeCount = 4;
+		static constexpr size_t PrimitiveTypeCount = 5;
 
 		struct PrimitiveDrawConstants
 		{

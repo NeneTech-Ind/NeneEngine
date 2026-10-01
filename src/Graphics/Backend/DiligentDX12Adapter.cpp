@@ -603,10 +603,14 @@ namespace NeneEngine
 			PSOCreateInfo.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
 			PSOCreateInfo.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
 			PSOCreateInfo.GraphicsPipeline.PrimitiveTopology =
-			    primitiveType == PrimitiveType::Line ? PRIMITIVE_TOPOLOGY_LINE_LIST : PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			    primitiveType == PrimitiveType::Line || primitiveType == PrimitiveType::DebugLine
+			        ? PRIMITIVE_TOPOLOGY_LINE_LIST
+			        : PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;
-			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
-			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = true;
+			// Debug lines must stay visible even where they coincide with or sit behind scene geometry.
+			const bool depthEnabled = primitiveType != PrimitiveType::DebugLine;
+			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = depthEnabled;
+			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = depthEnabled;
 			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthFunc = COMPARISON_FUNC_LESS;
 
 			ShaderResourceVariableDesc variables[] = {
@@ -864,6 +868,7 @@ namespace NeneEngine
         )raw";
 
 		if (!createPipelineState(PrimitiveType::Line, "Simple Line PSO", LineVSSource) ||
+		    !createPipelineState(PrimitiveType::DebugLine, "Debug Line PSO", LineVSSource) ||
 		    !createPipelineState(PrimitiveType::Triangle, "Simple Triangle PSO", TriangleVSSource) ||
 		    !createPipelineState(PrimitiveType::Quad, "Simple Quad PSO", QuadVSSource) ||
 		    !createPipelineState(PrimitiveType::Cube, "Simple Cube PSO", CubeVSSource))
@@ -1035,6 +1040,7 @@ namespace NeneEngine
 		switch (primitiveType)
 		{
 		case PrimitiveType::Line:
+		case PrimitiveType::DebugLine:
 			return 2;
 		case PrimitiveType::Triangle:
 			return 3;

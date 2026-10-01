@@ -59,7 +59,9 @@ namespace NeneEngine
 		Line,
 		Triangle,
 		Quad,
-		Cube
+		Cube,
+		// Same geometry as Line but drawn on top of the scene; used for debug visualization only.
+		DebugLine
 	};
 
 	struct Vertex
