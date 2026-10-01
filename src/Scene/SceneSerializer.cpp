@@ -14,11 +14,11 @@
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 
+#include <EASTL/unordered_map.h>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 
 namespace NeneEngine
 {
@@ -177,7 +177,7 @@ namespace NeneEngine
 		}
 
 		nlohmann::json SerializeHierarchy(const ECS::HierarchyComponent& hierarchy,
-		                                  const std::unordered_map<uint32_t, uint32_t>& sceneIdsByEntity)
+		                                  const eastl::unordered_map<uint32_t, uint32_t>& sceneIdsByEntity)
 		{
 			nlohmann::json children = nlohmann::json::array();
 
@@ -316,7 +316,7 @@ namespace NeneEngine
 		}
 
 		void DeserializeHierarchy(const nlohmann::json& value, ECS::World& world, ECS::Entity entity,
-		                          const std::unordered_map<uint32_t, ECS::Entity>& entitiesBySceneId)
+		                          const eastl::unordered_map<uint32_t, ECS::Entity>& entitiesBySceneId)
 		{
 			auto& hierarchy = world.AddComponent<ECS::HierarchyComponent>(entity);
 			if (value.contains("parent") && !value.at("parent").is_null())
@@ -351,7 +351,7 @@ namespace NeneEngine
 	nlohmann::json SceneSerializer::Serialize(const ECS::World& world)
 	{
 		nlohmann::json sceneJson{{"version", CurrentVersion}, {"entities", nlohmann::json::array()}};
-		std::unordered_map<uint32_t, uint32_t> sceneIdsByEntity;
+		eastl::unordered_map<uint32_t, uint32_t> sceneIdsByEntity;
 
 		const auto allEntities = world.GetRegistry().view<entt::entity>();
 		uint32_t nextSceneId = 1;
@@ -417,7 +417,7 @@ namespace NeneEngine
 			throw std::runtime_error("Unsupported scene version: " + std::to_string(version));
 
 		world.GetRegistry().clear();
-		std::unordered_map<uint32_t, ECS::Entity> entitiesBySceneId;
+		eastl::unordered_map<uint32_t, ECS::Entity> entitiesBySceneId;
 
 		for (const auto& entityJson : sceneJson.at("entities"))
 		{

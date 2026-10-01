@@ -101,9 +101,9 @@ namespace NeneEngine
 			return parsedColor;
 		}
 
-		[[nodiscard]] std::vector<WindowDefinitionConfig> ReadWindowsOrDefault(const nlohmann::json& root)
+		[[nodiscard]] eastl::vector<WindowDefinitionConfig> ReadWindowsOrDefault(const nlohmann::json& root)
 		{
-			std::vector<WindowDefinitionConfig> windows;
+			eastl::vector<WindowDefinitionConfig> windows;
 
 			const auto windowsIt = root.find("windows");
 			if (windowsIt == root.end())
@@ -199,7 +199,7 @@ namespace NeneEngine
 			config.actions.clear();
 			for (const auto& [actionName, actionValue] : actionsIt->items())
 			{
-				std::vector<KeyCode> bindings;
+				eastl::vector<KeyCode> bindings;
 
 				if (actionValue.is_string())
 				{

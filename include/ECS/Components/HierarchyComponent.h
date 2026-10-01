@@ -4,7 +4,7 @@
 
 #include "ECS/Entity.h"
 
-#include <vector>
+#include <EASTL/vector.h>
 
 namespace NeneEngine::ECS
 {
@@ -12,7 +12,7 @@ namespace NeneEngine::ECS
 	struct HierarchyComponent
 	{
 		Entity parent = NullEntity;
-		std::vector<Entity> children{};
+		eastl::vector<Entity> children{};
 	};
 
 } // namespace NeneEngine::ECS

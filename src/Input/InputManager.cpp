@@ -81,7 +81,7 @@ namespace NeneEngine
 		if (std::find(bindings.begin(), bindings.end(), keyCode) == bindings.end()) bindings.push_back(keyCode);
 	}
 
-	void InputManager::SetActionBindings(const std::string& actionName, std::vector<KeyCode> keyCodes)
+	void InputManager::SetActionBindings(const std::string& actionName, eastl::vector<KeyCode> keyCodes)
 	{
 		if (keyCodes.empty())
 		{

@@ -10,8 +10,8 @@ namespace NeneEngine
 			       lhs.isMain == rhs.isMain;
 		}
 
-		bool WindowListsEqual(const std::vector<WindowDefinitionConfig>& lhs,
-		                      const std::vector<WindowDefinitionConfig>& rhs)
+		bool WindowListsEqual(const eastl::vector<WindowDefinitionConfig>& lhs,
+		                      const eastl::vector<WindowDefinitionConfig>& rhs)
 		{
 			if (lhs.size() != rhs.size()) return false;
 

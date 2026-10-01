@@ -11,7 +11,7 @@ namespace NeneEngine
 {
 	namespace
 	{
-		std::string FormatBindings(const std::vector<KeyCode>& keyCodes)
+		std::string FormatBindings(const eastl::vector<KeyCode>& keyCodes)
 		{
 			std::ostringstream stream;
 			for (size_t index = 0; index < keyCodes.size(); ++index)

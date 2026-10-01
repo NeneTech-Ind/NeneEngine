@@ -5,7 +5,7 @@
 #include "App/AppConfig.h"
 #include "App/AppStartupConfigService.h"
 
-#include <functional>
+#include <EASTL/functional.h>
 
 namespace NeneEngine
 {
@@ -13,7 +13,7 @@ namespace NeneEngine
 	class AppRuntimeConfigService final
 	{
 	  public:
-		using ApplyConfigCallback = std::function<void(const AppConfig&)>;
+		using ApplyConfigCallback = eastl::function<void(const AppConfig&)>;
 
 		void LoadStartupConfig();
 		[[nodiscard]] const AppConfig& GetConfig() const { return m_loadedAppConfigState.config; }

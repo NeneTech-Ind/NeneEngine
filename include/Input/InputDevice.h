@@ -5,8 +5,8 @@
 #include "Core/Delegate.h"
 #include "Input/KeyCode.h"
 
+#include <EASTL/unordered_set.h>
 #include <glm/glm.hpp>
-#include <unordered_set>
 
 namespace NeneEngine
 {
@@ -54,8 +54,8 @@ namespace NeneEngine
 		float GetMouseWheelDelta() const { return m_mouseWheelDelta; }
 
 	  private:
-		std::unordered_set<KeyCode> m_pressedKeys;
-		std::unordered_set<KeyCode> m_pressedThisFrame;
+		eastl::unordered_set<KeyCode> m_pressedKeys;
+		eastl::unordered_set<KeyCode> m_pressedThisFrame;
 		glm::vec2 m_mousePosition = {0.0f, 0.0f};
 		glm::vec2 m_mouseDelta = {0.0f, 0.0f};
 		float m_mouseWheelDelta = 0.0f;

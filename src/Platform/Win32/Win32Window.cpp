@@ -198,15 +198,25 @@ namespace NeneEngine
 		}
 
 		case WM_KEYDOWN:
-		case WM_SYSKEYDOWN:
 			// Bit 30 marks autorepeat; filtering it keeps IsKeyPressed edge-based.
 			if ((lParam & (1LL << 30)) == 0) m_input.NotifyKeyDown(TranslateKey(wParam, lParam));
 			return 0;
 
 		case WM_KEYUP:
-		case WM_SYSKEYUP:
 			m_input.NotifyKeyUp(TranslateKey(wParam, lParam));
 			return 0;
+
+		case WM_SYSKEYDOWN:
+			if ((lParam & (1LL << 30)) == 0) m_input.NotifyKeyDown(TranslateKey(wParam, lParam));
+			break;
+
+		case WM_SYSKEYUP:
+			m_input.NotifyKeyUp(TranslateKey(wParam, lParam));
+			break;
+
+		case WM_SYSCHAR:
+			if (wParam != VK_SPACE) return 0;
+			break;
 		}
 
 		return DefWindowProcW(m_hwnd, message, wParam, lParam);

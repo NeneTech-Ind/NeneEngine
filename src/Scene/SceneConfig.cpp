@@ -13,23 +13,23 @@ namespace NeneEngine
 {
 	namespace
 	{
-		std::optional<glm::vec3> ReadOptionalVec3(const nlohmann::json& value)
+		eastl::optional<glm::vec3> ReadOptionalVec3(const nlohmann::json& value)
 		{
-			if (!value.is_object()) return std::nullopt;
-			if (!value.contains("x") || !value.at("x").is_number()) return std::nullopt;
-			if (!value.contains("y") || !value.at("y").is_number()) return std::nullopt;
-			if (!value.contains("z") || !value.at("z").is_number()) return std::nullopt;
+			if (!value.is_object()) return eastl::nullopt;
+			if (!value.contains("x") || !value.at("x").is_number()) return eastl::nullopt;
+			if (!value.contains("y") || !value.at("y").is_number()) return eastl::nullopt;
+			if (!value.contains("z") || !value.at("z").is_number()) return eastl::nullopt;
 
 			return glm::vec3{value.at("x").get<float>(), value.at("y").get<float>(), value.at("z").get<float>()};
 		}
 
-		std::optional<glm::vec4> ReadOptionalVec4(const nlohmann::json& value)
+		eastl::optional<glm::vec4> ReadOptionalVec4(const nlohmann::json& value)
 		{
-			if (!value.is_object()) return std::nullopt;
-			if (!value.contains("x") || !value.at("x").is_number()) return std::nullopt;
-			if (!value.contains("y") || !value.at("y").is_number()) return std::nullopt;
-			if (!value.contains("z") || !value.at("z").is_number()) return std::nullopt;
-			if (!value.contains("w") || !value.at("w").is_number()) return std::nullopt;
+			if (!value.is_object()) return eastl::nullopt;
+			if (!value.contains("x") || !value.at("x").is_number()) return eastl::nullopt;
+			if (!value.contains("y") || !value.at("y").is_number()) return eastl::nullopt;
+			if (!value.contains("z") || !value.at("z").is_number()) return eastl::nullopt;
+			if (!value.contains("w") || !value.at("w").is_number()) return eastl::nullopt;
 
 			return glm::vec4{value.at("x").get<float>(), value.at("y").get<float>(), value.at("z").get<float>(),
 			                 value.at("w").get<float>()};

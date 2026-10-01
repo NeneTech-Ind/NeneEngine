@@ -148,14 +148,14 @@ namespace NeneEngine
 
 		m_windows.push_back(std::move(*windowContext));
 		auto& storedWindowContext = m_windows.back();
-		AddAppSystem(std::make_unique<ECS::CameraControllerSystem>(storedWindowContext.inputManager, cameraEntity));
-		AddAppSystem(std::make_unique<ECS::PrimitiveControlSystem>(storedWindowContext.inputManager));
+		AddAppSystem(eastl::make_unique<ECS::CameraControllerSystem>(storedWindowContext.inputManager, cameraEntity));
+		AddAppSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(storedWindowContext.inputManager));
 
 		HandleWindowResize(windowIndex, width, height);
 		return true;
 	}
 
-	void AppWindowRuntimeService::AddAppSystem(std::unique_ptr<ECS::ISystem> system)
+	void AppWindowRuntimeService::AddAppSystem(eastl::unique_ptr<ECS::ISystem> system)
 	{
 		m_appSystems.push_back(std::move(system));
 	}
@@ -302,9 +302,9 @@ namespace NeneEngine
 		return m_windows.front().renderer.get();
 	}
 
-	std::vector<IRenderAdapter*> AppWindowRuntimeService::GetRenderers() const
+	eastl::vector<IRenderAdapter*> AppWindowRuntimeService::GetRenderers() const
 	{
-		std::vector<IRenderAdapter*> renderers;
+		eastl::vector<IRenderAdapter*> renderers;
 		renderers.reserve(m_windows.size());
 		for (const auto& windowContext : m_windows)
 		{

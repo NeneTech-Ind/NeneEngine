@@ -1,9 +1,9 @@
 #pragma once
 
+#include <EASTL/vector.h>
 #include <filesystem>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -24,7 +24,7 @@ namespace NeneEngine
 	{
 		glm::vec3 position = {0.0f, 0.0f, 0.0f};
 		glm::vec3 scale = {1.0f, 1.0f, 1.0f};
-		std::vector<ModelPartOverrideConfig> partOverrides;
+		eastl::vector<ModelPartOverrideConfig> partOverrides;
 	};
 
 	[[nodiscard]] ModelInstanceConfig LoadModelInstanceConfig(const std::filesystem::path& configPath);

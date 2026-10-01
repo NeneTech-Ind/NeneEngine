@@ -14,9 +14,9 @@
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <algorithm>
+#include <EASTL/unordered_map.h>
+#include <EASTL/unordered_set.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace NeneEngine::ECS
 {
@@ -27,8 +27,8 @@ namespace NeneEngine::ECS
 			return static_cast<uint32_t>(entt::to_integral(entity));
 		}
 
-		glm::mat4 ComputeWorldMatrix(World& world, Entity entity, std::unordered_map<uint32_t, glm::mat4>& cache,
-		                             std::unordered_set<uint32_t>& recursionStack)
+		glm::mat4 ComputeWorldMatrix(World& world, Entity entity, eastl::unordered_map<uint32_t, glm::mat4>& cache,
+		                             eastl::unordered_set<uint32_t>& recursionStack)
 		{
 			// Hierarchy traversal is cached per render pass and guarded against accidental parent cycles.
 			const uint32_t entityId = ToEntityId(entity);
@@ -127,8 +127,8 @@ namespace NeneEngine::ECS
 			return;
 		}
 
-		std::unordered_map<uint32_t, glm::mat4> worldMatrixCache;
-		std::unordered_set<uint32_t> recursionStack;
+		eastl::unordered_map<uint32_t, glm::mat4> worldMatrixCache;
+		eastl::unordered_set<uint32_t> recursionStack;
 
 		const glm::mat4 cameraWorldMatrix =
 		    ComputeWorldMatrix(world, activeCameraEntity, worldMatrixCache, recursionStack);
@@ -184,8 +184,8 @@ namespace NeneEngine::ECS
 	}
 
 	void RenderSystem::RenderColliderBounds(World& world, const glm::mat4& viewProjectionMatrix,
-	                                        std::unordered_map<uint32_t, glm::mat4>& worldMatrixCache,
-	                                        std::unordered_set<uint32_t>& recursionStack)
+	                                        eastl::unordered_map<uint32_t, glm::mat4>& worldMatrixCache,
+	                                        eastl::unordered_set<uint32_t>& recursionStack)
 	{
 		auto view = world.GetRegistry().view<const TransformComponent, const ColliderComponent>();
 		for (auto [entity, transform, collider] : view.each())

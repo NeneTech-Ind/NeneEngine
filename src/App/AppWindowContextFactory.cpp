@@ -8,9 +8,9 @@
 
 namespace NeneEngine
 {
-	std::optional<AppWindowContext> AppWindowContextFactory::Create(uint32_t width, uint32_t height,
-	                                                                const std::string& title,
-	                                                                ECS::Entity cameraEntity, bool isMain) const
+	eastl::optional<AppWindowContext> AppWindowContextFactory::Create(uint32_t width, uint32_t height,
+	                                                                  const std::string& title,
+	                                                                  ECS::Entity cameraEntity, bool isMain) const
 	{
 		AppWindowContext windowContext{};
 		windowContext.title = title;
@@ -20,18 +20,18 @@ namespace NeneEngine
 		if (!windowContext.window->Create(width, height, title))
 		{
 			NENE_LOG_ERROR("Failed to create window '{}'", title);
-			return std::nullopt;
+			return eastl::nullopt;
 		}
 
 		windowContext.renderer = eastl::make_unique<DiligentDX12Adapter>();
 		if (!windowContext.renderer->Init(windowContext.window->GetHWND(), width, height))
 		{
 			NENE_LOG_ERROR("Failed to initialize renderer for window '{}'", title);
-			return std::nullopt;
+			return eastl::nullopt;
 		}
 
 		windowContext.inputManager.SetInputDevice(&windowContext.window->GetInput());
-		windowContext.renderSystem = std::make_unique<ECS::RenderSystem>(windowContext.renderer.get(), cameraEntity);
+		windowContext.renderSystem = eastl::make_unique<ECS::RenderSystem>(windowContext.renderer.get(), cameraEntity);
 		return windowContext;
 	}
 
