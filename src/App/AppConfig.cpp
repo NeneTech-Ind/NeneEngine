@@ -40,6 +40,7 @@ namespace NeneEngine
 			config.actions[std::string(InputActions::PrimitiveMoveRight)] = {KeyCode::Right};
 			config.actions[std::string(InputActions::ScaleStep)] = {KeyCode::MouseLeft};
 			config.actions[std::string(InputActions::RotateStep)] = {KeyCode::MouseRight};
+			config.actions[std::string(InputActions::ToggleDebugDraw)] = {KeyCode::F3};
 			return config;
 		}
 

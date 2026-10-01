@@ -23,7 +23,8 @@
       "PrimitiveMoveLeft": ["Left"],
       "PrimitiveMoveRight": ["Right"],
       "ScaleStep": ["MouseLeft"],
-      "RotateStep": ["MouseRight"]
+      "RotateStep": ["MouseRight"],
+      "ToggleDebugDraw": ["F3"]
     }
   },
   "windows": [

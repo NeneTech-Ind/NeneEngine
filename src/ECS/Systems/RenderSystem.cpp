@@ -3,12 +3,17 @@
 #include "ECS/Systems/RenderSystem.h"
 #include "Core/CustomLogger.h"
 #include "ECS/Components/CameraComponent.h"
+#include "ECS/Components/ColliderComponent.h"
+#include "ECS/Components/ContactStateComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
+#include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TransformComponent.h"
+#include "ECS/DebugDrawSettings.h"
 #include "ECS/World.h"
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
+#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
 #include <unordered_set>
@@ -53,6 +58,39 @@ namespace NeneEngine::ECS
 			const glm::mat4 worldMatrix = parentWorldMatrix * localMatrix;
 			cache[entityId] = worldMatrix;
 			return worldMatrix;
+		}
+
+		constexpr glm::vec4 kStaticColliderColor{0.3f, 0.6f, 1.0f, 1.0f};
+		constexpr glm::vec4 kDynamicColliderColor{0.2f, 1.0f, 0.2f, 1.0f};
+		constexpr glm::vec4 kTouchingColliderColor{1.0f, 0.15f, 0.15f, 1.0f};
+
+		struct ColliderBounds
+		{
+			glm::vec3 min = {0.0f, 0.0f, 0.0f};
+			glm::vec3 max = {0.0f, 0.0f, 0.0f};
+		};
+
+		// World-space AABB enclosing the collider after the entity's rotation and scale are applied.
+		ColliderBounds ComputeColliderBounds(const glm::mat4& worldMatrix, const ColliderComponent& collider)
+		{
+			const glm::vec3 center = glm::vec3(worldMatrix * glm::vec4(collider.offset, 1.0f));
+			const glm::vec3 basisX = glm::vec3(worldMatrix[0]);
+			const glm::vec3 basisY = glm::vec3(worldMatrix[1]);
+			const glm::vec3 basisZ = glm::vec3(worldMatrix[2]);
+
+			glm::vec3 extent{0.0f};
+			if (collider.type == ColliderType::Sphere)
+			{
+				const float maxScaleAxis = (std::max)({glm::length(basisX), glm::length(basisY), glm::length(basisZ)});
+				extent = glm::vec3(collider.radius * maxScaleAxis);
+			}
+			else
+			{
+				const glm::mat3 absoluteBasis{glm::abs(basisX), glm::abs(basisY), glm::abs(basisZ)};
+				extent = absoluteBasis * collider.halfExtents;
+			}
+
+			return ColliderBounds{center - extent, center + extent};
 		}
 	} // namespace
 
@@ -138,6 +176,29 @@ namespace NeneEngine::ECS
 			               "texture={}",
 			               static_cast<uint32_t>(entt::to_integral(entity)), static_cast<int>(item.primitiveType),
 			               item.meshId.value, item.materialId.value, item.shaderId.value, item.textureId.value);
+		}
+
+		const auto* debugDraw = world.GetRegistry().ctx().find<DebugDrawSettings>();
+		if (debugDraw != nullptr && debugDraw->drawColliders)
+			RenderColliderBounds(world, viewProjectionMatrix, worldMatrixCache, recursionStack);
+	}
+
+	void RenderSystem::RenderColliderBounds(World& world, const glm::mat4& viewProjectionMatrix,
+	                                        std::unordered_map<uint32_t, glm::mat4>& worldMatrixCache,
+	                                        std::unordered_set<uint32_t>& recursionStack)
+	{
+		auto view = world.GetRegistry().view<const TransformComponent, const ColliderComponent>();
+		for (auto [entity, transform, collider] : view.each())
+		{
+			const glm::mat4 worldMatrix = ComputeWorldMatrix(world, entity, worldMatrixCache, recursionStack);
+			const ColliderBounds bounds = ComputeColliderBounds(worldMatrix, collider);
+
+			const auto* contactState = world.GetComponent<ContactStateComponent>(entity);
+			glm::vec4 color =
+			    world.HasComponent<RigidbodyComponent>(entity) ? kDynamicColliderColor : kStaticColliderColor;
+			if (contactState != nullptr && contactState->contactCount > 0) color = kTouchingColliderColor;
+
+			m_renderer->DrawDebugAABB(bounds.min, bounds.max, color, viewProjectionMatrix);
 		}
 	}
 

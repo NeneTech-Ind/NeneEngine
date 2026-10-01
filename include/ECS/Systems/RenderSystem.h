@@ -6,6 +6,10 @@
 #include "ECS/Systems/ISystem.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 
+#include <cstdint>
+#include <unordered_map>
+#include <unordered_set>
+
 namespace NeneEngine::ECS
 {
 
@@ -23,6 +27,10 @@ namespace NeneEngine::ECS
 		void SetCameraEntity(Entity cameraEntity) { m_cameraEntity = cameraEntity; }
 
 	  private:
+		void RenderColliderBounds(World& world, const glm::mat4& viewProjectionMatrix,
+		                          std::unordered_map<uint32_t, glm::mat4>& worldMatrixCache,
+		                          std::unordered_set<uint32_t>& recursionStack);
+
 		IRenderAdapter* m_renderer;
 		Entity m_cameraEntity = NullEntity;
 	};

@@ -4,6 +4,7 @@
 #include "App/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
 #include "Core/CustomLogger.h"
+#include "ECS/DebugDrawSettings.h"
 #include "Input/InputActions.h"
 #include "Input/InputManager.h"
 #include "GameStates/PauseState.h"
@@ -38,4 +39,11 @@ void NeneEngine::PlayState::HandleInput()
 	const InputManager& input = m_context.app.GetInputManager();
 	if (input.IsActionPressed(InputActions::Pause))
 		m_context.stateMachine.PushState(eastl::make_unique<PauseState>(m_context));
+
+	if (input.IsActionPressed(InputActions::ToggleDebugDraw))
+	{
+		auto& debugDraw = m_context.world.GetRegistry().ctx().emplace<ECS::DebugDrawSettings>();
+		debugDraw.drawColliders = !debugDraw.drawColliders;
+		NENE_LOG_INFO("Collider debug draw {}", debugDraw.drawColliders ? "enabled" : "disabled");
+	}
 }
