@@ -96,12 +96,12 @@ namespace NeneEngine::DemoScene
 
 	std::filesystem::path DefaultScenePath()
 	{
-		return std::filesystem::path{"assets"} / "scenes" / "test_scene.json";
+		return std::filesystem::path{"assets"} / "scenes" / "demo_scene.json";
 	}
 
 	std::filesystem::path DefaultSceneConfigPath()
 	{
-		return std::filesystem::path{"assets"} / "scenes" / "test_scene.config.json";
+		return std::filesystem::path{"assets"} / "scenes" / "demo_scene.config.json";
 	}
 
 	void Create(ECS::World& world, uint32_t width, uint32_t height)

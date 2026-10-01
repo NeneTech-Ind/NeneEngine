@@ -13,9 +13,9 @@
 #include "ECS/World.h"
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
-#include <algorithm>
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
+#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace NeneEngine::ECS

@@ -6,9 +6,9 @@
 #include "ECS/Systems/ISystem.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 
-#include <cstdint>
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
+#include <cstdint>
 
 namespace NeneEngine::ECS
 {
