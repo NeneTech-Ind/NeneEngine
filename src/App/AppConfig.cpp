@@ -34,12 +34,17 @@ namespace NeneEngine
 			config.actions[std::string(InputActions::MoveDown)] = {KeyCode::LeftControl, KeyCode::RightControl};
 			config.actions[std::string(InputActions::Sprint)] = {KeyCode::LeftShift, KeyCode::RightShift};
 			config.actions[std::string(InputActions::LookModifier)] = {KeyCode::MouseRight};
-			config.actions[std::string(InputActions::PrimitiveMoveUp)] = {KeyCode::Up};
-			config.actions[std::string(InputActions::PrimitiveMoveDown)] = {KeyCode::Down};
-			config.actions[std::string(InputActions::PrimitiveMoveLeft)] = {KeyCode::Left};
-			config.actions[std::string(InputActions::PrimitiveMoveRight)] = {KeyCode::Right};
+			config.actions[std::string(InputActions::PrimitiveMoveUp)] = {KeyCode::NumPad8};
+			config.actions[std::string(InputActions::PrimitiveMoveDown)] = {KeyCode::NumPad2};
+			config.actions[std::string(InputActions::PrimitiveMoveLeft)] = {KeyCode::NumPad4};
+			config.actions[std::string(InputActions::PrimitiveMoveRight)] = {KeyCode::NumPad6};
 			config.actions[std::string(InputActions::ScaleStep)] = {KeyCode::MouseLeft};
 			config.actions[std::string(InputActions::RotateStep)] = {KeyCode::MouseRight};
+			config.actions[std::string(InputActions::PlayerMoveForward)] = {KeyCode::Up};
+			config.actions[std::string(InputActions::PlayerMoveBackward)] = {KeyCode::Down};
+			config.actions[std::string(InputActions::PlayerMoveLeft)] = {KeyCode::Left};
+			config.actions[std::string(InputActions::PlayerMoveRight)] = {KeyCode::Right};
+			config.actions[std::string(InputActions::PlayerJump)] = {KeyCode::Enter};
 			config.actions[std::string(InputActions::ToggleDebugDraw)] = {KeyCode::F3};
 			return config;
 		}

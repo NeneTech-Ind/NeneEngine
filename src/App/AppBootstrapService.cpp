@@ -6,6 +6,7 @@
 #include "App/AppWindowRuntimeService.h"
 #include "App/DemoBootstrapRunner.h"
 #include "App/GameStateMachine.h"
+#include "App/NeneEngineApp.h"
 #include "Core/CustomLogger.h"
 #include "Core/ExternalLibrarySmokeTest.h"
 #include "Core/ResourceManager.h"
@@ -14,6 +15,7 @@
 #include "ECS/Events/CollisionEvent.h"
 #include "ECS/Systems/MovementSystem.h"
 #include "ECS/Systems/PhysicsSystem.h"
+#include "ECS/Systems/PlayerControllerSystem.h"
 #include "Scene/DemoScene.h"
 #include "GameStates/PlayState.h"
 
@@ -72,6 +74,7 @@ namespace NeneEngine
 		gameStateMachine.PushState(eastl::make_unique<PlayState>(stateContext));
 
 		world.AddSystem(std::make_unique<ECS::MovementSystem>());
+		world.AddSystem(std::make_unique<ECS::PlayerControllerSystem>(app.GetInputManager()));
 		world.AddSystem(std::make_unique<ECS::PhysicsSystem>());
 		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, width, height);

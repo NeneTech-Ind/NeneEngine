@@ -12,6 +12,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/MeshRenderRuntimeComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/MeshRendererComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/MovementComponent.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/PlayerControllerComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/PrimitiveControlComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/RigidbodyComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/TagComponent.h"
@@ -20,6 +21,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/ISystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/MovementSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/PhysicsSystem.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/PlayerControllerSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/PrimitiveControlSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/RenderSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/PhysicsComponents.cpp"
@@ -27,6 +29,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/CameraControllerSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/MovementSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/PhysicsSystem.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Systems/PlayerControllerSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/PrimitiveControlSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/RenderSystem.cpp"
 )

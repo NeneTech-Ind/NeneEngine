@@ -22,5 +22,10 @@ namespace NeneEngine::InputActions
 	inline constexpr std::string_view PrimitiveMoveRight = "PrimitiveMoveRight";
 	inline constexpr std::string_view ScaleStep = "ScaleStep";
 	inline constexpr std::string_view RotateStep = "RotateStep";
+	inline constexpr std::string_view PlayerMoveForward = "PlayerMoveForward";
+	inline constexpr std::string_view PlayerMoveBackward = "PlayerMoveBackward";
+	inline constexpr std::string_view PlayerMoveLeft = "PlayerMoveLeft";
+	inline constexpr std::string_view PlayerMoveRight = "PlayerMoveRight";
+	inline constexpr std::string_view PlayerJump = "PlayerJump";
 	inline constexpr std::string_view ToggleDebugDraw = "ToggleDebugDraw";
 } // namespace NeneEngine::InputActions
