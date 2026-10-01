@@ -4,10 +4,13 @@
 
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
+#include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/MovementComponent.h"
+#include "ECS/Components/PlayerControllerComponent.h"
 #include "ECS/Components/PrimitiveControlComponent.h"
+#include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 
@@ -81,6 +84,19 @@ namespace NeneEngine
 			throw std::runtime_error("Unknown PrimitiveType: " + value);
 		}
 
+		std::string ToString(ECS::ColliderType colliderType)
+		{
+			return colliderType == ECS::ColliderType::Sphere ? "Sphere" : "Box";
+		}
+
+		ECS::ColliderType ReadColliderType(const std::string& value)
+		{
+			if (value == "Box") return ECS::ColliderType::Box;
+			if (value == "Sphere") return ECS::ColliderType::Sphere;
+
+			throw std::runtime_error("Unknown ColliderType: " + value);
+		}
+
 		uint32_t ToEntityKey(ECS::Entity entity)
 		{
 			return static_cast<uint32_t>(entt::to_integral(entity));
@@ -136,6 +152,28 @@ namespace NeneEngine
 			        {"oscillationSpeed", movement.oscillationSpeed},
 			        {"elapsedTime", movement.elapsedTime},
 			        {"useOscillation", movement.useOscillation}};
+		}
+
+		nlohmann::json SerializeRigidbody(const ECS::RigidbodyComponent& rigidbody)
+		{
+			return {{"velocity", ToJson(rigidbody.velocity)},
+			        {"acceleration", ToJson(rigidbody.acceleration)},
+			        {"mass", rigidbody.mass},
+			        {"useGravity", rigidbody.useGravity},
+			        {"freezeRotation", rigidbody.freezeRotation}};
+		}
+
+		nlohmann::json SerializeCollider(const ECS::ColliderComponent& collider)
+		{
+			return {{"type", ToString(collider.type)},
+			        {"halfExtents", ToJson(collider.halfExtents)},
+			        {"radius", collider.radius},
+			        {"offset", ToJson(collider.offset)}};
+		}
+
+		nlohmann::json SerializePlayerController(const ECS::PlayerControllerComponent& controller)
+		{
+			return {{"moveSpeed", controller.moveSpeed}, {"jumpSpeed", controller.jumpSpeed}};
 		}
 
 		nlohmann::json SerializeHierarchy(const ECS::HierarchyComponent& hierarchy,
@@ -238,6 +276,32 @@ namespace NeneEngine
 			movement.useOscillation = value.at("useOscillation").get<bool>();
 		}
 
+		void DeserializeRigidbody(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& rigidbody = world.AddComponent<ECS::RigidbodyComponent>(entity);
+			if (value.contains("velocity")) rigidbody.velocity = ReadVec3(value.at("velocity"));
+			if (value.contains("acceleration")) rigidbody.acceleration = ReadVec3(value.at("acceleration"));
+			rigidbody.mass = value.value("mass", rigidbody.mass);
+			rigidbody.useGravity = value.value("useGravity", rigidbody.useGravity);
+			rigidbody.freezeRotation = value.value("freezeRotation", rigidbody.freezeRotation);
+		}
+
+		void DeserializeCollider(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& collider = world.AddComponent<ECS::ColliderComponent>(entity);
+			collider.type = ReadColliderType(value.at("type").get<std::string>());
+			if (value.contains("halfExtents")) collider.halfExtents = ReadVec3(value.at("halfExtents"));
+			collider.radius = value.value("radius", collider.radius);
+			if (value.contains("offset")) collider.offset = ReadVec3(value.at("offset"));
+		}
+
+		void DeserializePlayerController(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& controller = world.AddComponent<ECS::PlayerControllerComponent>(entity);
+			controller.moveSpeed = value.value("moveSpeed", controller.moveSpeed);
+			controller.jumpSpeed = value.value("jumpSpeed", controller.jumpSpeed);
+		}
+
 		void DeserializePrimitiveControl(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
 		{
 			auto& control = world.AddComponent<ECS::PrimitiveControlComponent>(entity);
@@ -329,6 +393,16 @@ namespace NeneEngine
 			if (primitiveControl != nullptr)
 				entityJson["components"]["PrimitiveControlComponent"] = SerializePrimitiveControl(*primitiveControl);
 
+			const auto* rigidbody = world.GetRegistry().try_get<ECS::RigidbodyComponent>(entity);
+			if (rigidbody != nullptr) entityJson["components"]["RigidbodyComponent"] = SerializeRigidbody(*rigidbody);
+
+			const auto* collider = world.GetRegistry().try_get<ECS::ColliderComponent>(entity);
+			if (collider != nullptr) entityJson["components"]["ColliderComponent"] = SerializeCollider(*collider);
+
+			const auto* playerController = world.GetRegistry().try_get<ECS::PlayerControllerComponent>(entity);
+			if (playerController != nullptr)
+				entityJson["components"]["PlayerControllerComponent"] = SerializePlayerController(*playerController);
+
 			sceneJson["entities"].push_back(std::move(entityJson));
 		}
 
@@ -377,6 +451,12 @@ namespace NeneEngine
 				DeserializeMovement(components.at("MovementComponent"), world, entity);
 			if (components.contains("PrimitiveControlComponent"))
 				DeserializePrimitiveControl(components.at("PrimitiveControlComponent"), world, entity);
+			if (components.contains("RigidbodyComponent"))
+				DeserializeRigidbody(components.at("RigidbodyComponent"), world, entity);
+			if (components.contains("ColliderComponent"))
+				DeserializeCollider(components.at("ColliderComponent"), world, entity);
+			if (components.contains("PlayerControllerComponent"))
+				DeserializePlayerController(components.at("PlayerControllerComponent"), world, entity);
 		}
 	}
 

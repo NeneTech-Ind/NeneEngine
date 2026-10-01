@@ -238,6 +238,382 @@
           "children": []
         }
       }
+    },
+    {
+      "id": 6,
+      "components": {
+        "Tag": {
+          "name": "PhysicsGround"
+        },
+        "Transform": {
+          "position": {
+            "x": 0.0,
+            "y": -1.8,
+            "z": -2.0
+          },
+          "rotation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 1.0
+          },
+          "scale": {
+            "x": 20.0,
+            "y": 1.0,
+            "z": 15.0
+          }
+        },
+        "MeshRenderer": {
+          "primitiveType": "Cube",
+          "visible": true,
+          "material": {
+            "tint": {
+              "x": 0.45,
+              "y": 0.45,
+              "z": 0.5,
+              "w": 1.0
+            }
+          }
+        },
+        "ColliderComponent": {
+          "type": "Box",
+          "halfExtents": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "radius": 0.5,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "components": {
+        "Tag": {
+          "name": "PhysicsObstacle"
+        },
+        "Transform": {
+          "position": {
+            "x": -3.5,
+            "y": -1.0,
+            "z": -2.0
+          },
+          "rotation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 1.0
+          },
+          "scale": {
+            "x": 1.5,
+            "y": 1.0,
+            "z": 1.5
+          }
+        },
+        "MeshRenderer": {
+          "primitiveType": "Cube",
+          "visible": true,
+          "material": {
+            "tint": {
+              "x": 0.3,
+              "y": 0.45,
+              "z": 0.9,
+              "w": 1.0
+            }
+          }
+        },
+        "ColliderComponent": {
+          "type": "Box",
+          "halfExtents": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "radius": 0.5,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "components": {
+        "Tag": {
+          "name": "PhysicsCubeA"
+        },
+        "Transform": {
+          "position": {
+            "x": 3.0,
+            "y": 2.0,
+            "z": -1.0
+          },
+          "rotation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 1.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "MeshRenderer": {
+          "primitiveType": "Cube",
+          "visible": true,
+          "material": {
+            "tint": {
+              "x": 1.0,
+              "y": 0.55,
+              "z": 0.2,
+              "w": 1.0
+            }
+          }
+        },
+        "ColliderComponent": {
+          "type": "Box",
+          "halfExtents": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "radius": 0.5,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "RigidbodyComponent": {
+          "velocity": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "acceleration": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "mass": 1.0,
+          "useGravity": true,
+          "freezeRotation": false
+        }
+      }
+    },
+    {
+      "id": 9,
+      "components": {
+        "Tag": {
+          "name": "PhysicsCubeB"
+        },
+        "Transform": {
+          "position": {
+            "x": 3.3,
+            "y": 3.5,
+            "z": -1.0
+          },
+          "rotation": {
+            "x": 0.14048,
+            "y": 0.0,
+            "z": 0.14048,
+            "w": 0.980067
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "MeshRenderer": {
+          "primitiveType": "Cube",
+          "visible": true,
+          "material": {
+            "tint": {
+              "x": 0.9,
+              "y": 0.3,
+              "z": 0.6,
+              "w": 1.0
+            }
+          }
+        },
+        "ColliderComponent": {
+          "type": "Box",
+          "halfExtents": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "radius": 0.5,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "RigidbodyComponent": {
+          "velocity": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "acceleration": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "mass": 1.0,
+          "useGravity": true,
+          "freezeRotation": false
+        }
+      }
+    },
+    {
+      "id": 10,
+      "components": {
+        "Tag": {
+          "name": "PhysicsCubeC"
+        },
+        "Transform": {
+          "position": {
+            "x": 4.2,
+            "y": 5.0,
+            "z": -1.2
+          },
+          "rotation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 1.0
+          },
+          "scale": {
+            "x": 1.3,
+            "y": 1.3,
+            "z": 1.3
+          }
+        },
+        "MeshRenderer": {
+          "primitiveType": "Cube",
+          "visible": true,
+          "material": {
+            "tint": {
+              "x": 0.6,
+              "y": 0.9,
+              "z": 0.3,
+              "w": 1.0
+            }
+          }
+        },
+        "ColliderComponent": {
+          "type": "Box",
+          "halfExtents": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "radius": 0.5,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "RigidbodyComponent": {
+          "velocity": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "acceleration": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "mass": 3.0,
+          "useGravity": true,
+          "freezeRotation": false
+        }
+      }
+    },
+    {
+      "id": 11,
+      "components": {
+        "Tag": {
+          "name": "PlayerCube"
+        },
+        "Transform": {
+          "position": {
+            "x": 0.0,
+            "y": 0.5,
+            "z": -2.0
+          },
+          "rotation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 1.0
+          },
+          "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          }
+        },
+        "MeshRenderer": {
+          "primitiveType": "Cube",
+          "visible": true,
+          "material": {
+            "tint": {
+              "x": 0.2,
+              "y": 0.9,
+              "z": 0.95,
+              "w": 1.0
+            }
+          }
+        },
+        "ColliderComponent": {
+          "type": "Box",
+          "halfExtents": {
+            "x": 0.4,
+            "y": 0.4,
+            "z": 0.4
+          },
+          "radius": 0.5,
+          "offset": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "RigidbodyComponent": {
+          "velocity": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "acceleration": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "mass": 1.0,
+          "useGravity": true,
+          "freezeRotation": true
+        },
+        "PlayerControllerComponent": {
+          "moveSpeed": 4.0,
+          "jumpSpeed": 5.0
+        }
+      }
     }
   ]
 }

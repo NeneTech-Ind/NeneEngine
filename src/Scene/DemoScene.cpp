@@ -6,10 +6,13 @@
 #include "Core/PathResolver.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
+#include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/MovementComponent.h"
+#include "ECS/Components/PlayerControllerComponent.h"
 #include "ECS/Components/PrimitiveControlComponent.h"
+#include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "Scene/SceneConfig.h"
 #include "Scene/SceneSerializer.h"
@@ -33,6 +36,50 @@ namespace NeneEngine::DemoScene
 			renderer.tint = tint;
 
 			return entity;
+		}
+
+		// The built-in Cube primitive spans -0.4..0.4 on every axis.
+		constexpr glm::vec3 kCubePrimitiveHalfExtents{0.4f, 0.4f, 0.4f};
+
+		ECS::Entity CreatePhysicsCube(ECS::World& world, std::string_view name, const glm::vec3& position,
+		                              const glm::vec3& scale, const glm::vec4& tint, bool isDynamic)
+		{
+			const ECS::Entity entity = CreatePrimitiveEntity(world, name, PrimitiveType::Cube, position, scale, tint);
+
+			auto& collider = world.AddComponent<ECS::ColliderComponent>(entity);
+			collider.type = ECS::ColliderType::Box;
+			collider.halfExtents = kCubePrimitiveHalfExtents;
+
+			if (isDynamic) world.AddComponent<ECS::RigidbodyComponent>(entity);
+			return entity;
+		}
+
+		void CreatePhysicsDemo(ECS::World& world)
+		{
+			// Static colliders (no Rigidbody): the ground plane and an obstacle.
+			CreatePhysicsCube(world, "PhysicsGround", {0.0f, -1.8f, -2.0f}, {20.0f, 1.0f, 15.0f},
+			                  {0.45f, 0.45f, 0.5f, 1.0f}, false);
+			CreatePhysicsCube(world, "PhysicsObstacle", {-3.5f, -1.0f, -2.0f}, {1.5f, 1.0f, 1.5f},
+			                  {0.3f, 0.45f, 0.9f, 1.0f}, false);
+
+			// Dynamic bodies fall under gravity and settle on the ground.
+			CreatePhysicsCube(world, "PhysicsCubeA", {3.0f, 2.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.55f, 0.2f, 1.0f},
+			                  true);
+
+			const ECS::Entity tiltedCube = CreatePhysicsCube(world, "PhysicsCubeB", {3.3f, 3.5f, -1.0f},
+			                                                 {1.0f, 1.0f, 1.0f}, {0.9f, 0.3f, 0.6f, 1.0f}, true);
+			world.GetComponent<ECS::TransformComponent>(tiltedCube)->rotation =
+			    glm::angleAxis(0.4f, glm::normalize(glm::vec3{1.0f, 0.0f, 1.0f}));
+
+			const ECS::Entity heavyCube = CreatePhysicsCube(world, "PhysicsCubeC", {4.2f, 5.0f, -1.2f},
+			                                                {1.3f, 1.3f, 1.3f}, {0.6f, 0.9f, 0.3f, 1.0f}, true);
+			world.GetComponent<ECS::RigidbodyComponent>(heavyCube)->mass = 3.0f;
+
+			// Player-controlled body: arrows move it, Enter jumps.
+			const ECS::Entity player = CreatePhysicsCube(world, "PlayerCube", {0.0f, 0.5f, -2.0f}, {1.0f, 1.0f, 1.0f},
+			                                             {0.2f, 0.9f, 0.95f, 1.0f}, true);
+			world.GetComponent<ECS::RigidbodyComponent>(player)->freezeRotation = true;
+			world.AddComponent<ECS::PlayerControllerComponent>(player);
 		}
 
 		void SaveDefaultScene(ECS::World& world, uint32_t width, uint32_t height, const std::filesystem::path& scenePath)
@@ -106,6 +153,8 @@ namespace NeneEngine::DemoScene
 
 		auto& cubeHierarchy = world.AddComponent<ECS::HierarchyComponent>(sceneCube);
 		cubeHierarchy.parent = movingQuad;
+
+		CreatePhysicsDemo(world);
 	}
 
 	void LoadOrCreate(ECS::World& world, uint32_t width, uint32_t height, const std::filesystem::path& scenePath,
