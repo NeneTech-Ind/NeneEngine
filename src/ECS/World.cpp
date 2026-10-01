@@ -22,7 +22,7 @@ namespace NeneEngine::ECS
 		if (m_registry.valid(entity)) m_registry.destroy(entity);
 	}
 
-	void World::AddSystem(std::unique_ptr<ISystem> system)
+	void World::AddSystem(eastl::unique_ptr<ISystem> system)
 	{
 		m_systems.push_back(std::move(system));
 	}

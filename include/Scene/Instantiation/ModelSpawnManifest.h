@@ -1,8 +1,8 @@
 #pragma once
 
+#include <EASTL/vector.h>
 #include <filesystem>
 #include <string>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -17,7 +17,7 @@ namespace NeneEngine
 
 	struct ModelSpawnManifestConfig
 	{
-		std::vector<ModelSpawnEntryConfig> models;
+		eastl::vector<ModelSpawnEntryConfig> models;
 	};
 
 	[[nodiscard]] ModelSpawnManifestConfig LoadModelSpawnManifest(const std::filesystem::path& configPath);

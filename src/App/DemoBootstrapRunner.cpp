@@ -7,7 +7,7 @@
 
 namespace NeneEngine
 {
-	void RunDemoBootstrap(ECS::World& world, std::span<IRenderAdapter* const> renderers)
+	void RunDemoBootstrap(ECS::World& world, eastl::span<IRenderAdapter* const> renderers)
 	{
 		if (renderers.empty())
 		{

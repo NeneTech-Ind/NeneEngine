@@ -4,14 +4,14 @@
 
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
-#include <unordered_map>
+#include <EASTL/unordered_map.h>
 
 namespace NeneEngine::ECS
 {
 
 	struct MeshRenderRuntimeComponent
 	{
-		std::unordered_map<uintptr_t, MeshRenderRuntimeBinding> bindingsByRenderer;
+		eastl::unordered_map<uintptr_t, MeshRenderRuntimeBinding> bindingsByRenderer;
 	};
 
 } // namespace NeneEngine::ECS

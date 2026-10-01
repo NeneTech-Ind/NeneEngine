@@ -2,14 +2,14 @@
 
 #pragma once
 
-#include <algorithm>
+#include <EASTL/algorithm.h>
+#include <EASTL/functional.h>
+#include <EASTL/vector.h>
 #include <atomic>
 #include <cstdint>
-#include <functional>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -49,7 +49,7 @@ namespace NeneEngine
 	template <typename RetVal, typename... Args> class Delegate
 	{
 	  public:
-		using Callback = std::function<RetVal(Args...)>;
+		using Callback = eastl::function<RetVal(Args...)>;
 
 		Delegate() = default;
 		explicit Delegate(Callback callback) : m_callback(std::move(callback)) {}
@@ -102,7 +102,7 @@ namespace NeneEngine
 	template <typename... Args> class MulticastDelegate
 	{
 	  public:
-		using Callback = std::function<void(Args...)>;
+		using Callback = eastl::function<void(Args...)>;
 
 		[[nodiscard]] DelegateHandle Add(Callback callback)
 		{
@@ -163,14 +163,15 @@ namespace NeneEngine
 		{
 			if (!handle.IsValid()) return false;
 
-			return std::any_of(m_listeners.begin(), m_listeners.end(), [handle](const Listener& listener)
-			                   { return !listener.pendingRemove && listener.handle == handle; });
+			return eastl::any_of(m_listeners.begin(), m_listeners.end(), [handle](const Listener& listener)
+			                     { return !listener.pendingRemove && listener.handle == handle; });
 		}
 
 		[[nodiscard]] size_t GetSize() const
 		{
-			return static_cast<size_t>(std::count_if(m_listeners.begin(), m_listeners.end(),
-			                                         [](const Listener& listener) { return !listener.pendingRemove; }));
+			return static_cast<size_t>(eastl::count_if(m_listeners.begin(), m_listeners.end(),
+			                                           [](const Listener& listener)
+			                                           { return !listener.pendingRemove; }));
 		}
 
 		void Broadcast(Args... args)
@@ -202,10 +203,10 @@ namespace NeneEngine
 
 		void Compact()
 		{
-			std::erase_if(m_listeners, [](const Listener& listener) { return listener.pendingRemove; });
+			eastl::erase_if(m_listeners, [](const Listener& listener) { return listener.pendingRemove; });
 		}
 
-		std::vector<Listener> m_listeners;
+		eastl::vector<Listener> m_listeners;
 		uint32_t m_broadcastDepth = 0;
 	};
 

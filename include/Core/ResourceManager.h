@@ -3,15 +3,16 @@
 #pragma once
 
 #include "Core/CustomLogger.h"
+#include "Core/EASTLStdHash.h"
 #include "Core/Resource.h"
 
-#include <any>
-#include <functional>
-#include <memory>
+#include <EASTL/any.h>
+#include <EASTL/functional.h>
+#include <EASTL/shared_ptr.h>
+#include <EASTL/unordered_map.h>
 #include <mutex>
 #include <string>
 #include <typeindex>
-#include <unordered_map>
 
 namespace NeneEngine
 {
@@ -19,9 +20,9 @@ namespace NeneEngine
 	class ResourceManager final
 	{
 	  public:
-		template <typename T> using ResourcePtr = std::shared_ptr<Resource<T>>;
+		template <typename T> using ResourcePtr = eastl::shared_ptr<Resource<T>>;
 
-		template <typename T> using LoaderFn = std::function<T(const std::string&)>;
+		template <typename T> using LoaderFn = eastl::function<T(const std::string&)>;
 
 		static ResourceManager& GetInstance();
 
@@ -52,7 +53,7 @@ namespace NeneEngine
 
 			try
 			{
-				auto resource = std::make_shared<Resource<T>>(path, (*loader)(path));
+				auto resource = eastl::make_shared<Resource<T>>(path, (*loader)(path));
 				cache.emplace(path, resource);
 				NENE_LOG_INFO("ResourceManager: loaded '{}' ({})", path, typeid(T).name());
 				return resource;
@@ -76,7 +77,7 @@ namespace NeneEngine
 	  private:
 		ResourceManager() = default;
 
-		template <typename T> using CacheMap = std::unordered_map<std::string, ResourcePtr<T>>;
+		template <typename T> using CacheMap = eastl::unordered_map<std::string, ResourcePtr<T>>;
 
 		template <typename T> CacheMap<T>& GetOrCreateCache()
 		{
@@ -84,7 +85,7 @@ namespace NeneEngine
 			auto cacheIt = m_resourceCaches.find(type);
 			if (cacheIt == m_resourceCaches.end()) cacheIt = m_resourceCaches.emplace(type, CacheMap<T>{}).first;
 
-			return *std::any_cast<CacheMap<T>>(&cacheIt->second);
+			return *eastl::any_cast<CacheMap<T>>(&cacheIt->second);
 		}
 
 		template <typename T> LoaderFn<T>* GetLoader()
@@ -92,13 +93,13 @@ namespace NeneEngine
 			const auto loaderIt = m_loaders.find(std::type_index(typeid(T)));
 			if (loaderIt == m_loaders.end()) return nullptr;
 
-			return std::any_cast<LoaderFn<T>>(&loaderIt->second);
+			return eastl::any_cast<LoaderFn<T>>(&loaderIt->second);
 		}
 
 		std::mutex m_mutex;
 		// Type-erased registries keep the public API templated while storing one typed loader/cache per resource type.
-		std::unordered_map<std::type_index, std::any> m_loaders;
-		std::unordered_map<std::type_index, std::any> m_resourceCaches;
+		eastl::unordered_map<std::type_index, eastl::any> m_loaders;
+		eastl::unordered_map<std::type_index, eastl::any> m_resourceCaches;
 	};
 
 } // namespace NeneEngine

@@ -2,12 +2,12 @@
 
 #pragma once
 
+#include <EASTL/unordered_map.h>
+#include <EASTL/vector.h>
 #include <compare>
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -71,8 +71,8 @@ namespace NeneEngine
 
 	struct MeshData
 	{
-		std::vector<Vertex> vertices;
-		std::vector<uint32_t> indices;
+		eastl::vector<Vertex> vertices;
+		eastl::vector<uint32_t> indices;
 	};
 
 	struct GPUMesh
@@ -142,7 +142,7 @@ namespace NeneEngine
 	struct Mesh
 	{
 		MeshData data;
-		std::unordered_map<uintptr_t, GPUMesh> gpuMeshesByRenderer;
+		eastl::unordered_map<uintptr_t, GPUMesh> gpuMeshesByRenderer;
 	};
 
 	struct Material

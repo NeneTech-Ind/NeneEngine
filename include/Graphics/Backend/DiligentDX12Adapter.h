@@ -14,9 +14,9 @@
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Texture.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/TextureView.h"
 
+#include <EASTL/unordered_map.h>
+#include <EASTL/vector.h>
 #include <array>
-#include <unordered_map>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -85,7 +85,7 @@ namespace NeneEngine
 			Diligent::RefCntAutoPtr<Diligent::IPipelineState> nearestWrapPipelineState;
 			Diligent::RefCntAutoPtr<Diligent::IPipelineState> linearClampPipelineState;
 			Diligent::RefCntAutoPtr<Diligent::IPipelineState> nearestClampPipelineState;
-			std::unordered_map<uint32_t, Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding>> srbsByTexture;
+			eastl::unordered_map<uint32_t, Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding>> srbsByTexture;
 		};
 
 		Diligent::RefCntAutoPtr<Diligent::IRenderDevice> m_pDevice;
@@ -98,11 +98,11 @@ namespace NeneEngine
 		Diligent::RefCntAutoPtr<Diligent::IPipelineState> m_pMeshPSO;
 		Diligent::RefCntAutoPtr<Diligent::IBuffer> m_pMeshConstantBuffer;
 		Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pMeshSRB;
-		std::vector<RenderItem> m_renderQueue;
-		std::unordered_map<uint32_t, UploadedBuffer> m_uploadedBuffers;
-		std::unordered_map<uint32_t, UploadedMeshBuffers> m_uploadedMeshes;
-		std::unordered_map<uint32_t, UploadedTexture> m_uploadedTextures;
-		std::unordered_map<uint32_t, UploadedShaderProgram> m_uploadedShaderPrograms;
+		eastl::vector<RenderItem> m_renderQueue;
+		eastl::unordered_map<uint32_t, UploadedBuffer> m_uploadedBuffers;
+		eastl::unordered_map<uint32_t, UploadedMeshBuffers> m_uploadedMeshes;
+		eastl::unordered_map<uint32_t, UploadedTexture> m_uploadedTextures;
+		eastl::unordered_map<uint32_t, UploadedShaderProgram> m_uploadedShaderPrograms;
 		glm::vec4 m_clearColor{0.1f, 0.1f, 0.2f, 1.0f};
 		uint32_t m_nextBufferId = 1;
 		uint32_t m_nextMeshId = 1;

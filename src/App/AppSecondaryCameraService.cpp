@@ -9,10 +9,12 @@
 
 namespace NeneEngine
 {
-	std::vector<ECS::Entity> AppSecondaryCameraService::CreateAdditionalWindowCameras(
-	    ECS::World& world, ECS::Entity primaryCameraEntity, size_t count, uint32_t width, uint32_t height) const
+	eastl::vector<ECS::Entity> AppSecondaryCameraService::CreateAdditionalWindowCameras(ECS::World& world,
+	                                                                                    ECS::Entity primaryCameraEntity,
+	                                                                                    size_t count, uint32_t width,
+	                                                                                    uint32_t height) const
 	{
-		std::vector<ECS::Entity> secondaryCameraEntities;
+		eastl::vector<ECS::Entity> secondaryCameraEntities;
 		secondaryCameraEntities.reserve(count);
 
 		if (primaryCameraEntity == ECS::NullEntity) return secondaryCameraEntities;

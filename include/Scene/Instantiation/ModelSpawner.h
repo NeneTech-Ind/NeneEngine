@@ -2,8 +2,8 @@
 
 #include "Graphics/Runtime/RenderTypes.h"
 
+#include <EASTL/span.h>
 #include <filesystem>
-#include <span>
 
 namespace NeneEngine
 {
@@ -15,7 +15,7 @@ namespace NeneEngine
 	}
 
 	[[nodiscard]] ShaderId CreateTexturedMeshShader(IRenderAdapter& renderer, const std::filesystem::path& shaderPath);
-	void SpawnModelsFromManifest(ECS::World& world, std::span<IRenderAdapter* const> renderers,
+	void SpawnModelsFromManifest(ECS::World& world, eastl::span<IRenderAdapter* const> renderers,
 	                             const std::filesystem::path& shaderPath, const std::filesystem::path& manifestPath);
 
 } // namespace NeneEngine

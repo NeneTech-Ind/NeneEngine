@@ -9,8 +9,8 @@
 #include "ECS/Systems/ISystem.h"
 #include "Input/InputDevice.h"
 
-#include <memory>
-#include <vector>
+#include <EASTL/unique_ptr.h>
+#include <EASTL/vector.h>
 
 namespace NeneEngine
 {
@@ -39,19 +39,19 @@ namespace NeneEngine
 		[[nodiscard]] InputDevice* GetFocusedInput();
 		[[nodiscard]] const InputDevice* GetFocusedInput() const;
 		[[nodiscard]] IRenderAdapter* GetPrimaryRenderer();
-		[[nodiscard]] std::vector<IRenderAdapter*> GetRenderers() const;
+		[[nodiscard]] eastl::vector<IRenderAdapter*> GetRenderers() const;
 
 	  private:
 		bool CreateWindowContext(uint32_t width, uint32_t height, const std::string& title, ECS::Entity cameraEntity,
 		                         bool isMain);
-		void AddAppSystem(std::unique_ptr<ECS::ISystem> system);
+		void AddAppSystem(eastl::unique_ptr<ECS::ISystem> system);
 		void HandleWindowResize(size_t windowIndex, uint32_t width, uint32_t height);
 
 		ECS::World* m_world = nullptr;
 		AppSecondaryCameraService m_secondaryCameraService;
 		AppWindowContextFactory m_windowContextFactory;
-		std::vector<AppWindowContext> m_windows;
-		std::vector<std::unique_ptr<ECS::ISystem>> m_appSystems;
+		eastl::vector<AppWindowContext> m_windows;
+		eastl::vector<eastl::unique_ptr<ECS::ISystem>> m_appSystems;
 	};
 
 } // namespace NeneEngine

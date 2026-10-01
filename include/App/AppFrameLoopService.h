@@ -4,8 +4,8 @@
 
 #include "App/AppConfig.h"
 
+#include <EASTL/functional.h>
 #include <atomic>
-#include <functional>
 
 class GameTimer;
 
@@ -20,8 +20,8 @@ namespace NeneEngine
 	class AppFrameLoopService final
 	{
 	  public:
-		using ApplyConfigCallback = std::function<void(const AppConfig&)>;
-		using FocusedInputCallback = std::function<InputDevice*()>;
+		using ApplyConfigCallback = eastl::function<void(const AppConfig&)>;
+		using FocusedInputCallback = eastl::function<InputDevice*()>;
 
 		void Run(std::atomic<bool>& running, const std::atomic<bool>& isPaused, GameTimer& timer,
 		         GameStateMachine& gameStateMachine, InputManager& inputManager,

@@ -110,7 +110,7 @@ namespace NeneEngine
 		return meshData;
 	}
 
-	std::vector<MeshPart> LoadMeshPartsFromFile(const std::string& path)
+	eastl::vector<MeshPart> LoadMeshPartsFromFile(const std::string& path)
 	{
 		const std::filesystem::path modelPath{path};
 		if (!std::filesystem::exists(modelPath)) throw std::runtime_error("Mesh file does not exist: " + path);
@@ -123,7 +123,7 @@ namespace NeneEngine
 
 		if (scene->mNumMeshes == 0) throw std::runtime_error("Assimp loaded scene without meshes: " + path);
 
-		std::vector<MeshPart> meshParts;
+		eastl::vector<MeshPart> meshParts;
 		meshParts.reserve(scene->mNumMeshes);
 
 		for (unsigned meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex)

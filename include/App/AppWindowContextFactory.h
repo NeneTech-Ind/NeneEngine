@@ -4,7 +4,7 @@
 
 #include "App/AppWindowContext.h"
 
-#include <optional>
+#include <EASTL/optional.h>
 
 namespace NeneEngine
 {
@@ -12,8 +12,9 @@ namespace NeneEngine
 	class AppWindowContextFactory final
 	{
 	  public:
-		[[nodiscard]] std::optional<AppWindowContext> Create(uint32_t width, uint32_t height, const std::string& title,
-		                                                     ECS::Entity cameraEntity, bool isMain) const;
+		[[nodiscard]] eastl::optional<AppWindowContext> Create(uint32_t width, uint32_t height,
+		                                                       const std::string& title, ECS::Entity cameraEntity,
+		                                                       bool isMain) const;
 	};
 
 } // namespace NeneEngine

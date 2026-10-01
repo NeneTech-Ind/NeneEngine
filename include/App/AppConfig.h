@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Core/EASTLStdHash.h"
 #include "Input/KeyCode.h"
 
+#include <EASTL/unordered_map.h>
+#include <EASTL/vector.h>
 #include <cstdint>
 #include <filesystem>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -27,14 +28,14 @@ namespace NeneEngine
 
 	struct InputConfig
 	{
-		std::unordered_map<std::string, std::vector<KeyCode>> actions{};
+		eastl::unordered_map<std::string, eastl::vector<KeyCode>> actions{};
 	};
 
 	struct AppConfig
 	{
 		WindowConfig window{};
 		InputConfig input{};
-		std::vector<WindowDefinitionConfig> windows{};
+		eastl::vector<WindowDefinitionConfig> windows{};
 	};
 
 	[[nodiscard]] std::filesystem::path DefaultAppConfigPath();

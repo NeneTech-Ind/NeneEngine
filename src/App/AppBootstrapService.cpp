@@ -49,8 +49,8 @@ namespace NeneEngine
 		AppStateContext stateContext{app, world, gameStateMachine};
 		gameStateMachine.PushState(eastl::make_unique<PlayState>(stateContext));
 
-		world.AddSystem(std::make_unique<ECS::MovementSystem>());
-		world.AddSystem(std::make_unique<ECS::CollisionSystem>());
+		world.AddSystem(eastl::make_unique<ECS::MovementSystem>());
+		world.AddSystem(eastl::make_unique<ECS::CollisionSystem>());
 		DemoScene::LoadOrCreate(world, width, height);
 		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::DefaultScenePath().string());
 

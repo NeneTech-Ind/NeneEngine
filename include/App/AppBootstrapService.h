@@ -4,8 +4,8 @@
 
 #include "App/AppConfig.h"
 
+#include <EASTL/functional.h>
 #include <cstdint>
-#include <functional>
 #include <string>
 
 namespace NeneEngine
@@ -23,7 +23,7 @@ namespace NeneEngine
 	class AppBootstrapService final
 	{
 	  public:
-		using ApplyConfigCallback = std::function<void(const AppConfig&)>;
+		using ApplyConfigCallback = eastl::function<void(const AppConfig&)>;
 
 		bool Initialize(NeneEngineApp& app, GameStateMachine& gameStateMachine, ECS::World& world,
 		                AppRuntimeConfigService& runtimeConfigService, AppWindowRuntimeService& windowRuntimeService,

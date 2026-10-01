@@ -2,16 +2,16 @@
 
 #include "Input/KeyCodeStrings.h"
 
-#include <array>
-#include <utility>
+#include <EASTL/array.h>
+#include <EASTL/utility.h>
 
 namespace NeneEngine
 {
 	namespace
 	{
-		using KeyCodeNamePair = std::pair<std::string_view, KeyCode>;
+		using KeyCodeNamePair = eastl::pair<std::string_view, KeyCode>;
 
-		constexpr std::array<KeyCodeNamePair, 95> kKeyCodeNames{{
+		constexpr eastl::array<KeyCodeNamePair, 95> kKeyCodeNames{{
 		    {"None", KeyCode::None},
 		    {"MouseLeft", KeyCode::MouseLeft},
 		    {"MouseRight", KeyCode::MouseRight},
@@ -120,14 +120,14 @@ namespace NeneEngine
 		return "Unknown";
 	}
 
-	std::optional<KeyCode> TryParseKeyCode(std::string_view value)
+	eastl::optional<KeyCode> TryParseKeyCode(std::string_view value)
 	{
 		for (const auto& [name, keyCode] : kKeyCodeNames)
 		{
 			if (name == value) return keyCode;
 		}
 
-		return std::nullopt;
+		return eastl::nullopt;
 	}
 
 } // namespace NeneEngine

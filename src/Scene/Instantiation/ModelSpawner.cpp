@@ -12,10 +12,10 @@
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 #include "Graphics/Runtime/MeshRenderBinding.h"
 
+#include <EASTL/vector.h>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
 #include <sstream>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -145,14 +145,14 @@ namespace NeneEngine
 		return gpuShader.shaderId;
 	}
 
-	void SpawnModelsFromManifest(ECS::World& world, std::span<IRenderAdapter* const> renderers,
+	void SpawnModelsFromManifest(ECS::World& world, eastl::span<IRenderAdapter* const> renderers,
 	                             const std::filesystem::path& shaderPath, const std::filesystem::path& manifestPath)
 	{
 		if (renderers.empty()) return;
 
-		std::vector<IRenderAdapter*> validRenderers;
+		eastl::vector<IRenderAdapter*> validRenderers;
 		validRenderers.reserve(renderers.size());
-		std::vector<ShaderId> shaderIds;
+		eastl::vector<ShaderId> shaderIds;
 		shaderIds.reserve(renderers.size());
 		for (IRenderAdapter* renderer : renderers)
 		{
@@ -219,7 +219,7 @@ namespace NeneEngine
 			}
 
 			const auto modelDirectory = meshPath.parent_path();
-			const std::vector<MeshPart> meshParts = LoadMeshPartsFromFile(meshPath.string());
+			const eastl::vector<MeshPart> meshParts = LoadMeshPartsFromFile(meshPath.string());
 			for (size_t meshPartIndex = 0; meshPartIndex < meshParts.size(); ++meshPartIndex)
 			{
 				const MeshPart& meshPart = meshParts[meshPartIndex];

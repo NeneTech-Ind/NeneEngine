@@ -4,9 +4,9 @@
 
 #include "Graphics/Runtime/RenderTypes.h"
 
+#include <EASTL/vector.h>
 #include <filesystem>
 #include <string>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -19,7 +19,7 @@ namespace NeneEngine
 	};
 
 	MeshData LoadMeshDataFromFile(const std::string& path);
-	std::vector<MeshPart> LoadMeshPartsFromFile(const std::string& path);
+	eastl::vector<MeshPart> LoadMeshPartsFromFile(const std::string& path);
 	Mesh LoadMeshFromFile(const std::string& path);
 
 } // namespace NeneEngine

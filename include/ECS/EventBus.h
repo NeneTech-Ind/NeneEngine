@@ -1,10 +1,12 @@
 #pragma once
 
-#include <functional>
+#include "Core/EASTLStdHash.h"
+
+#include <EASTL/functional.h>
+#include <EASTL/unordered_map.h>
+#include <EASTL/vector.h>
 #include <typeindex>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 namespace NeneEngine::ECS
 {
@@ -33,9 +35,9 @@ namespace NeneEngine::ECS
 		void Clear() { m_subscribers.clear(); }
 
 	  private:
-		using UntypedSubscriber = std::function<void(const void*)>;
+		using UntypedSubscriber = eastl::function<void(const void*)>;
 
-		std::unordered_map<std::type_index, std::vector<UntypedSubscriber>> m_subscribers;
+		eastl::unordered_map<std::type_index, eastl::vector<UntypedSubscriber>> m_subscribers;
 	};
 
 } // namespace NeneEngine::ECS

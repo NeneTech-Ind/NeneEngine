@@ -6,11 +6,11 @@
 #include "Entity.h"
 #include "Systems/ISystem.h"
 
+#include <EASTL/unique_ptr.h>
+#include <EASTL/vector.h>
 #include <entt/entt.hpp>
-#include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 namespace NeneEngine::ECS
 {
@@ -44,7 +44,7 @@ namespace NeneEngine::ECS
 		template <typename Component> void RemoveComponent(Entity entity) { m_registry.remove<Component>(entity); }
 
 		// ===== Systems =====
-		void AddSystem(std::unique_ptr<ISystem> system);
+		void AddSystem(eastl::unique_ptr<ISystem> system);
 
 		// ===== Update / Render =====
 		void Update(float deltaTime);
@@ -59,7 +59,7 @@ namespace NeneEngine::ECS
 	  private:
 		EventBus m_eventBus;
 		entt::registry m_registry;
-		std::vector<std::unique_ptr<ISystem>> m_systems;
+		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
 	};
 
 } // namespace NeneEngine::ECS
