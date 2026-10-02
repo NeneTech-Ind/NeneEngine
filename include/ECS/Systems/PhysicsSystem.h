@@ -4,7 +4,7 @@
 
 #include "ECS/Systems/ISystem.h"
 
-#include <memory>
+#include <EASTL/unique_ptr.h>
 
 namespace NeneEngine::ECS
 {
@@ -28,7 +28,7 @@ namespace NeneEngine::ECS
 
 	  private:
 		struct Impl;
-		std::unique_ptr<Impl> m_impl;
+		eastl::unique_ptr<Impl> m_impl;
 	};
 
 } // namespace NeneEngine::ECS

@@ -32,9 +32,9 @@
 #include <mutex>
 #include <thread>
 #include <type_traits>
-#include <unordered_map>
-#include <utility>
-#include <vector>
+#include <EASTL/unordered_map.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
 
 namespace NeneEngine::ECS
 {
@@ -285,10 +285,10 @@ namespace NeneEngine::ECS
 				m_changes.push_back(change);
 			}
 
-			std::vector<ContactChange> TakeChanges()
+			eastl::vector<ContactChange> TakeChanges()
 			{
 				std::lock_guard lock(m_mutex);
-				return std::exchange(m_changes, {});
+				return eastl::exchange(m_changes, {});
 			}
 
 		  private:
@@ -310,7 +310,7 @@ namespace NeneEngine::ECS
 			}
 
 			std::mutex m_mutex;
-			std::vector<ContactChange> m_changes;
+			eastl::vector<ContactChange> m_changes;
 		};
 
 		int g_joltUserCount = 0;
@@ -355,9 +355,9 @@ namespace NeneEngine::ECS
 		                                   static_cast<int>((std::max)(1u, std::thread::hardware_concurrency()) - 1)};
 		JPH::PhysicsSystem physicsSystem;
 
-		std::unordered_map<Entity, BodyRecord> bodies;
-		std::unordered_map<JPH::uint64, ContactRecord> contacts;
-		std::vector<CollisionEvent> pendingEvents;
+		eastl::unordered_map<Entity, BodyRecord> bodies;
+		eastl::unordered_map<JPH::uint64, ContactRecord> contacts;
+		eastl::vector<CollisionEvent> pendingEvents;
 		float accumulator = 0.0f;
 
 		Impl()
@@ -379,7 +379,7 @@ namespace NeneEngine::ECS
 		{
 			Bodies().RemoveBody(bodyId);
 			Bodies().DestroyBody(bodyId);
-			std::erase_if(contacts, [&bodyId](const auto& entry)
+			eastl::erase_if(contacts, [&bodyId](const auto& entry)
 			              { return entry.second.body1 == bodyId || entry.second.body2 == bodyId; });
 		}
 
@@ -580,7 +580,7 @@ namespace NeneEngine::ECS
 
 		void PublishPendingEvents(World& world)
 		{
-			const std::vector<CollisionEvent> events = std::exchange(pendingEvents, {});
+			const eastl::vector<CollisionEvent> events = eastl::exchange(pendingEvents, {});
 			for (const CollisionEvent& event : events)
 			{
 				if (!world.GetRegistry().valid(event.entityA) || !world.GetRegistry().valid(event.entityB)) continue;
@@ -592,7 +592,7 @@ namespace NeneEngine::ECS
 	PhysicsSystem::PhysicsSystem()
 	{
 		AcquireJolt();
-		m_impl = std::make_unique<Impl>();
+		m_impl = eastl::make_unique<Impl>();
 	}
 
 	PhysicsSystem::~PhysicsSystem()
