@@ -3,41 +3,38 @@
 
 #include <windowsx.h>
 
-namespace
-{
-	constexpr wchar_t kWindowClassName[] = L"NeneEngineWindowClass";
-
-	HICON LoadAppIcon(int systemMetric)
-	{
-		return static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON,
-		                                     GetSystemMetrics(systemMetric), GetSystemMetrics(systemMetric),
-		                                     LR_DEFAULTCOLOR));
-	}
-
-	ATOM EnsureWindowClassRegistered()
-	{
-		static ATOM atom = []()
-		{
-			WNDCLASSEXW windowClass{};
-			windowClass.cbSize = sizeof(windowClass);
-			windowClass.style = CS_HREDRAW | CS_VREDRAW;
-			windowClass.lpfnWndProc = NeneEngine::Win32Window::WndProc;
-			windowClass.hInstance = GetModuleHandleW(nullptr);
-			windowClass.hIcon = LoadAppIcon(SM_CXICON);
-			windowClass.hIconSm = LoadAppIcon(SM_CXSMICON);
-			windowClass.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
-			windowClass.lpszClassName = kWindowClassName;
-			return RegisterClassExW(&windowClass);
-		}();
-
-		return atom;
-	}
-} // namespace
-
 namespace NeneEngine
 {
 	namespace
 	{
+		constexpr wchar_t kWindowClassName[] = L"NeneEngineWindowClass";
+
+		HICON LoadAppIcon(int systemMetric)
+		{
+			return static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON,
+			                                     GetSystemMetrics(systemMetric), GetSystemMetrics(systemMetric),
+			                                     LR_DEFAULTCOLOR));
+		}
+
+		ATOM EnsureWindowClassRegistered()
+		{
+			static ATOM atom = []()
+			{
+				WNDCLASSEXW windowClass{};
+				windowClass.cbSize = sizeof(windowClass);
+				windowClass.style = CS_HREDRAW | CS_VREDRAW;
+				windowClass.lpfnWndProc = Win32Window::WndProc;
+				windowClass.hInstance = GetModuleHandleW(nullptr);
+				windowClass.hIcon = LoadAppIcon(SM_CXICON);
+				windowClass.hIconSm = LoadAppIcon(SM_CXSMICON);
+				windowClass.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
+				windowClass.lpszClassName = kWindowClassName;
+				return RegisterClassExW(&windowClass);
+			}();
+
+			return atom;
+		}
+
 		std::wstring ToWideString(const std::string& value)
 		{
 			if (value.empty()) return {};
