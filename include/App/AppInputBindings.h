@@ -1,4 +1,4 @@
-// AppInputBindingUtils.h
+// AppInputBindings.h
 
 #pragma once
 

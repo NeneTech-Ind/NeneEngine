@@ -3,7 +3,7 @@
 #pragma once
 
 #include "App/AppConfig.h"
-#include "App/AppSecondaryCameraService.h"
+#include "App/AppSecondaryCameraFactory.h"
 #include "App/AppWindowContext.h"
 #include "App/AppWindowContextFactory.h"
 #include "ECS/Systems/ISystem.h"
@@ -48,7 +48,7 @@ namespace NeneEngine
 		void HandleWindowResize(size_t windowIndex, uint32_t width, uint32_t height);
 
 		ECS::World* m_world = nullptr;
-		AppSecondaryCameraService m_secondaryCameraService;
+		AppSecondaryCameraFactory m_secondaryCameraFactory;
 		AppWindowContextFactory m_windowContextFactory;
 		eastl::vector<AppWindowContext> m_windows;
 		eastl::vector<eastl::unique_ptr<ECS::ISystem>> m_appSystems;

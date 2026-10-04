@@ -1,6 +1,6 @@
-// AppInputBindingUtils.cpp
+// AppInputBindings.cpp
 
-#include "App/AppInputBindingUtils.h"
+#include "App/AppInputBindings.h"
 
 #include "Core/NeneLogger.h"
 #include "Input/KeyCodeStrings.h"

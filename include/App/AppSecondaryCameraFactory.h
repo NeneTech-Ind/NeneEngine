@@ -1,4 +1,4 @@
-// AppSecondaryCameraService.h
+// AppSecondaryCameraFactory.h
 
 #pragma once
 
@@ -13,7 +13,7 @@ namespace NeneEngine
 		class World;
 	}
 
-	class AppSecondaryCameraService final
+	class AppSecondaryCameraFactory final
 	{
 	  public:
 		[[nodiscard]] eastl::vector<ECS::Entity> CreateAdditionalWindowCameras(ECS::World& world,

@@ -2,7 +2,7 @@
 
 #include "App/NeneEngineApp.h"
 #include "App/AppConfig.h"
-#include "App/AppInputBindingUtils.h"
+#include "App/AppInputBindings.h"
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 

@@ -2,7 +2,7 @@
 
 #include "App/AppWindowRuntimeService.h"
 
-#include "App/AppInputBindingUtils.h"
+#include "App/AppInputBindings.h"
 #include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Systems/CameraControllerSystem.h"
@@ -72,7 +72,7 @@ namespace NeneEngine
 		m_windows.reserve(config.windows.size());
 
 		const auto secondaryCameraEntities =
-		    m_secondaryCameraService.CreateAdditionalWindowCameras(world, primaryCameraEntity, secondaryWindowCount,
+		    m_secondaryCameraFactory.CreateAdditionalWindowCameras(world, primaryCameraEntity, secondaryWindowCount,
 		                                                          width, height);
 
 		const auto rollbackInitialization = [&]()

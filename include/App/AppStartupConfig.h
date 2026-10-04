@@ -6,7 +6,7 @@
 
 namespace NeneEngine
 {
-	struct LoadedAppConfigState
+	struct LoadedAppConfig
 	{
 		AppConfig config{};
 		std::filesystem::path path;
@@ -14,6 +14,6 @@ namespace NeneEngine
 	};
 
 	[[nodiscard]] std::filesystem::path ResolveStartupAppConfigPath();
-	[[nodiscard]] LoadedAppConfigState LoadStartupAppConfigState(const std::filesystem::path& configPath);
-	[[nodiscard]] LoadedAppConfigState LoadStartupAppConfigState();
+	[[nodiscard]] LoadedAppConfig LoadStartupAppConfig(const std::filesystem::path& configPath);
+	[[nodiscard]] LoadedAppConfig LoadStartupAppConfig();
 } // namespace NeneEngine

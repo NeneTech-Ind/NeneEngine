@@ -1,6 +1,6 @@
-// AppSecondaryCameraService.cpp
+// AppSecondaryCameraFactory.cpp
 
-#include "App/AppSecondaryCameraService.h"
+#include "App/AppSecondaryCameraFactory.h"
 
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
@@ -9,7 +9,7 @@
 
 namespace NeneEngine
 {
-	eastl::vector<ECS::Entity> AppSecondaryCameraService::CreateAdditionalWindowCameras(ECS::World& world,
+	eastl::vector<ECS::Entity> AppSecondaryCameraFactory::CreateAdditionalWindowCameras(ECS::World& world,
 	                                                                                    ECS::Entity primaryCameraEntity,
 	                                                                                    size_t count, uint32_t width,
 	                                                                                    uint32_t height) const

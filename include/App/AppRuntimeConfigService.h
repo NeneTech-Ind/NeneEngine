@@ -3,7 +3,7 @@
 #pragma once
 
 #include "App/AppConfig.h"
-#include "App/AppStartupConfigService.h"
+#include "App/AppStartupConfig.h"
 
 #include <EASTL/functional.h>
 
@@ -16,11 +16,11 @@ namespace NeneEngine
 		using ApplyConfigCallback = eastl::function<void(const AppConfig&)>;
 
 		void LoadStartupConfig();
-		[[nodiscard]] const AppConfig& GetConfig() const { return m_loadedAppConfigState.config; }
+		[[nodiscard]] const AppConfig& GetConfig() const { return m_loadedAppConfig.config; }
 		void Update(float deltaTime, ApplyConfigCallback applyRuntimeConfig);
 
 	  private:
-		LoadedAppConfigState m_loadedAppConfigState{};
+		LoadedAppConfig m_loadedAppConfig{};
 		float m_configReloadAccumulator = 0.0f;
 	};
 

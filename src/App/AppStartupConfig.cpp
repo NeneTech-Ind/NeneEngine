@@ -1,4 +1,4 @@
-#include "App/AppStartupConfigService.h"
+#include "App/AppStartupConfig.h"
 
 #include <filesystem>
 #include <system_error>
@@ -10,9 +10,9 @@ namespace NeneEngine
 		return GetDefaultAppConfigPath();
 	}
 
-	LoadedAppConfigState LoadStartupAppConfigState(const std::filesystem::path& configPath)
+	LoadedAppConfig LoadStartupAppConfig(const std::filesystem::path& configPath)
 	{
-		LoadedAppConfigState state{};
+		LoadedAppConfig state{};
 		state.path = configPath;
 		state.config = LoadAppConfig(state.path);
 
@@ -25,8 +25,8 @@ namespace NeneEngine
 		return state;
 	}
 
-	LoadedAppConfigState LoadStartupAppConfigState()
+	LoadedAppConfig LoadStartupAppConfig()
 	{
-		return LoadStartupAppConfigState(ResolveStartupAppConfigPath());
+		return LoadStartupAppConfig(ResolveStartupAppConfigPath());
 	}
 } // namespace NeneEngine

@@ -17,7 +17,7 @@ namespace NeneEngine
 
 	void AppRuntimeConfigService::LoadStartupConfig()
 	{
-		m_loadedAppConfigState = LoadStartupAppConfigState();
+		m_loadedAppConfig = LoadStartupAppConfig();
 		m_configReloadAccumulator = 0.0f;
 	}
 
@@ -29,7 +29,7 @@ namespace NeneEngine
 		m_configReloadAccumulator = 0.0f;
 
 		const std::filesystem::path resolvedConfigPath = ResolveStartupAppConfigPath();
-		const bool pathChanged = resolvedConfigPath != m_loadedAppConfigState.path;
+		const bool pathChanged = resolvedConfigPath != m_loadedAppConfig.path;
 
 		if (pathChanged)
 		{
@@ -53,12 +53,11 @@ namespace NeneEngine
 			return;
 		}
 
-		if (!pathChanged && currentWriteTime == m_loadedAppConfigState.lastWriteTime) return;
+		if (!pathChanged && currentWriteTime == m_loadedAppConfig.lastWriteTime) return;
 
-		const LoadedAppConfigState resolvedConfigState = LoadStartupAppConfigState(resolvedConfigPath);
+		const LoadedAppConfig resolvedConfig = LoadStartupAppConfig(resolvedConfigPath);
 
-		const auto hotReloadResult =
-		    EvaluateAppConfigHotReload(m_loadedAppConfigState.config, resolvedConfigState.config);
+		const auto hotReloadResult = EvaluateAppConfigHotReload(m_loadedAppConfig.config, resolvedConfig.config);
 		if (hotReloadResult.requiresRestart)
 		{
 			NENE_LOG_WARN("App config hot-reload: window definitions changed, but window creation, resizing, titles, "
@@ -66,10 +65,10 @@ namespace NeneEngine
 		}
 
 		applyRuntimeConfig(hotReloadResult.runtimeAppliedConfig);
-		m_loadedAppConfigState = resolvedConfigState;
+		m_loadedAppConfig = resolvedConfig;
 
 		NENE_LOG_INFO("App config hot-reloaded from '{}'; applied runtime-supported changes only",
-		              m_loadedAppConfigState.path.string());
+		              m_loadedAppConfig.path.string());
 	}
 
 } // namespace NeneEngine
