@@ -2,8 +2,8 @@
 
 #include "Graphics/Backend/IRenderAdapter.h"
 
-#include <array>
-#include <utility>
+#include <EASTL/array.h>
+#include <EASTL/utility.h>
 
 namespace NeneEngine
 {
@@ -29,12 +29,12 @@ namespace NeneEngine
 	void IRenderAdapter::DrawDebugAABB(const glm::vec3& min, const glm::vec3& max, const glm::vec4& color,
 	                                   const glm::mat4& viewProjection)
 	{
-		const std::array<glm::vec3, 8> corners = {glm::vec3{min.x, min.y, min.z}, glm::vec3{max.x, min.y, min.z},
-		                                          glm::vec3{max.x, max.y, min.z}, glm::vec3{min.x, max.y, min.z},
-		                                          glm::vec3{min.x, min.y, max.z}, glm::vec3{max.x, min.y, max.z},
-		                                          glm::vec3{max.x, max.y, max.z}, glm::vec3{min.x, max.y, max.z}};
+		const eastl::array<glm::vec3, 8> corners = {glm::vec3{min.x, min.y, min.z}, glm::vec3{max.x, min.y, min.z},
+		                                            glm::vec3{max.x, max.y, min.z}, glm::vec3{min.x, max.y, min.z},
+		                                            glm::vec3{min.x, min.y, max.z}, glm::vec3{max.x, min.y, max.z},
+		                                            glm::vec3{max.x, max.y, max.z}, glm::vec3{min.x, max.y, max.z}};
 
-		constexpr std::array<std::pair<int, int>, 12> edges = {
+		constexpr eastl::array<eastl::pair<int, int>, 12> edges = {
 		    {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}}};
 
 		for (const auto& [from, to] : edges) DrawDebugLine(corners[from], corners[to], color, viewProjection);
