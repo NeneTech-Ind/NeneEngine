@@ -1,7 +1,7 @@
 // PauseState.cpp
 
 #include "GameStates/PauseState.h"
-#include "App/GameStateMachine.h"
+#include "GameStates/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
 #include "Core/NeneLogger.h"
 #include "Input/InputActions.h"

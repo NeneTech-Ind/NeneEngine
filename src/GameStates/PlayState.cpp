@@ -1,7 +1,7 @@
 // PlayState.cpp
 
 #include "GameStates/PlayState.h"
-#include "App/GameStateMachine.h"
+#include "GameStates/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
 #include "Core/NeneLogger.h"
 #include "ECS/DebugDrawSettings.h"

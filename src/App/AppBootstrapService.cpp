@@ -5,7 +5,6 @@
 #include "App/AppRuntimeConfigService.h"
 #include "App/AppWindowRuntimeService.h"
 #include "App/DemoBootstrapRunner.h"
-#include "App/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
 #include "App/StartupLibraryCheck.h"
 #include "Core/NeneLogger.h"
@@ -16,9 +15,10 @@
 #include "ECS/Systems/MovementSystem.h"
 #include "ECS/Systems/PhysicsSystem.h"
 #include "ECS/Systems/PlayerControllerSystem.h"
+#include "GameStates/GameStateMachine.h"
+#include "GameStates/PlayState.h"
 #include "Graphics/Loaders/ResourceLoaderRegistration.h"
 #include "Scene/DemoScene.h"
-#include "GameStates/PlayState.h"
 
 namespace NeneEngine
 {

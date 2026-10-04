@@ -2,14 +2,14 @@
 
 #pragma once
 
-#include "App/AppConfig.h"
 #include "App/AppBootstrapService.h"
+#include "App/AppConfig.h"
 #include "App/AppFrameLoopService.h"
 #include "App/AppRuntimeConfigService.h"
 #include "App/AppWindowRuntimeService.h"
-#include "App/GameStateMachine.h"
 #include "Core/GameTimer.h"
 #include "ECS/World.h"
+#include "GameStates/GameStateMachine.h"
 #include "Input/InputManager.h"
 
 #include <atomic>

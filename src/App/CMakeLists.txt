@@ -12,7 +12,6 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/AppStartupConfig.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/DemoBootstrapRunner.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/StartupLibraryCheck.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/GameStateMachine.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/App/NeneEngineApp.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/AppConfig.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AppBootstrapService.cpp"
@@ -26,6 +25,5 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/AppStartupConfig.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DemoBootstrapRunner.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StartupLibraryCheck.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/GameStateMachine.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/NeneEngineApp.cpp"
 )
