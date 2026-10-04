@@ -3,6 +3,7 @@
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "Core/ResourceManager.h"
+#include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
@@ -10,7 +11,6 @@
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Scene/Instantiation/ModelInstanceConfig.h"
 #include "Scene/Instantiation/ModelSpawnManifest.h"
-#include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <EASTL/vector.h>
 #include <fstream>
@@ -111,7 +111,7 @@ namespace NeneEngine
 			runtimeBinding.meshId = gpuMesh.meshId;
 			runtimeBinding.textureId = textureId;
 			if (shaderId.IsValid() && textureId.IsValid()) runtimeBinding.shaderId = shaderId;
-			BindMeshRenderRuntime(world, entity, runtimeBinding, &renderer);
+			ECS::BindMeshRenderRuntime(world, entity, runtimeBinding, &renderer);
 		}
 
 		std::filesystem::path ResolveOptionalAssetPath(const std::filesystem::path& manifestPath,

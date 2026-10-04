@@ -6,12 +6,12 @@
 #include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/ContactStateComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
+#include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/DebugDrawSettings.h"
 #include "ECS/World.h"
-#include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
