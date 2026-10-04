@@ -71,7 +71,6 @@ namespace NeneEngine
 			return nullptr;
 		}
 
-		void RegisterDefaultLoaders();
 		void Clear();
 
 	  private:

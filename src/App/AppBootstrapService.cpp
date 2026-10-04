@@ -16,6 +16,7 @@
 #include "ECS/Systems/MovementSystem.h"
 #include "ECS/Systems/PhysicsSystem.h"
 #include "ECS/Systems/PlayerControllerSystem.h"
+#include "Graphics/Loaders/ResourceLoaderRegistration.h"
 #include "Scene/DemoScene.h"
 #include "GameStates/PlayState.h"
 
@@ -64,7 +65,7 @@ namespace NeneEngine
 	{
 		NeneLogger::GetInstance().Initialize(logFilePath, false, spdlog::level::info, true);
 		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
-		ResourceManager::GetInstance().RegisterDefaultLoaders();
+		RegisterGraphicsResourceLoaders(ResourceManager::GetInstance());
 		RunExternalLibrarySmokeTests();
 
 		runtimeConfigService.LoadStartupConfig();
