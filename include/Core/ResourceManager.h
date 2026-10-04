@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Core/NeneLogger.h"
+#include "Core/CachedResource.h"
 #include "Core/EASTLStdHash.h"
-#include "Core/Resource.h"
+#include "Core/NeneLogger.h"
 
 #include <EASTL/any.h>
 #include <EASTL/functional.h>
@@ -20,7 +20,7 @@ namespace NeneEngine
 	class ResourceManager final
 	{
 	  public:
-		template <typename T> using ResourcePtr = eastl::shared_ptr<Resource<T>>;
+		template <typename T> using ResourcePtr = eastl::shared_ptr<CachedResource<T>>;
 
 		template <typename T> using LoaderFn = eastl::function<T(const std::string&)>;
 
@@ -53,7 +53,7 @@ namespace NeneEngine
 
 			try
 			{
-				auto resource = eastl::make_shared<Resource<T>>(path, (*loader)(path));
+				auto resource = eastl::make_shared<CachedResource<T>>(path, (*loader)(path));
 				cache.emplace(path, resource);
 				NENE_LOG_INFO("ResourceManager: loaded '{}' ({})", path, typeid(T).name());
 				return resource;

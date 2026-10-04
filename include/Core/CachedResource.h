@@ -1,4 +1,4 @@
-// Resource.h
+// CachedResource.h
 
 #pragma once
 
@@ -8,10 +8,10 @@
 namespace NeneEngine
 {
 
-	template <typename T> class Resource
+	template <typename T> class CachedResource
 	{
 	  public:
-		Resource(std::string path, T data) : m_path(std::move(path)), m_data(std::move(data)) {}
+		CachedResource(std::string path, T data) : m_path(std::move(path)), m_data(std::move(data)) {}
 
 		const std::string& GetPath() const noexcept { return m_path; }
 		T& GetData() noexcept { return m_data; }
