@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 
+#include <EASTL/vector.h>
 #include <filesystem>
 #include <iostream>
 #include <spdlog/async_logger.h>
@@ -24,7 +25,7 @@ namespace NeneEngine
 		{
 			Shutdown();
 
-			std::vector<spdlog::sink_ptr> sinks;
+			eastl::vector<spdlog::sink_ptr> sinks;
 			auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
 			if (consoleWithColor)
