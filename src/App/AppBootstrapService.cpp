@@ -78,7 +78,7 @@ namespace NeneEngine
 		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>());
 		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, width, height);
-		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::DefaultScenePath().string());
+		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::GetDefaultScenePath().string());
 
 		const ECS::Entity primaryCameraEntity = FindPrimaryCameraEntity(world);
 		if (primaryCameraEntity == ECS::NullEntity)

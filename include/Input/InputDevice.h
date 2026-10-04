@@ -32,10 +32,10 @@ namespace NeneEngine
 	class InputDevice
 	{
 	  public:
-		MulticastDelegate<const KeyEvent&> KeyDown;
-		MulticastDelegate<const KeyEvent&> KeyUp;
-		MulticastDelegate<const MouseMoveEvent&> MouseMoved;
-		MulticastDelegate<const MouseWheelEvent&> MouseWheel;
+		MulticastDelegate<const KeyEvent&>& OnKeyDown() { return m_keyDown; }
+		MulticastDelegate<const KeyEvent&>& OnKeyUp() { return m_keyUp; }
+		MulticastDelegate<const MouseMoveEvent&>& OnMouseMoved() { return m_mouseMoved; }
+		MulticastDelegate<const MouseWheelEvent&>& OnMouseWheel() { return m_mouseWheel; }
 
 		void NotifyKeyDown(KeyCode key);
 		void NotifyKeyUp(KeyCode key);
@@ -54,6 +54,10 @@ namespace NeneEngine
 		float GetMouseWheelDelta() const { return m_mouseWheelDelta; }
 
 	  private:
+		MulticastDelegate<const KeyEvent&> m_keyDown;
+		MulticastDelegate<const KeyEvent&> m_keyUp;
+		MulticastDelegate<const MouseMoveEvent&> m_mouseMoved;
+		MulticastDelegate<const MouseWheelEvent&> m_mouseWheel;
 		eastl::unordered_set<KeyCode> m_pressedKeys;
 		eastl::unordered_set<KeyCode> m_pressedThisFrame;
 		glm::vec2 m_mousePosition = {0.0f, 0.0f};

@@ -34,10 +34,10 @@ namespace NeneEngine
 		                                            glm::vec3{min.x, min.y, max.z}, glm::vec3{max.x, min.y, max.z},
 		                                            glm::vec3{max.x, max.y, max.z}, glm::vec3{min.x, max.y, max.z}};
 
-		constexpr eastl::array<eastl::pair<int, int>, 12> edges = {
+		constexpr eastl::array<eastl::pair<int, int>, 12> kEdges = {
 		    {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}}};
 
-		for (const auto& [from, to] : edges) DrawDebugLine(corners[from], corners[to], color, viewProjection);
+		for (const auto& [from, to] : kEdges) DrawDebugLine(corners[from], corners[to], color, viewProjection);
 	}
 
 } // namespace NeneEngine

@@ -38,6 +38,6 @@ namespace NeneEngine
 		eastl::vector<WindowDefinitionConfig> windows{};
 	};
 
-	[[nodiscard]] std::filesystem::path DefaultAppConfigPath();
-	[[nodiscard]] AppConfig LoadAppConfig(const std::filesystem::path& configPath = DefaultAppConfigPath());
+	[[nodiscard]] std::filesystem::path GetDefaultAppConfigPath();
+	[[nodiscard]] AppConfig LoadAppConfig(const std::filesystem::path& configPath = GetDefaultAppConfigPath());
 } // namespace NeneEngine

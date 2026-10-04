@@ -94,12 +94,12 @@ namespace NeneEngine::DemoScene
 
 	} // namespace
 
-	std::filesystem::path DefaultScenePath()
+	std::filesystem::path GetDefaultScenePath()
 	{
 		return std::filesystem::path{"assets"} / "scenes" / "demo_scene.json";
 	}
 
-	std::filesystem::path DefaultSceneConfigPath()
+	std::filesystem::path GetDefaultSceneConfigPath()
 	{
 		return std::filesystem::path{"assets"} / "scenes" / "demo_scene.config.json";
 	}

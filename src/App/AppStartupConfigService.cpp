@@ -7,7 +7,7 @@ namespace NeneEngine
 {
 	std::filesystem::path ResolveStartupAppConfigPath()
 	{
-		return DefaultAppConfigPath();
+		return GetDefaultAppConfigPath();
 	}
 
 	LoadedAppConfigState LoadStartupAppConfigState(const std::filesystem::path& configPath)

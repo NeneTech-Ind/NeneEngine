@@ -10,12 +10,12 @@
 namespace NeneEngine::DemoScene
 {
 
-	std::filesystem::path DefaultScenePath();
-	std::filesystem::path DefaultSceneConfigPath();
+	std::filesystem::path GetDefaultScenePath();
+	std::filesystem::path GetDefaultSceneConfigPath();
 
 	void Create(ECS::World& world, uint32_t width, uint32_t height);
 	void LoadOrCreate(ECS::World& world, uint32_t width, uint32_t height,
-	                  const std::filesystem::path& scenePath = DefaultScenePath(),
-	                  const std::filesystem::path& sceneConfigPath = DefaultSceneConfigPath());
+	                  const std::filesystem::path& scenePath = GetDefaultScenePath(),
+	                  const std::filesystem::path& sceneConfigPath = GetDefaultSceneConfigPath());
 
 } // namespace NeneEngine::DemoScene

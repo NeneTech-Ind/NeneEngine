@@ -30,16 +30,16 @@ namespace NeneEngine
 			return false;
 		}
 
-		EngineD3D12CreateInfo EngineCI{};
-		EngineCI.EnableValidation = true;
+		EngineD3D12CreateInfo engineCreateInfo{};
+		engineCreateInfo.EnableValidation = true;
 
-		SwapChainDesc SCDesc{};
-		SCDesc.Width = width;
-		SCDesc.Height = height;
-		SCDesc.BufferCount = 2; // Double buffering
-		SCDesc.DepthBufferFormat = TEX_FORMAT_D32_FLOAT;
+		SwapChainDesc swapChainCreateDesc{};
+		swapChainCreateDesc.Width = width;
+		swapChainCreateDesc.Height = height;
+		swapChainCreateDesc.BufferCount = 2; // Double buffering
+		swapChainCreateDesc.DepthBufferFormat = TEX_FORMAT_D32_FLOAT;
 
-		pFactory->CreateDeviceAndContextsD3D12(EngineCI, &m_pDevice, &m_pImmediateContext);
+		pFactory->CreateDeviceAndContextsD3D12(engineCreateInfo, &m_pDevice, &m_pImmediateContext);
 
 		if (!m_pDevice || !m_pImmediateContext)
 		{
@@ -48,10 +48,11 @@ namespace NeneEngine
 		}
 
 		// Swap Chain
-		Win32NativeWindow Window{hwnd};
-		FullScreenModeDesc FSDesc{};
+		Win32NativeWindow nativeWindow{hwnd};
+		FullScreenModeDesc fullScreenDesc{};
 
-		pFactory->CreateSwapChainD3D12(m_pDevice, m_pImmediateContext, SCDesc, FSDesc, Window, &m_pSwapChain);
+		pFactory->CreateSwapChainD3D12(m_pDevice, m_pImmediateContext, swapChainCreateDesc, fullScreenDesc,
+		                               nativeWindow, &m_pSwapChain);
 
 		if (!m_pSwapChain)
 		{
@@ -400,8 +401,8 @@ namespace NeneEngine
 
 		m_pImmediateContext->SetRenderTargets(1, &pRTV, pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-		const float ClearColor[] = {m_clearColor.r, m_clearColor.g, m_clearColor.b, m_clearColor.a};
-		m_pImmediateContext->ClearRenderTarget(pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		const float clearColor[] = {m_clearColor.r, m_clearColor.g, m_clearColor.b, m_clearColor.a};
+		m_pImmediateContext->ClearRenderTarget(pRTV, clearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 		if (pDSV != nullptr)
 			m_pImmediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0,
 			                                       RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
@@ -571,7 +572,7 @@ namespace NeneEngine
 		const auto createPipelineState =
 		    [this](PrimitiveType primitiveType, const char* name, const char* vertexShaderSource)
 		{
-			static const char* PSSource = R"raw(
+			static const char* pixelShaderSource = R"raw(
                 cbuffer Constants
                 {
                     float4x4 ModelViewProjection;
@@ -595,46 +596,46 @@ namespace NeneEngine
                 }
             )raw";
 
-			GraphicsPipelineStateCreateInfo PSOCreateInfo{};
-			PSOCreateInfo.PSODesc.Name = name;
-			PSOCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+			GraphicsPipelineStateCreateInfo primitivePsoCreateInfo{};
+			primitivePsoCreateInfo.PSODesc.Name = name;
+			primitivePsoCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
 
-			PSOCreateInfo.GraphicsPipeline.NumRenderTargets = 1;
-			PSOCreateInfo.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
-			PSOCreateInfo.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
-			PSOCreateInfo.GraphicsPipeline.PrimitiveTopology =
+			primitivePsoCreateInfo.GraphicsPipeline.NumRenderTargets = 1;
+			primitivePsoCreateInfo.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
+			primitivePsoCreateInfo.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
+			primitivePsoCreateInfo.GraphicsPipeline.PrimitiveTopology =
 			    primitiveType == PrimitiveType::Line || primitiveType == PrimitiveType::DebugLine
 			        ? PRIMITIVE_TOPOLOGY_LINE_LIST
 			        : PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-			PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;
+			primitivePsoCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;
 			// Debug lines must stay visible even where they coincide with or sit behind scene geometry.
 			const bool depthEnabled = primitiveType != PrimitiveType::DebugLine;
-			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = depthEnabled;
-			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = depthEnabled;
-			PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthFunc = COMPARISON_FUNC_LESS;
+			primitivePsoCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = depthEnabled;
+			primitivePsoCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = depthEnabled;
+			primitivePsoCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthFunc = COMPARISON_FUNC_LESS;
 
 			ShaderResourceVariableDesc variables[] = {
 			    {SHADER_TYPE_VERTEX, "Constants", SHADER_RESOURCE_VARIABLE_TYPE_STATIC}};
 
-			PSOCreateInfo.PSODesc.ResourceLayout.Variables = variables;
-			PSOCreateInfo.PSODesc.ResourceLayout.NumVariables = 1;
+			primitivePsoCreateInfo.PSODesc.ResourceLayout.Variables = variables;
+			primitivePsoCreateInfo.PSODesc.ResourceLayout.NumVariables = 1;
 
-			ShaderCreateInfo ShaderCI{};
-			ShaderCI.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
-			ShaderCI.Desc.UseCombinedTextureSamplers = true;
+			ShaderCreateInfo shaderCreateInfo{};
+			shaderCreateInfo.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+			shaderCreateInfo.Desc.UseCombinedTextureSamplers = true;
 
 			RefCntAutoPtr<IShader> pVS;
 			RefCntAutoPtr<IShader> pPS;
 
-			ShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
-			ShaderCI.Desc.Name = name;
-			ShaderCI.Source = vertexShaderSource;
-			m_pDevice->CreateShader(ShaderCI, &pVS);
+			shaderCreateInfo.Desc.ShaderType = SHADER_TYPE_VERTEX;
+			shaderCreateInfo.Desc.Name = name;
+			shaderCreateInfo.Source = vertexShaderSource;
+			m_pDevice->CreateShader(shaderCreateInfo, &pVS);
 
-			ShaderCI.Desc.ShaderType = SHADER_TYPE_PIXEL;
-			ShaderCI.Desc.Name = "Primitive PS";
-			ShaderCI.Source = PSSource;
-			m_pDevice->CreateShader(ShaderCI, &pPS);
+			shaderCreateInfo.Desc.ShaderType = SHADER_TYPE_PIXEL;
+			shaderCreateInfo.Desc.Name = "Primitive PS";
+			shaderCreateInfo.Source = pixelShaderSource;
+			m_pDevice->CreateShader(shaderCreateInfo, &pPS);
 
 			if (!pVS || !pPS)
 			{
@@ -642,12 +643,12 @@ namespace NeneEngine
 				return false;
 			}
 
-			PSOCreateInfo.pVS = pVS;
-			PSOCreateInfo.pPS = pPS;
+			primitivePsoCreateInfo.pVS = pVS;
+			primitivePsoCreateInfo.pPS = pPS;
 
 			const size_t primitiveIndex = static_cast<size_t>(primitiveType);
 
-			m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pPrimitivePSOs[primitiveIndex]);
+			m_pDevice->CreateGraphicsPipelineState(primitivePsoCreateInfo, &m_pPrimitivePSOs[primitiveIndex]);
 
 			if (!m_pPrimitivePSOs[primitiveIndex])
 			{
@@ -688,7 +689,7 @@ namespace NeneEngine
 			return true;
 		};
 
-		static const char* LineVSSource = R"raw(
+		static const char* lineVertexShaderSource = R"raw(
             cbuffer Constants
             {
                 float4x4 ModelViewProjection;
@@ -713,7 +714,7 @@ namespace NeneEngine
             }
         )raw";
 
-		static const char* MeshVSSource = R"raw(
+		static const char* meshVertexShaderSource = R"raw(
             cbuffer Constants
             {
                 float4x4 ModelViewProjection;
@@ -747,7 +748,7 @@ namespace NeneEngine
             }
         )raw";
 
-		static const char* MeshPSSource = R"raw(
+		static const char* meshPixelShaderSource = R"raw(
             struct PSInput
             {
                 float4 Pos    : SV_POSITION;
@@ -767,7 +768,7 @@ namespace NeneEngine
             }
         )raw";
 
-		static const char* TriangleVSSource = R"raw(
+		static const char* triangleVertexShaderSource = R"raw(
             cbuffer Constants
             {
                 float4x4 ModelViewProjection;
@@ -798,7 +799,7 @@ namespace NeneEngine
             }
         )raw";
 
-		static const char* QuadVSSource = R"raw(
+		static const char* quadVertexShaderSource = R"raw(
             cbuffer Constants
             {
                 float4x4 ModelViewProjection;
@@ -827,7 +828,7 @@ namespace NeneEngine
             }
         )raw";
 
-		static const char* CubeVSSource = R"raw(
+		static const char* cubeVertexShaderSource = R"raw(
             cbuffer Constants
             {
                 float4x4 ModelViewProjection;
@@ -867,11 +868,11 @@ namespace NeneEngine
             }
         )raw";
 
-		if (!createPipelineState(PrimitiveType::Line, "Simple Line PSO", LineVSSource) ||
-		    !createPipelineState(PrimitiveType::DebugLine, "Debug Line PSO", LineVSSource) ||
-		    !createPipelineState(PrimitiveType::Triangle, "Simple Triangle PSO", TriangleVSSource) ||
-		    !createPipelineState(PrimitiveType::Quad, "Simple Quad PSO", QuadVSSource) ||
-		    !createPipelineState(PrimitiveType::Cube, "Simple Cube PSO", CubeVSSource))
+		if (!createPipelineState(PrimitiveType::Line, "Simple Line PSO", lineVertexShaderSource) ||
+		    !createPipelineState(PrimitiveType::DebugLine, "Debug Line PSO", lineVertexShaderSource) ||
+		    !createPipelineState(PrimitiveType::Triangle, "Simple Triangle PSO", triangleVertexShaderSource) ||
+		    !createPipelineState(PrimitiveType::Quad, "Simple Quad PSO", quadVertexShaderSource) ||
+		    !createPipelineState(PrimitiveType::Cube, "Simple Cube PSO", cubeVertexShaderSource))
 		{
 			return false;
 		}
@@ -910,12 +911,12 @@ namespace NeneEngine
 
 		meshShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
 		meshShaderCI.Desc.Name = "Mesh VS";
-		meshShaderCI.Source = MeshVSSource;
+		meshShaderCI.Source = meshVertexShaderSource;
 		m_pDevice->CreateShader(meshShaderCI, &meshVS);
 
 		meshShaderCI.Desc.ShaderType = SHADER_TYPE_PIXEL;
 		meshShaderCI.Desc.Name = "Mesh PS";
-		meshShaderCI.Source = MeshPSSource;
+		meshShaderCI.Source = meshPixelShaderSource;
 		m_pDevice->CreateShader(meshShaderCI, &meshPS);
 
 		if (!meshVS || !meshPS)

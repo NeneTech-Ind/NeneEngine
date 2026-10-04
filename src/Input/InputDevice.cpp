@@ -12,7 +12,7 @@ namespace NeneEngine
 		// IsKeyPressed is edge-triggered; held keys remain only in m_pressedKeys.
 		if (!wasDown) m_pressedThisFrame.insert(key);
 
-		KeyDown.Broadcast(KeyEvent{key, wasDown});
+		m_keyDown.Broadcast(KeyEvent{key, wasDown});
 	}
 
 	void InputDevice::NotifyKeyUp(KeyCode key)
@@ -20,7 +20,7 @@ namespace NeneEngine
 		const bool wasDown = IsKeyDown(key);
 		m_pressedKeys.erase(key);
 
-		KeyUp.Broadcast(KeyEvent{key, wasDown});
+		m_keyUp.Broadcast(KeyEvent{key, wasDown});
 	}
 
 	void InputDevice::NotifyMouseMove(glm::vec2 position)
@@ -34,14 +34,14 @@ namespace NeneEngine
 		m_mouseDelta += delta;
 		m_mousePosition = position;
 
-		MouseMoved.Broadcast(MouseMoveEvent{m_mousePosition, delta});
+		m_mouseMoved.Broadcast(MouseMoveEvent{m_mousePosition, delta});
 	}
 
 	void InputDevice::NotifyMouseWheel(float delta)
 	{
 		m_mouseWheelDelta += delta;
 
-		MouseWheel.Broadcast(MouseWheelEvent{m_mousePosition, delta});
+		m_mouseWheel.Broadcast(MouseWheelEvent{m_mousePosition, delta});
 	}
 
 	void InputDevice::EndFrame()

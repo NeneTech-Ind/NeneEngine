@@ -258,7 +258,7 @@ namespace NeneEngine
 
 	} // namespace
 
-	std::filesystem::path DefaultAppConfigPath()
+	std::filesystem::path GetDefaultAppConfigPath()
 	{
 		if (const auto resolvedPath =
 		        ResolveFromExecutionRoots(std::filesystem::path{"assets"} / "config" / "engine.json");

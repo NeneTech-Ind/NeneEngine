@@ -137,9 +137,9 @@ namespace NeneEngine::ECS
 
 		bool NearlyEqual(const glm::vec3& lhs, const glm::vec3& rhs)
 		{
-			constexpr float epsilon = 1e-5f;
+			constexpr float kEpsilon = 1e-5f;
 			const glm::vec3 delta = glm::abs(lhs - rhs);
-			return delta.x <= epsilon && delta.y <= epsilon && delta.z <= epsilon;
+			return delta.x <= kEpsilon && delta.y <= kEpsilon && delta.z <= kEpsilon;
 		}
 
 		bool NearlyEqual(const glm::quat& lhs, const glm::quat& rhs)
@@ -313,11 +313,11 @@ namespace NeneEngine::ECS
 			eastl::vector<ContactChange> m_changes;
 		};
 
-		int g_joltUserCount = 0;
+		int joltUserCount = 0;
 
 		void AcquireJolt()
 		{
-			if (g_joltUserCount++ > 0) return;
+			if (joltUserCount++ > 0) return;
 
 			JPH::RegisterDefaultAllocator();
 			JPH::Factory::sInstance = new JPH::Factory();
@@ -326,7 +326,7 @@ namespace NeneEngine::ECS
 
 		void ReleaseJolt()
 		{
-			if (--g_joltUserCount > 0) return;
+			if (--joltUserCount > 0) return;
 
 			JPH::UnregisterTypes();
 			delete JPH::Factory::sInstance;
