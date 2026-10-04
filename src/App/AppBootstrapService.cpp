@@ -7,8 +7,8 @@
 #include "App/DemoBootstrapRunner.h"
 #include "App/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
+#include "App/StartupLibraryCheck.h"
 #include "Core/NeneLogger.h"
-#include "Core/ExternalLibrarySmokeTest.h"
 #include "Core/ResourceManager.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/TagComponent.h"
@@ -66,7 +66,7 @@ namespace NeneEngine
 		NeneLogger::GetInstance().Initialize(logFilePath, false, spdlog::level::info, true);
 		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
 		RegisterGraphicsResourceLoaders(ResourceManager::GetInstance());
-		RunExternalLibrarySmokeTests();
+		RunStartupLibraryChecks();
 
 		runtimeConfigService.LoadStartupConfig();
 		const AppConfig& appConfig = runtimeConfigService.GetConfig();
