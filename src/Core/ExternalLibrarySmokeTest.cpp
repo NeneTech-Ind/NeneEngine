@@ -2,7 +2,7 @@
 
 #include "Core/ExternalLibrarySmokeTest.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "Core/ResourceManager.h"
 #include "Graphics/Runtime/RenderTypes.h"

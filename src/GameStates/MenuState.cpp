@@ -1,7 +1,7 @@
 // MenuState.cpp
 
 #include "GameStates/MenuState.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 
 void NeneEngine::MenuState::OnEnter()
 {

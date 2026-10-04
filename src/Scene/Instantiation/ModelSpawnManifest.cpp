@@ -1,6 +1,6 @@
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 
 #include <fstream>
 #include <nlohmann/json.hpp>

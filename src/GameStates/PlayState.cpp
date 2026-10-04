@@ -3,7 +3,7 @@
 #include "GameStates/PlayState.h"
 #include "App/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "ECS/DebugDrawSettings.h"
 #include "Input/InputActions.h"
 #include "Input/InputManager.h"

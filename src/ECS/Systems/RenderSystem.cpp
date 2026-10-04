@@ -1,7 +1,7 @@
 // RenderSystem.cpp
 
 #include "ECS/Systems/RenderSystem.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/ContactStateComponent.h"

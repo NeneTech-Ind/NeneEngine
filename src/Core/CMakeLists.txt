@@ -1,5 +1,5 @@
 target_sources(NeneEngine PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/CustomLogger.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/NeneLogger.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Delegate.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/EASTLStdHash.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/ExternalLibrarySmokeTest.h"
@@ -8,7 +8,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Profiler.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Resource.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/ResourceManager.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/CustomLogger.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/NeneLogger.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EASTLAllocator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ExternalLibrarySmokeTest.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GameTimer.cpp"

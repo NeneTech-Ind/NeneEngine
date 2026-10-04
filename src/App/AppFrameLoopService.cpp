@@ -5,7 +5,7 @@
 #include "App/AppRuntimeConfigService.h"
 #include "App/AppWindowRuntimeService.h"
 #include "App/GameStateMachine.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/GameTimer.h"
 #include "Core/Profiler.h"
 #include "Input/InputDevice.h"

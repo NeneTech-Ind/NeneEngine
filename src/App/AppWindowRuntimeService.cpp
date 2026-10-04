@@ -3,7 +3,7 @@
 #include "App/AppWindowRuntimeService.h"
 
 #include "App/AppInputBindingUtils.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Systems/CameraControllerSystem.h"
 #include "ECS/Systems/PrimitiveControlSystem.h"

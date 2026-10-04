@@ -7,7 +7,7 @@
 #include "../external/DiligentEngine/DiligentTools/TextureLoader/interface/TextureLoader.h"
 #include "Graphics/Loaders/TextureLoader.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 
 namespace NeneEngine
 {

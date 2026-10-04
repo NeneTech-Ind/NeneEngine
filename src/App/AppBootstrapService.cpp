@@ -7,7 +7,7 @@
 #include "App/DemoBootstrapRunner.h"
 #include "App/GameStateMachine.h"
 #include "App/NeneEngineApp.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/ExternalLibrarySmokeTest.h"
 #include "Core/ResourceManager.h"
 #include "ECS/Components/CameraComponent.h"
@@ -62,7 +62,7 @@ namespace NeneEngine
 	                                     ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath,
 	                                     uint32_t width, uint32_t height)
 	{
-		CustomLogger::GetInstance().Initialize(logFilePath, false, spdlog::level::info, true);
+		NeneLogger::GetInstance().Initialize(logFilePath, false, spdlog::level::info, true);
 		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
 		ResourceManager::GetInstance().RegisterDefaultLoaders();
 		RunExternalLibrarySmokeTests();

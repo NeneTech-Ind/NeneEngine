@@ -1,6 +1,6 @@
-// CustomLogger.cpp
+// NeneLogger.cpp
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 
 #include <filesystem>
 #include <iostream>
@@ -11,14 +11,14 @@
 namespace NeneEngine
 {
 
-	CustomLogger& CustomLogger::GetInstance()
+	NeneLogger& NeneLogger::GetInstance()
 	{
-		static CustomLogger instance;
+		static NeneLogger instance;
 		return instance;
 	}
 
-	bool CustomLogger::Initialize(const std::string& logFileName, bool async, spdlog::level::level_enum logLevel,
-	                              bool consoleWithColor)
+	bool NeneLogger::Initialize(const std::string& logFileName, bool async, spdlog::level::level_enum logLevel,
+	                            bool consoleWithColor)
 	{
 		try
 		{
@@ -78,7 +78,7 @@ namespace NeneEngine
 		}
 	}
 
-	void CustomLogger::SetLevel(spdlog::level::level_enum lvl)
+	void NeneLogger::SetLevel(spdlog::level::level_enum lvl)
 	{
 		if (m_logger)
 		{
@@ -86,7 +86,7 @@ namespace NeneEngine
 		}
 	}
 
-	void CustomLogger::Shutdown()
+	void NeneLogger::Shutdown()
 	{
 		if (m_logger)
 		{

@@ -1,6 +1,6 @@
 #include "App/DemoBootstrapRunner.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Scene/Instantiation/ModelSpawner.h"

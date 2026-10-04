@@ -2,7 +2,7 @@
 
 #include "Graphics/Runtime/RenderResize.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/World.h"
 #include "Graphics/Backend/IRenderAdapter.h"

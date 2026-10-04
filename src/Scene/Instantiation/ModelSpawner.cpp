@@ -1,6 +1,6 @@
 #include "Scene/Instantiation/ModelSpawner.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "Core/ResourceManager.h"
 #include "ECS/Components/MeshRendererComponent.h"

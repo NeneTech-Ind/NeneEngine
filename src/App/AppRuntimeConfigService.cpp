@@ -3,7 +3,7 @@
 #include "App/AppRuntimeConfigService.h"
 
 #include "App/AppRuntimeConfigPolicy.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 
 #include <filesystem>
 #include <system_error>

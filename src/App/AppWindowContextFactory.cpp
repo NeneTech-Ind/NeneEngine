@@ -2,7 +2,7 @@
 
 #include "App/AppWindowContextFactory.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Platform/Win32/Win32Window.h"
 #include "Graphics/Backend/DiligentDX12Adapter.h"
 

@@ -3,7 +3,7 @@
 #include "App/NeneEngineApp.h"
 #include "App/AppConfig.h"
 #include "App/AppInputBindingUtils.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 
 #include <filesystem>
@@ -27,7 +27,7 @@ namespace NeneEngine
 	{
 		if (m_running) RequestShutdown();
 		m_gameStateMachine.Clear();
-		CustomLogger::GetInstance().Shutdown();
+		NeneLogger::GetInstance().Shutdown();
 	}
 
 	bool NeneEngineApp::Init(uint32_t width, uint32_t height, const std::string& title)

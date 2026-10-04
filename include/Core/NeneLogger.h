@@ -1,4 +1,4 @@
-// CustomLogger.h
+// NeneLogger.h
 
 #pragma once
 
@@ -14,15 +14,15 @@
 namespace NeneEngine
 {
 
-	class CustomLogger final
+	class NeneLogger final
 	{
 	  public:
-		CustomLogger(const CustomLogger&) = delete;
-		CustomLogger& operator=(const CustomLogger&) = delete;
-		CustomLogger(CustomLogger&&) = delete;
-		CustomLogger& operator=(CustomLogger&&) = delete;
+		NeneLogger(const NeneLogger&) = delete;
+		NeneLogger& operator=(const NeneLogger&) = delete;
+		NeneLogger(NeneLogger&&) = delete;
+		NeneLogger& operator=(NeneLogger&&) = delete;
 
-		static CustomLogger& GetInstance();
+		static NeneLogger& GetInstance();
 
 		bool Initialize(const std::string& logFileName = "NeneEngine.log", bool async = false,
 		                spdlog::level::level_enum logLevel = spdlog::level::level_enum::info,
@@ -64,8 +64,8 @@ namespace NeneEngine
 		std::shared_ptr<spdlog::logger> GetRawLogger() const { return m_logger; }
 
 	  private:
-		CustomLogger() = default;
-		~CustomLogger() = default;
+		NeneLogger() = default;
+		~NeneLogger() = default;
 
 		std::shared_ptr<spdlog::logger> m_logger;
 	};
@@ -92,9 +92,9 @@ namespace NeneEngine
 #undef NENE_LOG_CRITICAL
 #endif
 
-#define NENE_LOG_TRACE(...) ::NeneEngine::CustomLogger::GetInstance().Trace(__VA_ARGS__)
-#define NENE_LOG_DEBUG(...) ::NeneEngine::CustomLogger::GetInstance().Debug(__VA_ARGS__)
-#define NENE_LOG_INFO(...) ::NeneEngine::CustomLogger::GetInstance().Info(__VA_ARGS__)
-#define NENE_LOG_WARN(...) ::NeneEngine::CustomLogger::GetInstance().Warn(__VA_ARGS__)
-#define NENE_LOG_ERROR(...) ::NeneEngine::CustomLogger::GetInstance().Error(__VA_ARGS__)
-#define NENE_LOG_CRITICAL(...) ::NeneEngine::CustomLogger::GetInstance().Critical(__VA_ARGS__)
+#define NENE_LOG_TRACE(...) ::NeneEngine::NeneLogger::GetInstance().Trace(__VA_ARGS__)
+#define NENE_LOG_DEBUG(...) ::NeneEngine::NeneLogger::GetInstance().Debug(__VA_ARGS__)
+#define NENE_LOG_INFO(...) ::NeneEngine::NeneLogger::GetInstance().Info(__VA_ARGS__)
+#define NENE_LOG_WARN(...) ::NeneEngine::NeneLogger::GetInstance().Warn(__VA_ARGS__)
+#define NENE_LOG_ERROR(...) ::NeneEngine::NeneLogger::GetInstance().Error(__VA_ARGS__)
+#define NENE_LOG_CRITICAL(...) ::NeneEngine::NeneLogger::GetInstance().Critical(__VA_ARGS__)

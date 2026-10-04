@@ -2,7 +2,7 @@
 
 #include "ECS/Systems/PhysicsSystem.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/Profiler.h"
 #include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/ContactStateComponent.h"

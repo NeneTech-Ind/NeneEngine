@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Core/EASTLStdHash.h"
 #include "Core/Resource.h"
 

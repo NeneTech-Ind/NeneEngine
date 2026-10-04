@@ -1,7 +1,7 @@
 // GameStateMachine.cpp
 
 #include "App/GameStateMachine.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 
 namespace NeneEngine
 {

@@ -1,6 +1,6 @@
 #include "Scene/SceneConfig.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"

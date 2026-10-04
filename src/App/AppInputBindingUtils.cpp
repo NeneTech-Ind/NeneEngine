@@ -2,7 +2,7 @@
 
 #include "App/AppInputBindingUtils.h"
 
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 #include "Input/KeyCodeStrings.h"
 
 #include <sstream>

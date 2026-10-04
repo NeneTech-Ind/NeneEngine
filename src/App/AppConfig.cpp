@@ -8,7 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsAccessories/interface/ColorConversion.h"
-#include "Core/CustomLogger.h"
+#include "Core/NeneLogger.h"
 
 #include <algorithm>
 
