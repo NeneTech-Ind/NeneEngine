@@ -1,11 +1,10 @@
 // PauseState.cpp
 
 #include "GameStates/PauseState.h"
-#include "GameStates/GameStateMachine.h"
-#include "App/NeneEngineApp.h"
 #include "Core/NeneLogger.h"
+#include "GameStates/GameStateMachine.h"
+#include "Input/IInputHandler.h"
 #include "Input/InputActions.h"
-#include "Input/InputManager.h"
 
 void NeneEngine::PauseState::OnEnter()
 {
@@ -31,9 +30,9 @@ void NeneEngine::PauseState::Update(float /*dt*/) {}
 
 void NeneEngine::PauseState::HandleInput()
 {
-	const InputManager& input = m_context.app.GetInputManager();
+	const IInputHandler& input = m_context.input;
 
 	if (input.IsActionPressed(InputActions::Pause)) m_context.stateMachine.PopState();
 
-	if (input.IsActionPressed(InputActions::Quit)) m_context.app.RequestShutdown();
+	if (input.IsActionPressed(InputActions::Quit) && m_context.requestShutdown) m_context.requestShutdown();
 }

@@ -10,7 +10,7 @@ namespace NeneEngine
 	class PlayState final : public IGameState
 	{
 	  public:
-		explicit PlayState(AppStateContext& context) : IGameState(context) {}
+		explicit PlayState(GameStateContext& context) : IGameState(context) {}
 
 		void OnEnter() override;
 		void OnPause() override;

@@ -1,13 +1,13 @@
 // PlayState.cpp
 
 #include "GameStates/PlayState.h"
-#include "GameStates/GameStateMachine.h"
-#include "App/NeneEngineApp.h"
 #include "Core/NeneLogger.h"
 #include "ECS/DebugDrawSettings.h"
-#include "Input/InputActions.h"
-#include "Input/InputManager.h"
+#include "ECS/World.h"
+#include "GameStates/GameStateMachine.h"
 #include "GameStates/PauseState.h"
+#include "Input/IInputHandler.h"
+#include "Input/InputActions.h"
 
 void NeneEngine::PlayState::OnEnter()
 {
@@ -36,7 +36,7 @@ void NeneEngine::PlayState::Update(float dt)
 
 void NeneEngine::PlayState::HandleInput()
 {
-	const InputManager& input = m_context.app.GetInputManager();
+	const IInputHandler& input = m_context.input;
 	if (input.IsActionPressed(InputActions::Pause))
 		m_context.stateMachine.PushState(eastl::make_unique<PauseState>(m_context));
 

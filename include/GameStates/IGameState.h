@@ -1,5 +1,6 @@
 #pragma once
 
+#include <EASTL/functional.h>
 #include <cstdint>
 #include <string>
 
@@ -7,24 +8,25 @@ namespace NeneEngine
 {
 
 	class GameStateMachine;
-	class NeneEngineApp;
+	class IInputHandler;
 
 	namespace ECS
 	{
 		class World;
 	}
 
-	struct AppStateContext
+	struct GameStateContext
 	{
-		NeneEngineApp& app;
+		const IInputHandler& input;
 		ECS::World& world;
 		GameStateMachine& stateMachine;
+		eastl::function<void()> requestShutdown;
 	};
 
 	class IGameState
 	{
 	  public:
-		explicit IGameState(const AppStateContext& context) : m_context(context) {}
+		explicit IGameState(const GameStateContext& context) : m_context(context) {}
 
 		virtual ~IGameState() = default;
 
@@ -42,7 +44,7 @@ namespace NeneEngine
 		virtual bool IsPausing() const { return false; }
 
 	  protected:
-		AppStateContext m_context;
+		GameStateContext m_context;
 	};
 
 } // namespace NeneEngine
