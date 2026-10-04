@@ -7,13 +7,12 @@
 #include <EASTL/functional.h>
 #include <atomic>
 
-class GameTimer;
-
 namespace NeneEngine
 {
 	class AppRuntimeConfigService;
 	class AppWindowRuntimeService;
 	class GameStateMachine;
+	class GameTimer;
 	class InputDevice;
 	class InputManager;
 

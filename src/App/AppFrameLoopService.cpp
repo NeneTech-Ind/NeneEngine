@@ -31,7 +31,7 @@ namespace NeneEngine
 			NENE_PROFILE_SCOPE("Frame");
 			windowRuntimeService.PumpWindowMessages();
 			timer.Tick();
-			const float deltaTime = timer.DeltaTime();
+			const float deltaTime = timer.GetDeltaTime();
 
 			if (!isPaused.load())
 			{
@@ -90,7 +90,7 @@ namespace NeneEngine
 	void AppFrameLoopService::CalculateFrameStats(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService)
 	{
 		++m_frameCount;
-		if ((timer.TotalTime() - m_frameStatsTimeElapsed) < 1.0f) return;
+		if ((timer.GetTotalTime() - m_frameStatsTimeElapsed) < 1.0f) return;
 
 		const float fps = static_cast<float>(m_frameCount);
 		const float mspf = 1000.0f / fps;
@@ -115,7 +115,7 @@ namespace NeneEngine
 		m_accumulatedDeltaTime += deltaTime;
 		m_lastDeltaTime = deltaTime;
 
-		if ((timer.TotalTime() - m_deltaStatsTimeElapsed) < 1.0f) return;
+		if ((timer.GetTotalTime() - m_deltaStatsTimeElapsed) < 1.0f) return;
 
 		const float averageDeltaTime =
 		    m_deltaSampleCount > 0 ? m_accumulatedDeltaTime / static_cast<float>(m_deltaSampleCount) : 0.0f;

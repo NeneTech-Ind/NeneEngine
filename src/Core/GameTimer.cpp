@@ -2,76 +2,82 @@
 
 #include "Core/GameTimer.h"
 
-GameTimer::GameTimer()
-    : mBaseTime{}, mPausedDuration{}, mStopTime{}, mPrevTime{}, mCurrTime{}, mDeltaTime(-1.0), mStopped(false)
+namespace NeneEngine
 {
-}
 
-float GameTimer::TotalTime() const
-{
-	clock::time_point currentTime = mStopped ? mStopTime : mCurrTime;
-
-	auto effective = currentTime - mBaseTime - mPausedDuration;
-
-	return static_cast<float>(std::chrono::duration<double>(effective).count());
-}
-
-float GameTimer::DeltaTime() const
-{
-	return static_cast<float>(mDeltaTime);
-}
-
-void GameTimer::Reset()
-{
-	auto currTime = clock::now();
-
-	mBaseTime = currTime;
-	mPrevTime = currTime;
-	mCurrTime = currTime;
-	mStopTime = {};
-	mPausedDuration = clock::duration::zero();
-	mStopped = false;
-}
-
-void GameTimer::Start()
-{
-	if (mStopped)
+	GameTimer::GameTimer()
+	    : m_baseTime{}, m_pausedDuration{}, m_stopTime{}, m_prevTime{}, m_currTime{}, m_deltaTime(-1.0),
+	      m_stopped(false)
 	{
-		auto startTime = clock::now();
-
-		mPausedDuration += (startTime - mStopTime);
-
-		mPrevTime = startTime;
-		mCurrTime = startTime;
-		mStopTime = {};
-		mStopped = false;
-	}
-}
-
-void GameTimer::Stop()
-{
-	if (!mStopped)
-	{
-		mStopTime = clock::now();
-		mStopped = true;
-	}
-}
-
-void GameTimer::Tick()
-{
-	if (mStopped)
-	{
-		mDeltaTime = 0.0;
-		return;
 	}
 
-	auto currTime = clock::now();
-	mCurrTime = currTime;
+	float GameTimer::GetTotalTime() const
+	{
+		Clock::time_point currentTime = m_stopped ? m_stopTime : m_currTime;
 
-	auto deltaDuration = currTime - mPrevTime;
-	mDeltaTime = std::chrono::duration<double>(deltaDuration).count();
+		auto effective = currentTime - m_baseTime - m_pausedDuration;
 
-	if (mDeltaTime < 0.0) mDeltaTime = 0.0;
+		return static_cast<float>(std::chrono::duration<double>(effective).count());
+	}
 
-	mPrevTime = currTime;
-}
+	float GameTimer::GetDeltaTime() const
+	{
+		return static_cast<float>(m_deltaTime);
+	}
+
+	void GameTimer::Reset()
+	{
+		auto currTime = Clock::now();
+
+		m_baseTime = currTime;
+		m_prevTime = currTime;
+		m_currTime = currTime;
+		m_stopTime = {};
+		m_pausedDuration = Clock::duration::zero();
+		m_stopped = false;
+	}
+
+	void GameTimer::Start()
+	{
+		if (m_stopped)
+		{
+			auto startTime = Clock::now();
+
+			m_pausedDuration += (startTime - m_stopTime);
+
+			m_prevTime = startTime;
+			m_currTime = startTime;
+			m_stopTime = {};
+			m_stopped = false;
+		}
+	}
+
+	void GameTimer::Stop()
+	{
+		if (!m_stopped)
+		{
+			m_stopTime = Clock::now();
+			m_stopped = true;
+		}
+	}
+
+	void GameTimer::Tick()
+	{
+		if (m_stopped)
+		{
+			m_deltaTime = 0.0;
+			return;
+		}
+
+		auto currTime = Clock::now();
+		m_currTime = currTime;
+
+		auto deltaDuration = currTime - m_prevTime;
+		m_deltaTime = std::chrono::duration<double>(deltaDuration).count();
+
+		if (m_deltaTime < 0.0) m_deltaTime = 0.0;
+
+		m_prevTime = currTime;
+	}
+
+} // namespace NeneEngine

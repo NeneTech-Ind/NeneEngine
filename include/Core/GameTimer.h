@@ -4,28 +4,33 @@
 
 #include <chrono>
 
-class GameTimer
+namespace NeneEngine
 {
-  public:
-	GameTimer();
 
-	float TotalTime() const;
-	float DeltaTime() const;
+	class GameTimer
+	{
+	  public:
+		GameTimer();
 
-	void Reset(); // Call before message loop.
-	void Start(); // Call when unpaused.
-	void Stop();  // Call when paused.
-	void Tick();  // Call every frame.
+		float GetTotalTime() const;
+		float GetDeltaTime() const;
 
-  private:
-	using clock = std::chrono::steady_clock;
+		void Reset(); // Call before message loop.
+		void Start(); // Call when unpaused.
+		void Stop();  // Call when paused.
+		void Tick();  // Call every frame.
 
-	clock::time_point mBaseTime;
-	clock::duration mPausedDuration;
-	clock::time_point mStopTime;
-	clock::time_point mPrevTime;
-	clock::time_point mCurrTime;
+	  private:
+		using Clock = std::chrono::steady_clock;
 
-	double mDeltaTime;
-	bool mStopped;
-};
+		Clock::time_point m_baseTime;
+		Clock::duration m_pausedDuration;
+		Clock::time_point m_stopTime;
+		Clock::time_point m_prevTime;
+		Clock::time_point m_currTime;
+
+		double m_deltaTime;
+		bool m_stopped;
+	};
+
+} // namespace NeneEngine
