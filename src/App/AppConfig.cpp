@@ -1,16 +1,14 @@
 #include "App/AppConfig.h"
 
+#include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "Input/InputActions.h"
 #include "Input/KeyCodeStrings.h"
 
-#include <fstream>
-#include <nlohmann/json.hpp>
-
-#include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsAccessories/interface/ColorConversion.h"
-#include "Core/NeneLogger.h"
-
 #include <algorithm>
+#include <fstream>
+#include <glm/gtc/color_space.hpp>
+#include <nlohmann/json.hpp>
 
 namespace NeneEngine
 {
@@ -94,9 +92,8 @@ namespace NeneEngine
 
 			// Config RGB values are treated as standard sRGB palette bytes.
 			// Convert them to linear space before clearing the render target.
-			parsedColor.r = Diligent::GammaToLinear(parsedColor.r);
-			parsedColor.g = Diligent::GammaToLinear(parsedColor.g);
-			parsedColor.b = Diligent::GammaToLinear(parsedColor.b);
+			const glm::vec3 linearColor = glm::convertSRGBToLinear(glm::vec3(parsedColor));
+			parsedColor = glm::vec4(linearColor, parsedColor.a);
 
 			return parsedColor;
 		}
