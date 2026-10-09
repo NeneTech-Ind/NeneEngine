@@ -2,8 +2,31 @@
 
 #include <Windows.h>
 
+#include <system_error>
+
 namespace NeneEngine
 {
+	namespace
+	{
+		std::filesystem::path FindNearestAncestorMatch(const std::filesystem::path& start,
+		                                               const std::filesystem::path& relativePath, bool matchParentOnly)
+		{
+			std::error_code errorCode;
+			auto current = start;
+			while (!current.empty())
+			{
+				const auto candidate = current / relativePath;
+				const auto probe = matchParentOnly ? candidate.parent_path() : candidate;
+				if (std::filesystem::exists(probe, errorCode)) return candidate;
+
+				const auto parent = current.parent_path();
+				if (parent == current) break;
+				current = parent;
+			}
+
+			return {};
+		}
+	} // namespace
 
 	std::filesystem::path GetExecutableDirectory()
 	{
@@ -17,38 +40,32 @@ namespace NeneEngine
 	std::filesystem::path ResolveFromAncestors(const std::filesystem::path& start,
 	                                           const std::filesystem::path& relativePath, bool allowMissingLeaf)
 	{
-		std::error_code errorCode;
-		auto current = start;
-		std::filesystem::path resolvedPath;
-		while (!current.empty())
-		{
-			const auto candidate = current / relativePath;
-			if (std::filesystem::exists(candidate, errorCode))
-				resolvedPath = candidate;
-			else if (allowMissingLeaf && std::filesystem::exists(candidate.parent_path(), errorCode))
-				resolvedPath = candidate;
+		if (auto existingPath = FindNearestAncestorMatch(start, relativePath, false); !existingPath.empty())
+			return existingPath;
 
-			const auto parent = current.parent_path();
-			if (parent == current) break;
-			current = parent;
-		}
-
-		return resolvedPath;
+		if (!allowMissingLeaf) return {};
+		return FindNearestAncestorMatch(start, relativePath, true);
 	}
 
 	std::filesystem::path ResolveFromExecutionRoots(const std::filesystem::path& relativePath, bool allowMissingLeaf)
 	{
-		if (const auto fromCurrentDirectory =
-		        ResolveFromAncestors(std::filesystem::current_path(), relativePath, allowMissingLeaf);
-		    !fromCurrentDirectory.empty())
-			return fromCurrentDirectory;
+		std::error_code errorCode;
+		const std::filesystem::path roots[] = {GetExecutableDirectory(), std::filesystem::current_path(errorCode)};
 
-		if (const auto executableDirectory = GetExecutableDirectory(); !executableDirectory.empty())
+		for (const auto& root : roots)
 		{
-			if (const auto fromExecutableDirectory =
-			        ResolveFromAncestors(executableDirectory, relativePath, allowMissingLeaf);
-			    !fromExecutableDirectory.empty())
-				return fromExecutableDirectory;
+			if (root.empty()) continue;
+			if (auto existingPath = FindNearestAncestorMatch(root, relativePath, false); !existingPath.empty())
+				return existingPath;
+		}
+
+		if (!allowMissingLeaf) return {};
+
+		for (const auto& root : roots)
+		{
+			if (root.empty()) continue;
+			if (auto parentMatch = FindNearestAncestorMatch(root, relativePath, true); !parentMatch.empty())
+				return parentMatch;
 		}
 
 		return {};
