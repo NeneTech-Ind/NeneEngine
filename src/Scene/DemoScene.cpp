@@ -177,9 +177,9 @@ namespace NeneEngine::DemoScene
 			}
 			catch (const std::exception& ex)
 			{
-				NENE_LOG_WARN("Demo scene '{}' failed to load: {}. Recreating default scene",
+				NENE_LOG_WARN("Demo scene '{}' failed to load: {}. Using default scene without overwriting the file",
 				              effectiveScenePath.string(), ex.what());
-				SaveDefaultScene(world, width, height, effectiveScenePath);
+				Create(world, width, height);
 			}
 		}
 		else

@@ -462,10 +462,27 @@ namespace NeneEngine
 
 	void SceneSerializer::SaveToFile(const ECS::World& world, const std::filesystem::path& path)
 	{
-		std::ofstream file(path);
-		if (!file.is_open()) throw std::runtime_error("Failed to open scene file for writing: " + path.string());
+		const std::string serializedScene = Serialize(world).dump(4);
 
-		file << Serialize(world).dump(4);
+		std::filesystem::path tempPath = path;
+		tempPath += ".tmp";
+		{
+			std::ofstream file(tempPath, std::ios::binary | std::ios::trunc);
+			if (!file.is_open())
+				throw std::runtime_error("Failed to open scene file for writing: " + tempPath.string());
+
+			file << serializedScene;
+			file.flush();
+			if (!file) throw std::runtime_error("Failed to write scene file: " + tempPath.string());
+		}
+
+		std::error_code errorCode;
+		std::filesystem::rename(tempPath, path, errorCode);
+		if (errorCode)
+		{
+			std::filesystem::remove(tempPath, errorCode);
+			throw std::runtime_error("Failed to replace scene file: " + path.string());
+		}
 	}
 
 	void SceneSerializer::LoadFromFile(const std::filesystem::path& path, ECS::World& world)
