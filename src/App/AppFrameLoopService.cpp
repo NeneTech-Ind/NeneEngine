@@ -17,11 +17,15 @@
 
 namespace NeneEngine
 {
-	void AppFrameLoopService::Run(std::atomic<bool>& running, const std::atomic<bool>& isPaused, GameTimer& timer,
-	                              GameStateMachine& gameStateMachine, InputManager& inputManager,
-	                              AppRuntimeConfigService& runtimeConfigService,
-	                              AppWindowRuntimeService& windowRuntimeService,
-	                              ApplyConfigCallback applyRuntimeConfig, FocusedInputCallback getFocusedInput)
+	namespace
+	{
+		constexpr DWORD kPausedWaitTimeoutMs = 100;
+	} // namespace
+
+	void AppFrameLoopService::Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
+	                              InputManager& inputManager, AppRuntimeConfigService& runtimeConfigService,
+	                              AppWindowRuntimeService& windowRuntimeService, ApplyConfigCallback applyRuntimeConfig,
+	                              FocusedInputCallback getFocusedInput)
 	{
 		running = true;
 		timer.Reset();
@@ -30,24 +34,26 @@ namespace NeneEngine
 		{
 			NENE_PROFILE_SCOPE("Frame");
 			windowRuntimeService.PumpWindowMessages();
+
+			if (windowRuntimeService.AreAllWindowsMinimized())
+			{
+				timer.Stop();
+				MsgWaitForMultipleObjects(0, nullptr, FALSE, kPausedWaitTimeoutMs, QS_ALLINPUT);
+				continue;
+			}
+
+			timer.Start();
 			timer.Tick();
 			const float deltaTime = timer.GetDeltaTime();
 
-			if (!isPaused.load())
+			InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput);
+			GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig);
+			SyncPhase(deltaTime);
 			{
-				InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput);
-				GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig);
-				SyncPhase(deltaTime);
-				{
-					NENE_PROFILE_SCOPE("Render");
-					windowRuntimeService.Render();
-				}
-				EndFramePhase(timer, windowRuntimeService);
+				NENE_PROFILE_SCOPE("Render");
+				windowRuntimeService.Render();
 			}
-			else
-			{
-				Sleep(100);
-			}
+			EndFramePhase(timer, windowRuntimeService);
 			NENE_PROFILE_FRAME();
 		}
 	}

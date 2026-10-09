@@ -18,6 +18,7 @@ namespace NeneEngine
 
 		void PumpMessages() override;
 		bool ShouldClose() const override { return m_shouldClose; }
+		bool IsMinimized() const override { return m_isMinimized; }
 
 		HWND GetHWND() const override { return m_hwnd; }
 		std::string GetTitle() const override { return m_title; }
@@ -40,6 +41,7 @@ namespace NeneEngine
 		uint32_t m_width = 0;
 		uint32_t m_height = 0;
 		bool m_shouldClose = false;
+		bool m_isMinimized = false;
 		bool m_isTrackingMouseLeave = false;
 		InputDevice m_input;
 		MulticastDelegate<uint32_t, uint32_t> m_resized;

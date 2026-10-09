@@ -22,10 +22,10 @@ namespace NeneEngine
 		using ApplyConfigCallback = eastl::function<void(const AppConfig&)>;
 		using FocusedInputCallback = eastl::function<InputDevice*()>;
 
-		void Run(std::atomic<bool>& running, const std::atomic<bool>& isPaused, GameTimer& timer,
-		         GameStateMachine& gameStateMachine, InputManager& inputManager,
-		         AppRuntimeConfigService& runtimeConfigService, AppWindowRuntimeService& windowRuntimeService,
-		         ApplyConfigCallback applyRuntimeConfig, FocusedInputCallback getFocusedInput);
+		void Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
+		         InputManager& inputManager, AppRuntimeConfigService& runtimeConfigService,
+		         AppWindowRuntimeService& windowRuntimeService, ApplyConfigCallback applyRuntimeConfig,
+		         FocusedInputCallback getFocusedInput);
 
 	  private:
 		void InputPhase(float deltaTime, InputManager& inputManager, AppWindowRuntimeService& windowRuntimeService,

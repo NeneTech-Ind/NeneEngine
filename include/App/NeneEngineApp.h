@@ -41,7 +41,6 @@ namespace NeneEngine
 		AppWindowRuntimeService m_windowRuntimeService;
 
 		std::atomic<bool> m_running{false};
-		std::atomic<bool> m_isPaused{false};
 
 		void ApplyRuntimeAppConfig(const AppConfig& config);
 	};

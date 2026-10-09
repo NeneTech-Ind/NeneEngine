@@ -22,6 +22,7 @@ namespace NeneEngine
 
 		virtual void PumpMessages() = 0;
 		virtual bool ShouldClose() const = 0;
+		virtual bool IsMinimized() const = 0;
 
 		virtual HWND GetHWND() const = 0;
 		virtual std::string GetTitle() const = 0;

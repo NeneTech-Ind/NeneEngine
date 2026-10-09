@@ -172,6 +172,19 @@ namespace NeneEngine
 		return true;
 	}
 
+	bool AppWindowRuntimeService::AreAllWindowsMinimized() const
+	{
+		bool hasOpenWindow = false;
+		for (const auto& windowContext : m_windows)
+		{
+			if (!windowContext.window || windowContext.window->ShouldClose()) continue;
+			if (!windowContext.window->IsMinimized()) return false;
+			hasOpenWindow = true;
+		}
+
+		return hasOpenWindow;
+	}
+
 	void AppWindowRuntimeService::ApplyRuntimeConfig(const AppConfig& config)
 	{
 		for (size_t index = 0; index < m_windows.size(); ++index)
@@ -234,8 +247,8 @@ namespace NeneEngine
 
 		const auto canRender = [](const AppWindowContext& windowContext)
 		{
-			return windowContext.window && !windowContext.window->ShouldClose() && windowContext.renderer &&
-			       windowContext.renderSystem;
+			return windowContext.window && !windowContext.window->ShouldClose() &&
+			       !windowContext.window->IsMinimized() && windowContext.renderer && windowContext.renderSystem;
 		};
 
 		size_t lastRenderedIndex = m_windows.size();

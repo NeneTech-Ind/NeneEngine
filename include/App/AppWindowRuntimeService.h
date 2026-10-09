@@ -29,6 +29,7 @@ namespace NeneEngine
 		void Shutdown();
 
 		[[nodiscard]] bool AreAllWindowsClosed() const;
+		[[nodiscard]] bool AreAllWindowsMinimized() const;
 		void PumpWindowMessages();
 		void UpdateInputManagers();
 		void UpdateWindowSystems(float deltaTime);

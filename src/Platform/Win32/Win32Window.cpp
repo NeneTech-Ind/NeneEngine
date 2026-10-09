@@ -64,6 +64,7 @@ namespace NeneEngine
 		m_width = width;
 		m_height = height;
 		m_shouldClose = false;
+		m_isMinimized = false;
 
 		RECT windowRect{0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
 		const DWORD style = WS_OVERLAPPEDWINDOW;
@@ -155,7 +156,8 @@ namespace NeneEngine
 		case WM_SIZE:
 			m_width = static_cast<uint32_t>(LOWORD(lParam));
 			m_height = static_cast<uint32_t>(HIWORD(lParam));
-			if (wParam != SIZE_MINIMIZED) m_resized.Broadcast(m_width, m_height);
+			m_isMinimized = wParam == SIZE_MINIMIZED;
+			if (!m_isMinimized) m_resized.Broadcast(m_width, m_height);
 			return 0;
 
 		case WM_MOUSEMOVE:

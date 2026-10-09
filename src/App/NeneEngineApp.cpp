@@ -57,8 +57,8 @@ namespace NeneEngine
 	void NeneEngineApp::Run()
 	{
 		m_frameLoopService.Run(
-		    m_running, m_isPaused, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService,
-		    m_windowRuntimeService, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
+		    m_running, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService, m_windowRuntimeService,
+		    [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
 		    [this]() { return m_windowRuntimeService.GetFocusedInput(); });
 	}
 
