@@ -14,6 +14,17 @@ namespace NeneEngine
 
 	using namespace Diligent;
 
+	namespace
+	{
+#ifdef NDEBUG
+		constexpr bool kEnableGpuValidation = false;
+		constexpr DRAW_FLAGS kDrawVerifyFlags = DRAW_FLAG_NONE;
+#else
+		constexpr bool kEnableGpuValidation = true;
+		constexpr DRAW_FLAGS kDrawVerifyFlags = DRAW_FLAG_VERIFY_ALL;
+#endif
+	} // namespace
+
 	DiligentDX12SharedDevice::~DiligentDX12SharedDevice()
 	{
 		if (immediateContext) immediateContext->Flush();
@@ -48,7 +59,7 @@ namespace NeneEngine
 		if (!m_shared->device || !m_shared->immediateContext)
 		{
 			EngineD3D12CreateInfo engineCreateInfo{};
-			engineCreateInfo.EnableValidation = true;
+			engineCreateInfo.EnableValidation = kEnableGpuValidation;
 
 			pFactory->CreateDeviceAndContextsD3D12(engineCreateInfo, &m_shared->device, &m_shared->immediateContext);
 
@@ -60,7 +71,7 @@ namespace NeneEngine
 				return false;
 			}
 
-			NENE_LOG_INFO("DiligentDX12Adapter: created shared D3D12 device");
+			NENE_LOG_INFO("DiligentDX12Adapter: created shared D3D12 device (validation={})", kEnableGpuValidation);
 		}
 
 		SwapChainDesc swapChainCreateDesc{};
@@ -512,7 +523,7 @@ namespace NeneEngine
 					m_shared->immediateContext->CommitShaderResources(meshSRB,
 					                                                  RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-				DrawIndexedAttribs drawIndexedAttrs{uploadedMesh->indexCount, VT_UINT32, DRAW_FLAG_VERIFY_ALL};
+				DrawIndexedAttribs drawIndexedAttrs{uploadedMesh->indexCount, VT_UINT32, kDrawVerifyFlags};
 				m_shared->immediateContext->DrawIndexed(drawIndexedAttrs);
 
 				NENE_LOG_DEBUG("DiligentDX12Adapter: drew uploaded mesh={} material={} shader={} indices={} "
@@ -555,6 +566,7 @@ namespace NeneEngine
 				DrawAttribs drawAttrs{};
 				drawAttrs.NumVertices = GetVertexCount(item.primitiveType);
 				drawAttrs.StartVertexLocation = 0;
+				drawAttrs.Flags = kDrawVerifyFlags;
 
 				m_shared->immediateContext->Draw(drawAttrs);
 
