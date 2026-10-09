@@ -50,13 +50,9 @@ namespace NeneEngine
 		}
 
 		size_t mainWindowCount = 0;
-		size_t secondaryWindowCount = 0;
 		for (const auto& windowConfig : config.windows)
 		{
-			if (windowConfig.isMain)
-				++mainWindowCount;
-			else
-				++secondaryWindowCount;
+			if (windowConfig.isMain) ++mainWindowCount;
 		}
 
 		if (mainWindowCount == 0)
@@ -69,6 +65,7 @@ namespace NeneEngine
 			NENE_LOG_WARN("App config: multiple windows marked as main, only the first one will control the primary "
 			              "camera");
 
+		const size_t secondaryWindowCount = config.windows.size() - 1;
 		m_windows.reserve(config.windows.size());
 
 		const auto secondaryCameraEntities =

@@ -144,6 +144,14 @@ namespace NeneEngine
 					continue;
 				}
 
+				if (windowConfig.isMain && hasMainWindow)
+				{
+					NENE_LOG_WARN("App config: windows[{}] is marked as main, but a main window is already defined; "
+					              "treating it as secondary",
+					              windowIndex - 1);
+					windowConfig.isMain = false;
+				}
+
 				hasMainWindow = hasMainWindow || windowConfig.isMain;
 				windows.push_back(std::move(windowConfig));
 			}
