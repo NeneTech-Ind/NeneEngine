@@ -12,6 +12,7 @@
 #include "Scene/Instantiation/ModelInstanceConfig.h"
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 
+#include <EASTL/algorithm.h>
 #include <EASTL/vector.h>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
@@ -77,7 +78,7 @@ namespace NeneEngine
 
 		uintptr_t GetRendererKey(const IRenderAdapter& renderer)
 		{
-			return reinterpret_cast<uintptr_t>(&renderer);
+			return renderer.GetResourceDomainKey();
 		}
 
 		const GPUMesh* FindUploadedMeshForRenderer(const Mesh& mesh, const IRenderAdapter& renderer)
@@ -157,6 +158,12 @@ namespace NeneEngine
 		for (IRenderAdapter* renderer : renderers)
 		{
 			if (renderer == nullptr) continue;
+
+			const bool domainAlreadyCovered =
+			    eastl::any_of(validRenderers.begin(), validRenderers.end(), [renderer](const IRenderAdapter* other)
+			                  { return other->GetResourceDomainKey() == renderer->GetResourceDomainKey(); });
+			if (domainAlreadyCovered) continue;
+
 			validRenderers.push_back(renderer);
 			shaderIds.push_back(CreateTexturedMeshShader(*renderer, shaderPath));
 		}

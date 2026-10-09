@@ -14,7 +14,16 @@ namespace NeneEngine
 
 	using namespace Diligent;
 
-	DiligentDX12Adapter::DiligentDX12Adapter() = default;
+	DiligentDX12SharedDevice::~DiligentDX12SharedDevice()
+	{
+		if (immediateContext) immediateContext->Flush();
+		if (device) device->IdleGPU();
+	}
+
+	DiligentDX12Adapter::DiligentDX12Adapter(eastl::shared_ptr<DiligentDX12SharedDevice> sharedDevice)
+	    : m_shared(std::move(sharedDevice))
+	{
+	}
 
 	DiligentDX12Adapter::~DiligentDX12Adapter()
 	{
@@ -23,6 +32,12 @@ namespace NeneEngine
 
 	bool DiligentDX12Adapter::Init(HWND hwnd, uint32_t width, uint32_t height)
 	{
+		if (!m_shared)
+		{
+			NENE_LOG_ERROR("DiligentDX12Adapter: shared device state is missing");
+			return false;
+		}
+
 		IEngineFactoryD3D12* pFactory = LoadAndGetEngineFactoryD3D12();
 		if (!pFactory)
 		{
@@ -30,8 +45,23 @@ namespace NeneEngine
 			return false;
 		}
 
-		EngineD3D12CreateInfo engineCreateInfo{};
-		engineCreateInfo.EnableValidation = true;
+		if (!m_shared->device || !m_shared->immediateContext)
+		{
+			EngineD3D12CreateInfo engineCreateInfo{};
+			engineCreateInfo.EnableValidation = true;
+
+			pFactory->CreateDeviceAndContextsD3D12(engineCreateInfo, &m_shared->device, &m_shared->immediateContext);
+
+			if (!m_shared->device || !m_shared->immediateContext)
+			{
+				NENE_LOG_ERROR("Failed to create D3D12 device and immediate context");
+				m_shared->immediateContext.Release();
+				m_shared->device.Release();
+				return false;
+			}
+
+			NENE_LOG_INFO("DiligentDX12Adapter: created shared D3D12 device");
+		}
 
 		SwapChainDesc swapChainCreateDesc{};
 		swapChainCreateDesc.Width = width;
@@ -39,20 +69,11 @@ namespace NeneEngine
 		swapChainCreateDesc.BufferCount = 2; // Double buffering
 		swapChainCreateDesc.DepthBufferFormat = TEX_FORMAT_D32_FLOAT;
 
-		pFactory->CreateDeviceAndContextsD3D12(engineCreateInfo, &m_pDevice, &m_pImmediateContext);
-
-		if (!m_pDevice || !m_pImmediateContext)
-		{
-			NENE_LOG_ERROR("Failed to create D3D12 device and immediate context");
-			return false;
-		}
-
-		// Swap Chain
 		Win32NativeWindow nativeWindow{hwnd};
 		FullScreenModeDesc fullScreenDesc{};
 
-		pFactory->CreateSwapChainD3D12(m_pDevice, m_pImmediateContext, swapChainCreateDesc, fullScreenDesc,
-		                               nativeWindow, &m_pSwapChain);
+		pFactory->CreateSwapChainD3D12(m_shared->device, m_shared->immediateContext, swapChainCreateDesc,
+		                               fullScreenDesc, nativeWindow, &m_pSwapChain);
 
 		if (!m_pSwapChain)
 		{
@@ -65,9 +86,23 @@ namespace NeneEngine
 		              static_cast<int>(swapChainDesc.ColorBufferFormat),
 		              static_cast<int>(swapChainDesc.DepthBufferFormat));
 
-		if (!CreateResources())
+		if (!m_shared->resourcesCreated)
 		{
-			NENE_LOG_ERROR("Failed to create D3D12 render resources");
+			if (!CreateResources())
+			{
+				NENE_LOG_ERROR("Failed to create D3D12 render resources");
+				Shutdown();
+				return false;
+			}
+
+			m_shared->colorBufferFormat = swapChainDesc.ColorBufferFormat;
+			m_shared->depthBufferFormat = swapChainDesc.DepthBufferFormat;
+			m_shared->resourcesCreated = true;
+		}
+		else if (swapChainDesc.ColorBufferFormat != m_shared->colorBufferFormat ||
+		         swapChainDesc.DepthBufferFormat != m_shared->depthBufferFormat)
+		{
+			NENE_LOG_ERROR("DiligentDX12Adapter: swap chain formats do not match the shared pipelines");
 			Shutdown();
 			return false;
 		}
@@ -79,32 +114,20 @@ namespace NeneEngine
 
 	void DiligentDX12Adapter::Shutdown()
 	{
-		if (m_pImmediateContext) m_pImmediateContext->Flush();
-
-		for (auto& pso : m_pPrimitivePSOs) pso.Release();
-		for (auto& buffer : m_pPrimitiveConstantBuffers) buffer.Release();
-		for (auto& srb : m_pPrimitiveSRBs) srb.Release();
-		m_pMeshPSO.Release();
-		m_pMeshConstantBuffer.Release();
-		m_pMeshSRB.Release();
+		if (m_shared && m_shared->immediateContext) m_shared->immediateContext->Flush();
 
 		m_renderQueue.clear();
-		m_uploadedBuffers.clear();
-		m_uploadedMeshes.clear();
-		m_uploadedTextures.clear();
-		m_uploadedShaderPrograms.clear();
-		m_nextBufferId = 1;
-		m_nextMeshId = 1;
-		m_nextTextureId = 1;
-		m_nextShaderId = 1;
 		m_pSwapChain.Release();
-		m_pImmediateContext.Release();
-		m_pDevice.Release();
+	}
+
+	uintptr_t DiligentDX12Adapter::GetResourceDomainKey() const
+	{
+		return reinterpret_cast<uintptr_t>(m_shared.get());
 	}
 
 	GPUBuffer DiligentDX12Adapter::CreateVertexBuffer(const void* vertexData, uint64_t sizeBytes, uint32_t vertexCount)
 	{
-		if (!m_pDevice)
+		if (!m_shared->device)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: CreateVertexBuffer called before device initialization");
 			return {};
@@ -127,7 +150,7 @@ namespace NeneEngine
 		vertexBufferData.DataSize = vertexBufferDesc.Size;
 
 		UploadedBuffer uploadedBuffer{};
-		m_pDevice->CreateBuffer(vertexBufferDesc, &vertexBufferData, &uploadedBuffer.buffer);
+		m_shared->device->CreateBuffer(vertexBufferDesc, &vertexBufferData, &uploadedBuffer.buffer);
 		if (!uploadedBuffer.buffer)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create vertex buffer (bytes={}, vertices={})", sizeBytes,
@@ -138,14 +161,14 @@ namespace NeneEngine
 		uploadedBuffer.sizeBytes = sizeBytes;
 		uploadedBuffer.elementCount = vertexCount;
 
-		const GPUBufferId bufferId{m_nextBufferId++};
-		m_uploadedBuffers.emplace(bufferId.value, uploadedBuffer);
+		const GPUBufferId bufferId{m_shared->nextBufferId++};
+		m_shared->uploadedBuffers.emplace(bufferId.value, uploadedBuffer);
 		return GPUBuffer{bufferId, sizeBytes, vertexCount};
 	}
 
 	GPUBuffer DiligentDX12Adapter::CreateIndexBuffer(const uint32_t* indices, uint32_t indexCount)
 	{
-		if (!m_pDevice)
+		if (!m_shared->device)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: CreateIndexBuffer called before device initialization");
 			return {};
@@ -168,7 +191,7 @@ namespace NeneEngine
 		indexBufferData.DataSize = indexBufferDesc.Size;
 
 		UploadedBuffer uploadedBuffer{};
-		m_pDevice->CreateBuffer(indexBufferDesc, &indexBufferData, &uploadedBuffer.buffer);
+		m_shared->device->CreateBuffer(indexBufferDesc, &indexBufferData, &uploadedBuffer.buffer);
 		if (!uploadedBuffer.buffer)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create index buffer (indices={})", indexCount);
@@ -178,8 +201,8 @@ namespace NeneEngine
 		uploadedBuffer.sizeBytes = indexBufferDesc.Size;
 		uploadedBuffer.elementCount = indexCount;
 
-		const GPUBufferId bufferId{m_nextBufferId++};
-		m_uploadedBuffers.emplace(bufferId.value, uploadedBuffer);
+		const GPUBufferId bufferId{m_shared->nextBufferId++};
+		m_shared->uploadedBuffers.emplace(bufferId.value, uploadedBuffer);
 		return GPUBuffer{bufferId, indexBufferDesc.Size, indexCount};
 	}
 
@@ -198,9 +221,9 @@ namespace NeneEngine
 		    CreateIndexBuffer(meshData.indices.data(), static_cast<uint32_t>(meshData.indices.size()));
 		if (!vertexBuffer.IsValid() || !indexBuffer.IsValid()) return {};
 
-		const auto vertexIt = m_uploadedBuffers.find(vertexBuffer.bufferId.value);
-		const auto indexIt = m_uploadedBuffers.find(indexBuffer.bufferId.value);
-		if (vertexIt == m_uploadedBuffers.end() || indexIt == m_uploadedBuffers.end()) return {};
+		const auto vertexIt = m_shared->uploadedBuffers.find(vertexBuffer.bufferId.value);
+		const auto indexIt = m_shared->uploadedBuffers.find(indexBuffer.bufferId.value);
+		if (vertexIt == m_shared->uploadedBuffers.end() || indexIt == m_shared->uploadedBuffers.end()) return {};
 
 		UploadedMeshBuffers uploadedMesh{};
 		uploadedMesh.vertexBufferId = vertexBuffer.bufferId;
@@ -210,8 +233,8 @@ namespace NeneEngine
 		uploadedMesh.vertexCount = static_cast<uint32_t>(meshData.vertices.size());
 		uploadedMesh.indexCount = static_cast<uint32_t>(meshData.indices.size());
 
-		const MeshId meshId{m_nextMeshId++};
-		m_uploadedMeshes.emplace(meshId.value, uploadedMesh);
+		const MeshId meshId{m_shared->nextMeshId++};
+		m_shared->uploadedMeshes.emplace(meshId.value, uploadedMesh);
 
 		NENE_LOG_INFO("DiligentDX12Adapter: uploaded mesh {} (vertices={}, indices={})", meshId.value,
 		              uploadedMesh.vertexCount, uploadedMesh.indexCount);
@@ -222,7 +245,7 @@ namespace NeneEngine
 
 	GPUTexture DiligentDX12Adapter::CreateTexture2D(const TextureResource& texture)
 	{
-		if (!m_pDevice)
+		if (!m_shared->device)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: CreateTexture2D called before device initialization");
 			return {};
@@ -240,7 +263,7 @@ namespace NeneEngine
 		}
 
 		UploadedTexture uploadedTexture{};
-		textureLoader->CreateTexture(m_pDevice, &uploadedTexture.texture);
+		textureLoader->CreateTexture(m_shared->device, &uploadedTexture.texture);
 		if (!uploadedTexture.texture)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create GPU texture for '{}'", texture.path);
@@ -259,15 +282,15 @@ namespace NeneEngine
 			return {};
 		}
 
-		if (m_pImmediateContext)
+		if (m_shared->immediateContext)
 		{
 			StateTransitionDesc barrier(uploadedTexture.texture, RESOURCE_STATE_UNKNOWN, RESOURCE_STATE_SHADER_RESOURCE,
 			                            STATE_TRANSITION_FLAG_UPDATE_STATE);
-			m_pImmediateContext->TransitionResourceState(barrier);
+			m_shared->immediateContext->TransitionResourceState(barrier);
 		}
 
-		const TextureId textureId{m_nextTextureId++};
-		m_uploadedTextures.emplace(textureId.value, uploadedTexture);
+		const TextureId textureId{m_shared->nextTextureId++};
+		m_shared->uploadedTextures.emplace(textureId.value, uploadedTexture);
 		NENE_LOG_INFO("DiligentDX12Adapter: uploaded texture {} '{}' ({}x{})", textureId.value, texture.path,
 		              textureDesc.Width, textureDesc.Height);
 		return GPUTexture{textureId, textureDesc.Width, textureDesc.Height};
@@ -275,7 +298,7 @@ namespace NeneEngine
 
 	GPUShaderProgram DiligentDX12Adapter::CreateShaderProgram(const ShaderProgramResource& shaderProgram)
 	{
-		if (!m_pDevice || !m_pSwapChain)
+		if (!m_shared->device || !m_pSwapChain)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: CreateShaderProgram called before renderer initialization");
 			return {};
@@ -315,12 +338,12 @@ namespace NeneEngine
 		shaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
 		shaderCI.Desc.Name = shaderProgram.vertexPath.c_str();
 		shaderCI.Source = shaderProgram.vertexSource.c_str();
-		m_pDevice->CreateShader(shaderCI, &vertexShader);
+		m_shared->device->CreateShader(shaderCI, &vertexShader);
 
 		shaderCI.Desc.ShaderType = SHADER_TYPE_PIXEL;
 		shaderCI.Desc.Name = shaderProgram.pixelPath.c_str();
 		shaderCI.Source = shaderProgram.pixelSource.c_str();
-		m_pDevice->CreateShader(shaderCI, &pixelShader);
+		m_shared->device->CreateShader(shaderCI, &pixelShader);
 
 		if (!vertexShader || !pixelShader)
 		{
@@ -356,13 +379,13 @@ namespace NeneEngine
 			samplerPsoCreateInfo.PSODesc.ResourceLayout.ImmutableSamplers = immutableSamplers;
 			samplerPsoCreateInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(immutableSamplers);
 
-			m_pDevice->CreateGraphicsPipelineState(samplerPsoCreateInfo, &pipelineState);
+			m_shared->device->CreateGraphicsPipelineState(samplerPsoCreateInfo, &pipelineState);
 			if (!pipelineState) return false;
 
-			if (m_pMeshConstantBuffer)
+			if (m_shared->meshConstantBuffer)
 			{
 				auto* constantsVariable = pipelineState->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
-				if (constantsVariable != nullptr) constantsVariable->Set(m_pMeshConstantBuffer);
+				if (constantsVariable != nullptr) constantsVariable->Set(m_shared->meshConstantBuffer);
 			}
 
 			return true;
@@ -381,15 +404,15 @@ namespace NeneEngine
 			return {};
 		}
 
-		const ShaderId shaderId{m_nextShaderId++};
-		m_uploadedShaderPrograms.emplace(shaderId.value, std::move(uploadedShader));
+		const ShaderId shaderId{m_shared->nextShaderId++};
+		m_shared->uploadedShaderPrograms.emplace(shaderId.value, std::move(uploadedShader));
 		NENE_LOG_INFO("DiligentDX12Adapter: created shader program {}", shaderId.value);
 		return GPUShaderProgram{shaderId};
 	}
 
 	void DiligentDX12Adapter::BeginFrame()
 	{
-		if (!m_pSwapChain || !m_pImmediateContext) return;
+		if (!m_pSwapChain || !m_shared->immediateContext) return;
 
 		ITextureView* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
 		ITextureView* pDSV = m_pSwapChain->GetDepthBufferDSV();
@@ -399,13 +422,13 @@ namespace NeneEngine
 			return;
 		}
 
-		m_pImmediateContext->SetRenderTargets(1, &pRTV, pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		m_shared->immediateContext->SetRenderTargets(1, &pRTV, pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
 		const float clearColor[] = {m_clearColor.r, m_clearColor.g, m_clearColor.b, m_clearColor.a};
-		m_pImmediateContext->ClearRenderTarget(pRTV, clearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		m_shared->immediateContext->ClearRenderTarget(pRTV, clearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 		if (pDSV != nullptr)
-			m_pImmediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0,
-			                                       RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+			m_shared->immediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0,
+			                                              RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 		else
 			NENE_LOG_WARN("DiligentDX12Adapter: depth buffer DSV is missing");
 
@@ -420,7 +443,7 @@ namespace NeneEngine
 
 	void DiligentDX12Adapter::EndFrame()
 	{
-		if (!m_pImmediateContext || !m_pSwapChain) return;
+		if (!m_shared->immediateContext || !m_pSwapChain) return;
 
 		const auto& swapChainDesc = m_pSwapChain->GetDesc();
 		Viewport viewport{};
@@ -430,7 +453,7 @@ namespace NeneEngine
 		viewport.Height = static_cast<float>(swapChainDesc.Height);
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
-		m_pImmediateContext->SetViewports(1, &viewport, swapChainDesc.Width, swapChainDesc.Height);
+		m_shared->immediateContext->SetViewports(1, &viewport, swapChainDesc.Width, swapChainDesc.Height);
 
 		for (const auto& item : m_renderQueue)
 		{
@@ -442,20 +465,20 @@ namespace NeneEngine
 				    shaderProgram != nullptr && uploadedTexture != nullptr
 				        ? GetShaderPipelineState(*shaderProgram, uploadedTexture->filterMode,
 				                                 uploadedTexture->addressMode)
-				        : m_pMeshPSO.RawPtr();
+				        : m_shared->meshPSO.RawPtr();
 				IShaderResourceBinding* meshSRB = shaderProgram != nullptr
 				                                      ? GetShaderResourceBinding(*shaderProgram, item.textureId)
-				                                      : m_pMeshSRB.RawPtr();
+				                                      : m_shared->meshSRB.RawPtr();
 				if (shaderProgram != nullptr && meshSRB == nullptr)
 				{
 					NENE_LOG_WARN("DiligentDX12Adapter: shader {} requires texture {}, falling back to default mesh "
 					              "pipeline for mesh {}",
 					              item.shaderId.value, item.textureId.value, item.meshId.value);
-					meshPipelineState = m_pMeshPSO.RawPtr();
-					meshSRB = m_pMeshSRB.RawPtr();
+					meshPipelineState = m_shared->meshPSO.RawPtr();
+					meshSRB = m_shared->meshSRB.RawPtr();
 				}
 
-				if (meshPipelineState == nullptr || m_pMeshConstantBuffer == nullptr)
+				if (meshPipelineState == nullptr || m_shared->meshConstantBuffer == nullptr)
 				{
 					NENE_LOG_WARN("DiligentDX12Adapter: mesh pipeline resources are missing for mesh {}",
 					              item.meshId.value);
@@ -463,7 +486,8 @@ namespace NeneEngine
 				}
 
 				PVoid mappedData = nullptr;
-				m_pImmediateContext->MapBuffer(m_pMeshConstantBuffer, MAP_WRITE, MAP_FLAG_DISCARD, mappedData);
+				m_shared->immediateContext->MapBuffer(m_shared->meshConstantBuffer, MAP_WRITE, MAP_FLAG_DISCARD,
+				                                      mappedData);
 				if (mappedData == nullptr)
 				{
 					NENE_LOG_WARN("DiligentDX12Adapter: failed to map mesh constant buffer");
@@ -473,22 +497,23 @@ namespace NeneEngine
 				auto* drawConstants = static_cast<PrimitiveDrawConstants*>(mappedData);
 				drawConstants->modelViewProjectionMatrix = item.modelViewProjectionMatrix;
 				drawConstants->tint = item.tint;
-				m_pImmediateContext->UnmapBuffer(m_pMeshConstantBuffer, MAP_WRITE);
+				m_shared->immediateContext->UnmapBuffer(m_shared->meshConstantBuffer, MAP_WRITE);
 
 				IBuffer* vertexBuffers[] = {uploadedMesh->vertexBuffer.RawPtr()};
 				Uint64 offsets[] = {0};
 
-				m_pImmediateContext->SetPipelineState(meshPipelineState);
-				m_pImmediateContext->SetVertexBuffers(0, 1, vertexBuffers, offsets,
-				                                      RESOURCE_STATE_TRANSITION_MODE_TRANSITION,
-				                                      SET_VERTEX_BUFFERS_FLAG_RESET);
-				m_pImmediateContext->SetIndexBuffer(uploadedMesh->indexBuffer, 0,
-				                                    RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+				m_shared->immediateContext->SetPipelineState(meshPipelineState);
+				m_shared->immediateContext->SetVertexBuffers(0, 1, vertexBuffers, offsets,
+				                                             RESOURCE_STATE_TRANSITION_MODE_TRANSITION,
+				                                             SET_VERTEX_BUFFERS_FLAG_RESET);
+				m_shared->immediateContext->SetIndexBuffer(uploadedMesh->indexBuffer, 0,
+				                                           RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 				if (meshSRB != nullptr)
-					m_pImmediateContext->CommitShaderResources(meshSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+					m_shared->immediateContext->CommitShaderResources(meshSRB,
+					                                                  RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
 				DrawIndexedAttribs drawIndexedAttrs{uploadedMesh->indexCount, VT_UINT32, DRAW_FLAG_VERIFY_ALL};
-				m_pImmediateContext->DrawIndexed(drawIndexedAttrs);
+				m_shared->immediateContext->DrawIndexed(drawIndexedAttrs);
 
 				NENE_LOG_DEBUG("DiligentDX12Adapter: drew uploaded mesh={} material={} shader={} indices={} "
 				               "texture={} tint=({:.2f}, {:.2f}, {:.2f}, {:.2f})",
@@ -500,8 +525,8 @@ namespace NeneEngine
 				// Built-in primitives are generated in the shader from SV_VertexID and need no vertex buffer.
 				const size_t primitiveIndex = static_cast<size_t>(item.primitiveType);
 				auto* pipelineState = GetPipelineState(item.primitiveType);
-				auto* constantBuffer = m_pPrimitiveConstantBuffers[primitiveIndex].RawPtr();
-				auto* srb = m_pPrimitiveSRBs[primitiveIndex].RawPtr();
+				auto* constantBuffer = m_shared->primitiveConstantBuffers[primitiveIndex].RawPtr();
+				auto* srb = m_shared->primitiveSRBs[primitiveIndex].RawPtr();
 
 				if (pipelineState == nullptr || constantBuffer == nullptr)
 				{
@@ -511,7 +536,7 @@ namespace NeneEngine
 				}
 
 				PVoid mappedData = nullptr;
-				m_pImmediateContext->MapBuffer(constantBuffer, MAP_WRITE, MAP_FLAG_DISCARD, mappedData);
+				m_shared->immediateContext->MapBuffer(constantBuffer, MAP_WRITE, MAP_FLAG_DISCARD, mappedData);
 				if (mappedData == nullptr)
 				{
 					NENE_LOG_WARN("DiligentDX12Adapter: failed to map constant buffer");
@@ -521,17 +546,17 @@ namespace NeneEngine
 				auto* drawConstants = static_cast<PrimitiveDrawConstants*>(mappedData);
 				drawConstants->modelViewProjectionMatrix = item.modelViewProjectionMatrix;
 				drawConstants->tint = item.tint;
-				m_pImmediateContext->UnmapBuffer(constantBuffer, MAP_WRITE);
+				m_shared->immediateContext->UnmapBuffer(constantBuffer, MAP_WRITE);
 
-				m_pImmediateContext->SetPipelineState(pipelineState);
+				m_shared->immediateContext->SetPipelineState(pipelineState);
 				if (srb != nullptr)
-					m_pImmediateContext->CommitShaderResources(srb, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+					m_shared->immediateContext->CommitShaderResources(srb, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
 				DrawAttribs drawAttrs{};
 				drawAttrs.NumVertices = GetVertexCount(item.primitiveType);
 				drawAttrs.StartVertexLocation = 0;
 
-				m_pImmediateContext->Draw(drawAttrs);
+				m_shared->immediateContext->Draw(drawAttrs);
 
 				NENE_LOG_DEBUG("DiligentDX12Adapter: drew primitive={} mesh={} material={} shader={} tint=({:.2f}, "
 				               "{:.2f}, {:.2f}, {:.2f})",
@@ -541,16 +566,16 @@ namespace NeneEngine
 		}
 	}
 
-	void DiligentDX12Adapter::Present()
+	void DiligentDX12Adapter::Present(uint32_t syncInterval)
 	{
-		if (m_pSwapChain) m_pSwapChain->Present();
+		if (m_pSwapChain) m_pSwapChain->Present(syncInterval);
 	}
 
 	void DiligentDX12Adapter::Resize(uint32_t width, uint32_t height)
 	{
 		if (width == 0 || height == 0) return;
 
-		if (m_pImmediateContext) m_pImmediateContext->Flush();
+		if (m_shared->immediateContext) m_shared->immediateContext->Flush();
 
 		if (m_pSwapChain)
 		{
@@ -630,12 +655,12 @@ namespace NeneEngine
 			shaderCreateInfo.Desc.ShaderType = SHADER_TYPE_VERTEX;
 			shaderCreateInfo.Desc.Name = name;
 			shaderCreateInfo.Source = vertexShaderSource;
-			m_pDevice->CreateShader(shaderCreateInfo, &pVS);
+			m_shared->device->CreateShader(shaderCreateInfo, &pVS);
 
 			shaderCreateInfo.Desc.ShaderType = SHADER_TYPE_PIXEL;
 			shaderCreateInfo.Desc.Name = "Primitive PS";
 			shaderCreateInfo.Source = pixelShaderSource;
-			m_pDevice->CreateShader(shaderCreateInfo, &pPS);
+			m_shared->device->CreateShader(shaderCreateInfo, &pPS);
 
 			if (!pVS || !pPS)
 			{
@@ -648,9 +673,10 @@ namespace NeneEngine
 
 			const size_t primitiveIndex = static_cast<size_t>(primitiveType);
 
-			m_pDevice->CreateGraphicsPipelineState(primitivePsoCreateInfo, &m_pPrimitivePSOs[primitiveIndex]);
+			m_shared->device->CreateGraphicsPipelineState(primitivePsoCreateInfo,
+			                                              &m_shared->primitivePSOs[primitiveIndex]);
 
-			if (!m_pPrimitivePSOs[primitiveIndex])
+			if (!m_shared->primitivePSOs[primitiveIndex])
 			{
 				NENE_LOG_ERROR("Failed to create Graphics Pipeline State '{}'", name);
 				return false;
@@ -663,24 +689,26 @@ namespace NeneEngine
 			constantBufferDesc.Usage = USAGE_DYNAMIC;
 			constantBufferDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
 
-			m_pDevice->CreateBuffer(constantBufferDesc, nullptr, &m_pPrimitiveConstantBuffers[primitiveIndex]);
-			if (!m_pPrimitiveConstantBuffers[primitiveIndex])
+			m_shared->device->CreateBuffer(constantBufferDesc, nullptr,
+			                               &m_shared->primitiveConstantBuffers[primitiveIndex]);
+			if (!m_shared->primitiveConstantBuffers[primitiveIndex])
 			{
 				NENE_LOG_ERROR("Failed to create constant buffer for '{}'", name);
 				return false;
 			}
 
 			auto* constantsVariable =
-			    m_pPrimitivePSOs[primitiveIndex]->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
+			    m_shared->primitivePSOs[primitiveIndex]->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
 			if (constantsVariable == nullptr)
 			{
 				NENE_LOG_ERROR("Failed to get shader constant variable for '{}'", name);
 				return false;
 			}
 
-			constantsVariable->Set(m_pPrimitiveConstantBuffers[primitiveIndex]);
-			m_pPrimitivePSOs[primitiveIndex]->CreateShaderResourceBinding(&m_pPrimitiveSRBs[primitiveIndex], true);
-			if (!m_pPrimitiveSRBs[primitiveIndex])
+			constantsVariable->Set(m_shared->primitiveConstantBuffers[primitiveIndex]);
+			m_shared->primitivePSOs[primitiveIndex]->CreateShaderResourceBinding(
+			    &m_shared->primitiveSRBs[primitiveIndex], true);
+			if (!m_shared->primitiveSRBs[primitiveIndex])
 			{
 				NENE_LOG_ERROR("Failed to create shader resource binding for '{}'", name);
 				return false;
@@ -912,12 +940,12 @@ namespace NeneEngine
 		meshShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
 		meshShaderCI.Desc.Name = "Mesh VS";
 		meshShaderCI.Source = meshVertexShaderSource;
-		m_pDevice->CreateShader(meshShaderCI, &meshVS);
+		m_shared->device->CreateShader(meshShaderCI, &meshVS);
 
 		meshShaderCI.Desc.ShaderType = SHADER_TYPE_PIXEL;
 		meshShaderCI.Desc.Name = "Mesh PS";
 		meshShaderCI.Source = meshPixelShaderSource;
-		m_pDevice->CreateShader(meshShaderCI, &meshPS);
+		m_shared->device->CreateShader(meshShaderCI, &meshPS);
 
 		if (!meshVS || !meshPS)
 		{
@@ -928,8 +956,8 @@ namespace NeneEngine
 		meshPSOCreateInfo.pVS = meshVS;
 		meshPSOCreateInfo.pPS = meshPS;
 
-		m_pDevice->CreateGraphicsPipelineState(meshPSOCreateInfo, &m_pMeshPSO);
-		if (!m_pMeshPSO)
+		m_shared->device->CreateGraphicsPipelineState(meshPSOCreateInfo, &m_shared->meshPSO);
+		if (!m_shared->meshPSO)
 		{
 			NENE_LOG_ERROR("Failed to create mesh graphics pipeline state");
 			return false;
@@ -942,23 +970,23 @@ namespace NeneEngine
 		meshConstantBufferDesc.Usage = USAGE_DYNAMIC;
 		meshConstantBufferDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
 
-		m_pDevice->CreateBuffer(meshConstantBufferDesc, nullptr, &m_pMeshConstantBuffer);
-		if (!m_pMeshConstantBuffer)
+		m_shared->device->CreateBuffer(meshConstantBufferDesc, nullptr, &m_shared->meshConstantBuffer);
+		if (!m_shared->meshConstantBuffer)
 		{
 			NENE_LOG_ERROR("Failed to create mesh constant buffer");
 			return false;
 		}
 
-		auto* meshConstantsVariable = m_pMeshPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
+		auto* meshConstantsVariable = m_shared->meshPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
 		if (meshConstantsVariable == nullptr)
 		{
 			NENE_LOG_ERROR("Failed to get mesh constant buffer variable");
 			return false;
 		}
 
-		meshConstantsVariable->Set(m_pMeshConstantBuffer);
-		m_pMeshPSO->CreateShaderResourceBinding(&m_pMeshSRB, true);
-		if (!m_pMeshSRB)
+		meshConstantsVariable->Set(m_shared->meshConstantBuffer);
+		m_shared->meshPSO->CreateShaderResourceBinding(&m_shared->meshSRB, true);
+		if (!m_shared->meshSRB)
 		{
 			NENE_LOG_ERROR("Failed to create mesh shader resource binding");
 			return false;
@@ -969,31 +997,31 @@ namespace NeneEngine
 
 	IPipelineState* DiligentDX12Adapter::GetPipelineState(PrimitiveType primitiveType) const
 	{
-		return m_pPrimitivePSOs[static_cast<size_t>(primitiveType)];
+		return m_shared->primitivePSOs[static_cast<size_t>(primitiveType)];
 	}
 
 	const DiligentDX12Adapter::UploadedMeshBuffers* DiligentDX12Adapter::GetUploadedMesh(MeshId meshId) const
 	{
 		if (!meshId.IsValid()) return nullptr;
 
-		const auto it = m_uploadedMeshes.find(meshId.value);
-		return it != m_uploadedMeshes.end() ? &it->second : nullptr;
+		const auto it = m_shared->uploadedMeshes.find(meshId.value);
+		return it != m_shared->uploadedMeshes.end() ? &it->second : nullptr;
 	}
 
 	const DiligentDX12Adapter::UploadedTexture* DiligentDX12Adapter::GetUploadedTexture(TextureId textureId) const
 	{
 		if (!textureId.IsValid()) return nullptr;
 
-		const auto it = m_uploadedTextures.find(textureId.value);
-		return it != m_uploadedTextures.end() ? &it->second : nullptr;
+		const auto it = m_shared->uploadedTextures.find(textureId.value);
+		return it != m_shared->uploadedTextures.end() ? &it->second : nullptr;
 	}
 
 	DiligentDX12Adapter::UploadedShaderProgram* DiligentDX12Adapter::GetUploadedShaderProgram(ShaderId shaderId)
 	{
 		if (!shaderId.IsValid()) return nullptr;
 
-		const auto it = m_uploadedShaderPrograms.find(shaderId.value);
-		return it != m_uploadedShaderPrograms.end() ? &it->second : nullptr;
+		const auto it = m_shared->uploadedShaderPrograms.find(shaderId.value);
+		return it != m_shared->uploadedShaderPrograms.end() ? &it->second : nullptr;
 	}
 
 	IPipelineState* DiligentDX12Adapter::GetShaderPipelineState(UploadedShaderProgram& shaderProgram,

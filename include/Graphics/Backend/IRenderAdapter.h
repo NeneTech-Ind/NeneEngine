@@ -27,6 +27,8 @@ namespace NeneEngine
 		virtual GPUTexture CreateTexture2D(const TextureResource& texture) = 0;
 		virtual GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram) = 0;
 
+		[[nodiscard]] virtual uintptr_t GetResourceDomainKey() const { return reinterpret_cast<uintptr_t>(this); }
+
 		virtual void BeginFrame() = 0;
 		virtual void SubmitRenderItem(const RenderItem& item) = 0;
 
@@ -36,7 +38,7 @@ namespace NeneEngine
 		virtual void DrawDebugAABB(const glm::vec3& min, const glm::vec3& max, const glm::vec4& color,
 		                           const glm::mat4& viewProjection);
 		virtual void EndFrame() = 0;
-		virtual void Present() = 0;
+		virtual void Present(uint32_t syncInterval) = 0;
 
 		virtual void Resize(uint32_t width, uint32_t height) = 0;
 		virtual void SetClearColor(const glm::vec4& color) = 0;

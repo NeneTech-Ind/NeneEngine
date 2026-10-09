@@ -232,15 +232,27 @@ namespace NeneEngine
 	{
 		if (m_world == nullptr) return;
 
-		for (auto& windowContext : m_windows)
+		const auto canRender = [](const AppWindowContext& windowContext)
 		{
-			if (!windowContext.window || windowContext.window->ShouldClose()) continue;
-			if (!windowContext.renderer || !windowContext.renderSystem) continue;
+			return windowContext.window && !windowContext.window->ShouldClose() && windowContext.renderer &&
+			       windowContext.renderSystem;
+		};
+
+		size_t lastRenderedIndex = m_windows.size();
+		for (size_t index = 0; index < m_windows.size(); ++index)
+		{
+			if (canRender(m_windows[index])) lastRenderedIndex = index;
+		}
+
+		for (size_t index = 0; index < m_windows.size(); ++index)
+		{
+			auto& windowContext = m_windows[index];
+			if (!canRender(windowContext)) continue;
 
 			windowContext.renderer->BeginFrame();
 			windowContext.renderSystem->Render(*m_world);
 			windowContext.renderer->EndFrame();
-			windowContext.renderer->Present();
+			windowContext.renderer->Present(index == lastRenderedIndex ? 1u : 0u);
 		}
 	}
 

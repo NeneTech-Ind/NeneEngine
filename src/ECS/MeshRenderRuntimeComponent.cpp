@@ -3,6 +3,7 @@
 #include "ECS/Components/MeshRenderRuntimeComponent.h"
 
 #include "ECS/World.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 
 namespace NeneEngine::ECS
 {
@@ -10,7 +11,7 @@ namespace NeneEngine::ECS
 	{
 		uintptr_t GetRendererBindingKey(const IRenderAdapter* renderer)
 		{
-			return renderer != nullptr ? reinterpret_cast<uintptr_t>(renderer) : 0;
+			return renderer != nullptr ? renderer->GetResourceDomainKey() : 0;
 		}
 	} // namespace
 

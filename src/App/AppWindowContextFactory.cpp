@@ -10,7 +10,7 @@ namespace NeneEngine
 {
 	eastl::optional<AppWindowContext> AppWindowContextFactory::Create(uint32_t width, uint32_t height,
 	                                                                  const std::string& title,
-	                                                                  ECS::Entity cameraEntity, bool isMain) const
+	                                                                  ECS::Entity cameraEntity, bool isMain)
 	{
 		AppWindowContext windowContext{};
 		windowContext.title = title;
@@ -23,7 +23,9 @@ namespace NeneEngine
 			return eastl::nullopt;
 		}
 
-		windowContext.renderer = eastl::make_unique<DiligentDX12Adapter>();
+		if (!m_sharedDevice) m_sharedDevice = eastl::make_shared<DiligentDX12SharedDevice>();
+
+		windowContext.renderer = eastl::make_unique<DiligentDX12Adapter>(m_sharedDevice);
 		if (!windowContext.renderer->Init(windowContext.window->GetHWND(), width, height))
 		{
 			NENE_LOG_ERROR("Failed to initialize renderer for window '{}'", title);
