@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "IRenderAdapter.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 
 #include "../external/DiligentEngine/DiligentCore/Common/interface/RefCntAutoPtr.hpp"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Buffer.h"
@@ -19,28 +19,31 @@
 #include <EASTL/vector.h>
 #include <array>
 
+namespace Diligent
+{
+	struct IEngineFactoryD3D12;
+}
+
 namespace NeneEngine
 {
 
 	struct DiligentDX12SharedDevice
 	{
-		static constexpr size_t PrimitiveTypeCount = 5;
+		static constexpr size_t PrimitiveTypeCount = static_cast<size_t>(PrimitiveType::DebugLine) + 1;
+		static constexpr size_t SamplerVariantCount = 4;
 
-		struct UploadedMeshBuffers
+		struct DrawPipeline
 		{
-			GPUBufferId vertexBufferId{};
-			GPUBufferId indexBufferId{};
-			Diligent::RefCntAutoPtr<Diligent::IBuffer> vertexBuffer;
-			Diligent::RefCntAutoPtr<Diligent::IBuffer> indexBuffer;
-			uint32_t vertexCount = 0;
-			uint32_t indexCount = 0;
+			Diligent::RefCntAutoPtr<Diligent::IPipelineState> pipelineState;
+			Diligent::RefCntAutoPtr<Diligent::IBuffer> constantBuffer;
+			Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> shaderResourceBinding;
 		};
 
-		struct UploadedBuffer
+		struct UploadedMesh
 		{
-			Diligent::RefCntAutoPtr<Diligent::IBuffer> buffer;
-			uint64_t sizeBytes = 0;
-			uint32_t elementCount = 0;
+			Diligent::RefCntAutoPtr<Diligent::IBuffer> vertexBuffer;
+			Diligent::RefCntAutoPtr<Diligent::IBuffer> indexBuffer;
+			uint32_t indexCount = 0;
 		};
 
 		struct UploadedTexture
@@ -49,42 +52,42 @@ namespace NeneEngine
 			Diligent::RefCntAutoPtr<Diligent::ITextureView> shaderResourceView;
 			TextureFilterMode filterMode = TextureFilterMode::Linear;
 			TextureAddressMode addressMode = TextureAddressMode::Wrap;
-			uint32_t width = 0;
-			uint32_t height = 0;
 		};
 
 		struct UploadedShaderProgram
 		{
-			Diligent::RefCntAutoPtr<Diligent::IPipelineState> linearWrapPipelineState;
-			Diligent::RefCntAutoPtr<Diligent::IPipelineState> nearestWrapPipelineState;
-			Diligent::RefCntAutoPtr<Diligent::IPipelineState> linearClampPipelineState;
-			Diligent::RefCntAutoPtr<Diligent::IPipelineState> nearestClampPipelineState;
+			// Immutable samplers require separate PSOs for nearest and linear texture filtering.
+			std::array<Diligent::RefCntAutoPtr<Diligent::IPipelineState>, SamplerVariantCount> pipelineStates;
 			eastl::unordered_map<uint32_t, Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding>> srbsByTexture;
 		};
 
 		~DiligentDX12SharedDevice();
+
+		bool InitializeDevice(Diligent::IEngineFactoryD3D12& factory);
+		bool InitializePipelines(Diligent::TEXTURE_FORMAT colorFormat, Diligent::TEXTURE_FORMAT depthFormat);
 
 		Diligent::RefCntAutoPtr<Diligent::IRenderDevice> device;
 		Diligent::RefCntAutoPtr<Diligent::IDeviceContext> immediateContext;
 
 		Diligent::TEXTURE_FORMAT colorBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
 		Diligent::TEXTURE_FORMAT depthBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
-		bool resourcesCreated = false;
+		bool pipelinesCreated = false;
 
-		std::array<Diligent::RefCntAutoPtr<Diligent::IPipelineState>, PrimitiveTypeCount> primitivePSOs;
-		std::array<Diligent::RefCntAutoPtr<Diligent::IBuffer>, PrimitiveTypeCount> primitiveConstantBuffers;
-		std::array<Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding>, PrimitiveTypeCount> primitiveSRBs;
-		Diligent::RefCntAutoPtr<Diligent::IPipelineState> meshPSO;
-		Diligent::RefCntAutoPtr<Diligent::IBuffer> meshConstantBuffer;
-		Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> meshSRB;
-		eastl::unordered_map<uint32_t, UploadedBuffer> uploadedBuffers;
-		eastl::unordered_map<uint32_t, UploadedMeshBuffers> uploadedMeshes;
+		std::array<DrawPipeline, PrimitiveTypeCount> primitivePipelines;
+		DrawPipeline meshPipeline;
+
+		eastl::unordered_map<uint32_t, Diligent::RefCntAutoPtr<Diligent::IBuffer>> uploadedBuffers;
+		eastl::unordered_map<uint32_t, UploadedMesh> uploadedMeshes;
 		eastl::unordered_map<uint32_t, UploadedTexture> uploadedTextures;
 		eastl::unordered_map<uint32_t, UploadedShaderProgram> uploadedShaderPrograms;
 		uint32_t nextBufferId = 1;
 		uint32_t nextMeshId = 1;
 		uint32_t nextTextureId = 1;
 		uint32_t nextShaderId = 1;
+
+	  private:
+		bool CreatePrimitivePipeline(PrimitiveType primitiveType, const char* name, const char* vertexShaderBody);
+		bool CreateMeshPipeline();
 	};
 
 	class DiligentDX12Adapter final : public IRenderAdapter
@@ -104,39 +107,29 @@ namespace NeneEngine
 		[[nodiscard]] uintptr_t GetResourceDomainKey() const override;
 		void BeginFrame() override;
 		void SubmitRenderItem(const RenderItem& item) override;
-		bool CreateResources();
 		void EndFrame() override;
 		void Present(uint32_t syncInterval) override;
 		void Resize(uint32_t width, uint32_t height) override;
 		void SetClearColor(const glm::vec4& color) override;
 
 	  private:
-		using UploadedMeshBuffers = DiligentDX12SharedDevice::UploadedMeshBuffers;
-		using UploadedBuffer = DiligentDX12SharedDevice::UploadedBuffer;
-		using UploadedTexture = DiligentDX12SharedDevice::UploadedTexture;
+		using DrawPipeline = DiligentDX12SharedDevice::DrawPipeline;
+		using UploadedMesh = DiligentDX12SharedDevice::UploadedMesh;
 		using UploadedShaderProgram = DiligentDX12SharedDevice::UploadedShaderProgram;
 
-		struct PrimitiveDrawConstants
-		{
-			glm::mat4 modelViewProjectionMatrix = glm::mat4(1.0f);
-			glm::vec4 tint = {1.0f, 1.0f, 1.0f, 1.0f};
-		};
-
-		eastl::shared_ptr<DiligentDX12SharedDevice> m_shared;
-		Diligent::RefCntAutoPtr<Diligent::ISwapChain> m_pSwapChain;
-		eastl::vector<RenderItem> m_renderQueue;
-		glm::vec4 m_clearColor{0.1f, 0.1f, 0.2f, 1.0f};
-
-		[[nodiscard]] Diligent::IPipelineState* GetPipelineState(PrimitiveType primitiveType) const;
-		[[nodiscard]] const UploadedMeshBuffers* GetUploadedMesh(MeshId meshId) const;
-		[[nodiscard]] const UploadedTexture* GetUploadedTexture(TextureId textureId) const;
-		[[nodiscard]] UploadedShaderProgram* GetUploadedShaderProgram(ShaderId shaderId);
-		[[nodiscard]] Diligent::IPipelineState* GetShaderPipelineState(UploadedShaderProgram& shaderProgram,
-		                                                               TextureFilterMode filterMode,
-		                                                               TextureAddressMode addressMode) const;
-		[[nodiscard]] uint32_t GetVertexCount(PrimitiveType primitiveType) const;
+		[[nodiscard]] bool IsDeviceReady(const char* operation) const;
+		[[nodiscard]] GPUBufferId CreateImmutableBuffer(const char* name, Diligent::BIND_FLAGS bindFlags,
+		                                                const void* data, uint64_t sizeBytes);
+		void DrawMesh(const RenderItem& item, const UploadedMesh& mesh);
+		void DrawPrimitive(const RenderItem& item);
+		[[nodiscard]] bool WriteDrawConstants(Diligent::IBuffer* constantBuffer, const RenderItem& item);
 		[[nodiscard]] Diligent::IShaderResourceBinding* GetShaderResourceBinding(UploadedShaderProgram& shaderProgram,
 		                                                                         TextureId textureId);
+
+		eastl::shared_ptr<DiligentDX12SharedDevice> m_shared;
+		Diligent::RefCntAutoPtr<Diligent::ISwapChain> m_swapChain;
+		eastl::vector<RenderItem> m_renderQueue;
+		glm::vec4 m_clearColor{0.1f, 0.1f, 0.2f, 1.0f};
 	};
 
 } // namespace NeneEngine
