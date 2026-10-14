@@ -17,11 +17,13 @@ namespace NeneEngine
 		void Destroy() override;
 
 		void PumpMessages() override;
+		void WaitForMessages(uint32_t timeoutMs) override;
 		bool ShouldClose() const override { return m_shouldClose; }
 		bool IsMinimized() const override { return m_isMinimized; }
 
 		HWND GetHWND() const override { return m_hwnd; }
 		std::string GetTitle() const override { return m_title; }
+		void SetTitleSuffix(const std::string& suffix) override;
 		uint32_t GetWidth() const override { return m_width; }
 		uint32_t GetHeight() const override { return m_height; }
 		InputDevice& GetInput() override { return m_input; }

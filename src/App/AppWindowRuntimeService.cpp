@@ -9,29 +9,8 @@
 #include "ECS/Systems/PrimitiveControlSystem.h"
 #include "ECS/World.h"
 
-#include <Windows.h>
-
 namespace NeneEngine
 {
-	namespace
-	{
-		std::wstring AnsiToWString(const std::string& str)
-		{
-			if (str.empty()) return {};
-
-			const int requiredSize = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0);
-			if (requiredSize <= 0) return {};
-
-			std::wstring wideString(static_cast<size_t>(requiredSize), L'\0');
-			const int convertedSize =
-			    MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, wideString.data(), requiredSize);
-			if (convertedSize <= 0) return {};
-
-			wideString.resize(static_cast<size_t>(convertedSize - 1));
-			return wideString;
-		}
-	} // namespace
-
 	AppWindowRuntimeService::~AppWindowRuntimeService()
 	{
 		Shutdown();
@@ -224,6 +203,17 @@ namespace NeneEngine
 		}
 	}
 
+	void AppWindowRuntimeService::WaitForWindowMessages(uint32_t timeoutMs)
+	{
+		for (auto& windowContext : m_windows)
+		{
+			if (!windowContext.window || windowContext.window->ShouldClose()) continue;
+
+			windowContext.window->WaitForMessages(timeoutMs);
+			return;
+		}
+	}
+
 	void AppWindowRuntimeService::UpdateInputManagers()
 	{
 		for (auto& windowContext : m_windows)
@@ -274,16 +264,12 @@ namespace NeneEngine
 		}
 	}
 
-	void AppWindowRuntimeService::UpdateFrameStatsText(const std::wstring& fpsText, const std::wstring& mspfText) const
+	void AppWindowRuntimeService::UpdateFrameStatsText(const std::string& statsText)
 	{
-		for (const auto& windowContext : m_windows)
+		for (auto& windowContext : m_windows)
 		{
-			if (!windowContext.window || windowContext.window->ShouldClose()) continue;
-
-			std::wstring windowText =
-			    AnsiToWString(windowContext.window->GetTitle()) + L" | fps: " + fpsText + L" | mspf: " + mspfText;
-
-			SetWindowTextW(windowContext.window->GetHWND(), windowText.c_str());
+			if (windowContext.window && !windowContext.window->ShouldClose())
+				windowContext.window->SetTitleSuffix(statsText);
 		}
 	}
 

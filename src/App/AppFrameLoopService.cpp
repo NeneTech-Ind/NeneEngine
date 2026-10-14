@@ -11,15 +11,13 @@
 #include "Input/InputDevice.h"
 #include "Input/InputManager.h"
 
-#include <Windows.h>
-#include <iomanip>
-#include <sstream>
+#include <format>
 
 namespace NeneEngine
 {
 	namespace
 	{
-		constexpr DWORD kPausedWaitTimeoutMs = 100;
+		constexpr uint32_t kPausedWaitTimeoutMs = 100;
 	} // namespace
 
 	void AppFrameLoopService::Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
@@ -38,7 +36,7 @@ namespace NeneEngine
 			if (windowRuntimeService.AreAllWindowsMinimized())
 			{
 				timer.Stop();
-				MsgWaitForMultipleObjects(0, nullptr, FALSE, kPausedWaitTimeoutMs, QS_ALLINPUT);
+				windowRuntimeService.WaitForWindowMessages(kPausedWaitTimeoutMs);
 				continue;
 			}
 
@@ -101,15 +99,7 @@ namespace NeneEngine
 		const float fps = static_cast<float>(m_frameCount);
 		const float mspf = 1000.0f / fps;
 
-		std::wstringstream wss;
-		wss << std::fixed << std::setprecision(0) << fps;
-		const std::wstring fpsStr = wss.str();
-		wss.str(L"");
-		wss.clear();
-		wss << std::setprecision(6) << mspf;
-		const std::wstring mspfStr = wss.str();
-
-		windowRuntimeService.UpdateFrameStatsText(fpsStr, mspfStr);
+		windowRuntimeService.UpdateFrameStatsText(std::format(" | fps: {:.0f} | mspf: {:.6f}", fps, mspf));
 
 		m_frameCount = 0;
 		m_frameStatsTimeElapsed += 1.0f;

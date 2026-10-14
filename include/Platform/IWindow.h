@@ -1,4 +1,4 @@
-// WindowInterface.h
+// IWindow.h
 
 #pragma once
 
@@ -21,11 +21,13 @@ namespace NeneEngine
 		virtual void Destroy() = 0;
 
 		virtual void PumpMessages() = 0;
+		virtual void WaitForMessages(uint32_t timeoutMs) = 0;
 		virtual bool ShouldClose() const = 0;
 		virtual bool IsMinimized() const = 0;
 
 		virtual HWND GetHWND() const = 0;
 		virtual std::string GetTitle() const = 0;
+		virtual void SetTitleSuffix(const std::string& suffix) = 0;
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;
 		virtual InputDevice& GetInput() = 0;

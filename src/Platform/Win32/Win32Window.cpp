@@ -108,6 +108,19 @@ namespace NeneEngine
 		}
 	}
 
+	void Win32Window::WaitForMessages(uint32_t timeoutMs)
+	{
+		MsgWaitForMultipleObjects(0, nullptr, FALSE, timeoutMs, QS_ALLINPUT);
+	}
+
+	void Win32Window::SetTitleSuffix(const std::string& suffix)
+	{
+		if (!m_hwnd) return;
+
+		const std::wstring wideTitle = ToWideString(m_title + suffix);
+		SetWindowTextW(m_hwnd, wideTitle.c_str());
+	}
+
 	LRESULT CALLBACK Win32Window::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		if (message == WM_NCCREATE)

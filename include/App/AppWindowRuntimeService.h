@@ -31,11 +31,12 @@ namespace NeneEngine
 		[[nodiscard]] bool AreAllWindowsClosed() const;
 		[[nodiscard]] bool AreAllWindowsMinimized() const;
 		void PumpWindowMessages();
+		void WaitForWindowMessages(uint32_t timeoutMs);
 		void UpdateInputManagers();
 		void UpdateWindowSystems(float deltaTime);
 		void Render();
 		void EndFrameInputs();
-		void UpdateFrameStatsText(const std::wstring& fpsText, const std::wstring& mspfText) const;
+		void UpdateFrameStatsText(const std::string& statsText);
 		void ApplyRuntimeConfig(const AppConfig& config);
 		[[nodiscard]] InputDevice* GetFocusedInput();
 		[[nodiscard]] const InputDevice* GetFocusedInput() const;
