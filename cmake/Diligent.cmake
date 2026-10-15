@@ -26,10 +26,22 @@ if(NOT EXISTS "${NENEENGINE_DILIGENT_CORE_DIR}/CMakeLists.txt")
     )
 endif()
 
+set(NENEENGINE_IMGUI_DIR "${CMAKE_SOURCE_DIR}/external/imgui")
+if(NOT EXISTS "${NENEENGINE_IMGUI_DIR}/imgui.h")
+    message(FATAL_ERROR
+        "Dear ImGui sources were not found at '${NENEENGINE_IMGUI_DIR}'.\n"
+        "The 'external/imgui' submodule is probably not initialized.\n"
+        "Run:\n"
+        "  git submodule update --init --recursive"
+    )
+endif()
+
 add_subdirectory("${NENEENGINE_DILIGENT_CORE_DIR}" "${CMAKE_BINARY_DIR}/DiligentCore")
 set(DILIGENT_TOOLS_DIR "${NENEENGINE_DILIGENT_TOOLS_DIR}")
+set(DILIGENT_DEAR_IMGUI_PATH "${NENEENGINE_IMGUI_DIR}")
 add_subdirectory("${NENEENGINE_DILIGENT_TOOLS_DIR}/ThirdParty" "${CMAKE_BINARY_DIR}/DiligentToolsThirdParty")
 add_subdirectory("${NENEENGINE_DILIGENT_TOOLS_DIR}/TextureLoader" "${CMAKE_BINARY_DIR}/DiligentTextureLoader")
+add_subdirectory("${NENEENGINE_DILIGENT_TOOLS_DIR}/Imgui" "${CMAKE_BINARY_DIR}/DiligentImgui")
 
 foreach(target_name SPIRV-Tools-opt SPIRV-Tools SPIRV-Tools-core)
     if(TARGET ${target_name})
