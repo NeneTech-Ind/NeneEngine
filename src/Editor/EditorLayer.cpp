@@ -10,6 +10,7 @@
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
 
+#include <EASTL/string.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -66,6 +67,7 @@ namespace NeneEngine
 		}
 
 		m_panels.clear();
+		m_history.Clear();
 		m_context.reset();
 		m_requestShutdown = nullptr;
 		m_uiInput = nullptr;
@@ -81,6 +83,7 @@ namespace NeneEngine
 		m_context->isViewportHovered = false;
 		m_context->isViewportFocused = false;
 
+		HandleShortcuts();
 		DrawMainMenuBar();
 		DrawDockSpace();
 		DrawPanels();
@@ -98,6 +101,12 @@ namespace NeneEngine
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("Edit"))
+		{
+			DrawHistoryMenuItems();
+			ImGui::EndMenu();
+		}
+
 		if (ImGui::BeginMenu("View"))
 		{
 			for (auto& entry : m_panels) ImGui::MenuItem(entry.panel->GetName(), nullptr, &entry.isOpen);
@@ -105,6 +114,31 @@ namespace NeneEngine
 		}
 
 		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::DrawHistoryMenuItems()
+	{
+		const bool isEditMode = m_context->mode == EditorMode::Edit;
+
+		const char* undoName = m_history.GetUndoName();
+		const eastl::string undoLabel = undoName != nullptr ? eastl::string("Undo ") + undoName : "Undo";
+		if (ImGui::MenuItem(undoLabel.c_str(), "Ctrl+Z", false, isEditMode && m_history.CanUndo()))
+			m_history.Undo(m_context->world);
+
+		const char* redoName = m_history.GetRedoName();
+		const eastl::string redoLabel = redoName != nullptr ? eastl::string("Redo ") + redoName : "Redo";
+		if (ImGui::MenuItem(redoLabel.c_str(), "Ctrl+Y", false, isEditMode && m_history.CanRedo()))
+			m_history.Redo(m_context->world);
+	}
+
+	void EditorLayer::HandleShortcuts()
+	{
+		if (m_context->mode != EditorMode::Edit) return;
+
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) m_history.Undo(m_context->world);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) ||
+		    ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+			m_history.Redo(m_context->world);
 	}
 
 	void EditorLayer::DrawDockSpace()

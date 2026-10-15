@@ -36,7 +36,9 @@ namespace NeneEngine
 			bool isOpen = true;
 		};
 
+		void HandleShortcuts();
 		void DrawMainMenuBar();
+		void DrawHistoryMenuItems();
 		void DrawDockSpace();
 		void BuildDefaultLayout(ImGuiID dockSpaceId);
 		void DrawPanels();
