@@ -7,6 +7,7 @@
 #include "Core/GameTimer.h"
 #include "Core/NeneLogger.h"
 #include "Core/Profiler.h"
+#include "Editor/EditorLayer.h"
 #include "GameStates/GameStateMachine.h"
 #include "Input/InputDevice.h"
 #include "Input/InputManager.h"
@@ -22,8 +23,8 @@ namespace NeneEngine
 
 	void AppFrameLoopService::Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
 	                              InputManager& inputManager, AppRuntimeConfigService& runtimeConfigService,
-	                              AppWindowRuntimeService& windowRuntimeService, ApplyConfigCallback applyRuntimeConfig,
-	                              FocusedInputCallback getFocusedInput)
+	                              AppWindowRuntimeService& windowRuntimeService, EditorLayer& editorLayer,
+	                              ApplyConfigCallback applyRuntimeConfig, FocusedInputCallback getFocusedInput)
 	{
 		running = true;
 		timer.Reset();
@@ -46,6 +47,7 @@ namespace NeneEngine
 
 			InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput);
 			GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig);
+			EditorPhase(editorLayer);
 			SyncPhase(deltaTime);
 			{
 				NENE_PROFILE_SCOPE("Render");
@@ -76,6 +78,12 @@ namespace NeneEngine
 		gameStateMachine.Update(deltaTime);
 		LogDeltaTimeStats(timer, deltaTime);
 		runtimeConfigService.Update(deltaTime, applyRuntimeConfig);
+	}
+
+	void AppFrameLoopService::EditorPhase(EditorLayer& editorLayer)
+	{
+		NENE_PROFILE_SCOPE("Editor");
+		editorLayer.Update();
 	}
 
 	void AppFrameLoopService::SyncPhase(float /*deltaTime*/)

@@ -5,9 +5,10 @@
 #include "Core/Delegate.h"
 #include "ECS/Entity.h"
 #include "ECS/Systems/RenderSystem.h"
+#include "Graphics/Backend/IImGuiBackend.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 #include "Input/InputManager.h"
 #include "Platform/IWindow.h"
-#include "Graphics/Backend/IRenderAdapter.h"
 
 #include <EASTL/unique_ptr.h>
 #include <string>
@@ -20,6 +21,7 @@ namespace NeneEngine
 		eastl::unique_ptr<IWindow> window;
 		InputManager inputManager;
 		eastl::unique_ptr<IRenderAdapter> renderer;
+		eastl::unique_ptr<IImGuiBackend> imguiBackend;
 		eastl::unique_ptr<ECS::RenderSystem> renderSystem;
 		DelegateHandle resizeHandle;
 		ECS::Entity cameraEntity = ECS::NullEntity;

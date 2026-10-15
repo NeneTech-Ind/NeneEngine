@@ -1,0 +1,15 @@
+target_sources(NeneEngine PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorContext.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorHistory.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorLayer.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/IEditorPanel.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/HierarchyPanel.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/InspectorPanel.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/StatisticsPanel.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/ViewportPanel.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/EditorLayer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Panels/HierarchyPanel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Panels/InspectorPanel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Panels/StatisticsPanel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Panels/ViewportPanel.cpp"
+)

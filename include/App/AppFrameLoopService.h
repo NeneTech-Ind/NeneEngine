@@ -11,6 +11,7 @@ namespace NeneEngine
 {
 	class AppRuntimeConfigService;
 	class AppWindowRuntimeService;
+	class EditorLayer;
 	class GameStateMachine;
 	class GameTimer;
 	class InputDevice;
@@ -24,14 +25,15 @@ namespace NeneEngine
 
 		void Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
 		         InputManager& inputManager, AppRuntimeConfigService& runtimeConfigService,
-		         AppWindowRuntimeService& windowRuntimeService, ApplyConfigCallback applyRuntimeConfig,
-		         FocusedInputCallback getFocusedInput);
+		         AppWindowRuntimeService& windowRuntimeService, EditorLayer& editorLayer,
+		         ApplyConfigCallback applyRuntimeConfig, FocusedInputCallback getFocusedInput);
 
 	  private:
 		void InputPhase(float deltaTime, InputManager& inputManager, AppWindowRuntimeService& windowRuntimeService,
 		                FocusedInputCallback getFocusedInput);
 		void GameplayPhase(float deltaTime, GameTimer& timer, GameStateMachine& gameStateMachine,
 		                   AppRuntimeConfigService& runtimeConfigService, ApplyConfigCallback applyRuntimeConfig);
+		void EditorPhase(EditorLayer& editorLayer);
 		void SyncPhase(float deltaTime);
 		void EndFramePhase(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService);
 		void CalculateFrameStats(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService);

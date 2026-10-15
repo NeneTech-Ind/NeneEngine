@@ -12,6 +12,7 @@ target_sources(NeneEngine PRIVATE
 add_subdirectory(App)
 add_subdirectory(Core)
 add_subdirectory(ECS)
+add_subdirectory(Editor)
 add_subdirectory(Graphics)
 add_subdirectory(Input)
 add_subdirectory(Platform)

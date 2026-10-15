@@ -1,6 +1,9 @@
 target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../include/Graphics/Backend/DiligentDX12Adapter.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../include/Graphics/Backend/DiligentImGuiBackend.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../include/Graphics/Backend/IImGuiBackend.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../include/Graphics/Backend/IRenderAdapter.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/DiligentDX12Adapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/DiligentImGuiBackend.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IRenderAdapter.cpp"
 )

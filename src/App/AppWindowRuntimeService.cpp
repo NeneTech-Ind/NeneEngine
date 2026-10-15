@@ -99,7 +99,11 @@ namespace NeneEngine
 	{
 		for (auto& windowContext : m_windows)
 		{
-			if (windowContext.window && windowContext.resizeHandle.IsValid())
+			if (!windowContext.window) continue;
+
+			windowContext.window->SetMessageHook(nullptr);
+
+			if (windowContext.resizeHandle.IsValid())
 			{
 				windowContext.window->OnResized().Remove(windowContext.resizeHandle);
 				windowContext.resizeHandle.Reset();
@@ -252,6 +256,7 @@ namespace NeneEngine
 			windowContext.renderer->BeginFrame();
 			windowContext.renderSystem->Render(*m_world);
 			windowContext.renderer->EndFrame();
+			if (windowContext.imguiBackend) windowContext.imguiBackend->Render();
 			windowContext.renderer->Present(index == lastRenderedIndex ? 1u : 0u);
 		}
 	}
@@ -294,6 +299,28 @@ namespace NeneEngine
 
 			const InputDevice& input = windowContext.window->GetInput();
 			if (input.IsFocused()) return &input;
+		}
+
+		return nullptr;
+	}
+
+	IImGuiBackend* AppWindowRuntimeService::GetMainImGuiBackend()
+	{
+		AppWindowContext* mainWindow = FindMainWindow();
+		return mainWindow != nullptr ? mainWindow->imguiBackend.get() : nullptr;
+	}
+
+	InputDevice* AppWindowRuntimeService::GetMainWindowInput()
+	{
+		AppWindowContext* mainWindow = FindMainWindow();
+		return mainWindow != nullptr && mainWindow->window ? &mainWindow->window->GetInput() : nullptr;
+	}
+
+	AppWindowContext* AppWindowRuntimeService::FindMainWindow()
+	{
+		for (auto& windowContext : m_windows)
+		{
+			if (windowContext.isMain) return &windowContext;
 		}
 
 		return nullptr;
