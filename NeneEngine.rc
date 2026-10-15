@@ -1,3 +1,0 @@
-#include "Win32ResourceIds.h"
-
-IDI_APP_ICON ICON "assets/icons/app.ico"

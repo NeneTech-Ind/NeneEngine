@@ -1,8 +1,8 @@
 # NeneEngine/src/CMakeList.txt : CMake project for NeneEngine, include source and define project specific logic here.
 
 add_executable(NeneEngine WIN32
-    "${CMAKE_CURRENT_SOURCE_DIR}/../WinMain.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../NeneEngine.rc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/WinMain.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/NeneEngine.rc"
 )
 
 target_sources(NeneEngine PRIVATE
