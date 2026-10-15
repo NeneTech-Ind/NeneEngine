@@ -40,6 +40,8 @@ namespace NeneEngine
 		void ApplyRuntimeConfig(const AppConfig& config);
 		[[nodiscard]] InputDevice* GetFocusedInput();
 		[[nodiscard]] const InputDevice* GetFocusedInput() const;
+		[[nodiscard]] IImGuiBackend* GetMainImGuiBackend();
+		[[nodiscard]] InputDevice* GetMainWindowInput();
 		[[nodiscard]] IRenderAdapter* GetPrimaryRenderer();
 		[[nodiscard]] eastl::vector<IRenderAdapter*> GetRenderers() const;
 
@@ -48,6 +50,7 @@ namespace NeneEngine
 		                         bool isMain);
 		void AddAppSystem(eastl::unique_ptr<ECS::ISystem> system);
 		void HandleWindowResize(size_t windowIndex, uint32_t width, uint32_t height);
+		[[nodiscard]] AppWindowContext* FindMainWindow();
 
 		ECS::World* m_world = nullptr;
 		AppSecondaryCameraFactory m_secondaryCameraFactory;

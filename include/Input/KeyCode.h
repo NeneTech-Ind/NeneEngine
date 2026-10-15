@@ -113,4 +113,9 @@ namespace NeneEngine
 		RightAlt = 165,
 	};
 
+	[[nodiscard]] constexpr bool IsMouseButton(KeyCode key)
+	{
+		return key >= KeyCode::MouseLeft && key <= KeyCode::MouseX2;
+	}
+
 } // namespace NeneEngine

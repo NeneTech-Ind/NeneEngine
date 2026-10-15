@@ -12,6 +12,7 @@ target_sources(NeneEngine PRIVATE
 add_subdirectory(App)
 add_subdirectory(Core)
 add_subdirectory(ECS)
+add_subdirectory(Editor)
 add_subdirectory(Graphics)
 add_subdirectory(Input)
 add_subdirectory(Platform)
@@ -75,6 +76,7 @@ target_link_libraries(NeneEngine
         Diligent-Win32Platform
         Diligent-GraphicsEngineD3D12-shared
         Diligent-TextureLoader
+        Diligent-Imgui
 )
 
 file(GLOB NENEENGINE_VCPKG_DEBUG_DLLS   "${NENEENGINE_VCPKG_ROOT_DIR}/debug/bin/*.dll")

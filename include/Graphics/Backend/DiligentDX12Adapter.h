@@ -112,6 +112,10 @@ namespace NeneEngine
 		void Resize(uint32_t width, uint32_t height) override;
 		void SetClearColor(const glm::vec4& color) override;
 
+		[[nodiscard]] Diligent::IRenderDevice* GetDevice() const { return m_shared->device; }
+		[[nodiscard]] Diligent::IDeviceContext* GetImmediateContext() const { return m_shared->immediateContext; }
+		[[nodiscard]] Diligent::ISwapChain* GetSwapChain() const { return m_swapChain; }
+
 	  private:
 		using DrawPipeline = DiligentDX12SharedDevice::DrawPipeline;
 		using UploadedMesh = DiligentDX12SharedDevice::UploadedMesh;

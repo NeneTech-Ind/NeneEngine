@@ -9,6 +9,7 @@
 #include "App/AppWindowRuntimeService.h"
 #include "Core/GameTimer.h"
 #include "ECS/World.h"
+#include "Editor/EditorLayer.h"
 #include "GameStates/GameStateMachine.h"
 #include "Input/InputManager.h"
 
@@ -39,6 +40,7 @@ namespace NeneEngine
 		AppFrameLoopService m_frameLoopService;
 		AppRuntimeConfigService m_runtimeConfigService;
 		AppWindowRuntimeService m_windowRuntimeService;
+		EditorLayer m_editorLayer;
 
 		std::atomic<bool> m_running{false};
 

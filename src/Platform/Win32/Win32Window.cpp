@@ -140,6 +140,12 @@ namespace NeneEngine
 
 	LRESULT Win32Window::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
 	{
+		if (m_messageHook)
+		{
+			intptr_t hookResult = 0;
+			if (m_messageHook(m_hwnd, message, wParam, lParam, hookResult)) return hookResult;
+		}
+
 		switch (message)
 		{
 		case WM_SETFOCUS:

@@ -7,6 +7,8 @@ namespace NeneEngine
 
 	void InputDevice::NotifyKeyDown(KeyCode key)
 	{
+		if (IsMouseButton(key) ? m_isMouseCaptured : m_isKeyboardCaptured) return;
+
 		const bool wasDown = IsKeyDown(key);
 		m_pressedKeys.insert(key);
 		// IsKeyPressed is edge-triggered; held keys remain only in m_pressedKeys.
@@ -31,6 +33,12 @@ namespace NeneEngine
 
 	void InputDevice::NotifyMouseDelta(glm::vec2 delta, glm::vec2 position)
 	{
+		if (m_isMouseCaptured)
+		{
+			m_mousePosition = position;
+			return;
+		}
+
 		m_mouseDelta += delta;
 		m_mousePosition = position;
 
@@ -39,6 +47,8 @@ namespace NeneEngine
 
 	void InputDevice::NotifyMouseWheel(float delta)
 	{
+		if (m_isMouseCaptured) return;
+
 		m_mouseWheelDelta += delta;
 
 		m_mouseWheel.Broadcast(MouseWheelEvent{m_mousePosition, delta});

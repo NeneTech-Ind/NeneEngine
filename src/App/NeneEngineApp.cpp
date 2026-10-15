@@ -35,10 +35,15 @@ namespace NeneEngine
 		(void)title;
 		try
 		{
-			return m_bootstrapService.Initialize(*this, m_gameStateMachine, m_world, m_runtimeConfigService,
-			                                     m_windowRuntimeService,
-			                                     [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
-			                                     ResolveLogFilePath().string(), width, height);
+			if (!m_bootstrapService.Initialize(
+			        *this, m_gameStateMachine, m_world, m_runtimeConfigService, m_windowRuntimeService,
+			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, ResolveLogFilePath().string(),
+			        width, height))
+				return false;
+
+			m_editorLayer.Initialize(m_world, m_windowRuntimeService.GetMainImGuiBackend(),
+			                         m_windowRuntimeService.GetMainWindowInput(), [this]() { RequestShutdown(); });
+			return true;
 		}
 		catch (const std::exception& e)
 		{
@@ -58,7 +63,7 @@ namespace NeneEngine
 	{
 		m_frameLoopService.Run(
 		    m_running, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService, m_windowRuntimeService,
-		    [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
+		    m_editorLayer, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
 		    [this]() { return m_windowRuntimeService.GetFocusedInput(); });
 	}
 
