@@ -24,6 +24,13 @@ target_include_directories(NeneEngine
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
 )
 
+set(NENEENGINE_IMGUIZMO_DIR "${CMAKE_SOURCE_DIR}/external/imguizmo/src")
+target_sources(NeneEngine PRIVATE
+    "${NENEENGINE_IMGUIZMO_DIR}/ImGuizmo.cpp"
+    "${NENEENGINE_IMGUIZMO_DIR}/ImGuizmo.h"
+)
+target_include_directories(NeneEngine PRIVATE "${NENEENGINE_IMGUIZMO_DIR}")
+
 set(NENEENGINE_VCPKG_TRIPLET "${VCPKG_TARGET_TRIPLET}")
 if(NOT NENEENGINE_VCPKG_TRIPLET)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)

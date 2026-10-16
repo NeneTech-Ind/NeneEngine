@@ -324,6 +324,12 @@ namespace NeneEngine
 		return mainWindow != nullptr && mainWindow->window ? &mainWindow->window->GetInput() : nullptr;
 	}
 
+	ECS::Entity AppWindowRuntimeService::GetMainCameraEntity()
+	{
+		AppWindowContext* mainWindow = FindMainWindow();
+		return mainWindow != nullptr ? mainWindow->cameraEntity : ECS::NullEntity;
+	}
+
 	AppWindowContext* AppWindowRuntimeService::FindMainWindow()
 	{
 		for (auto& windowContext : m_windows)

@@ -12,6 +12,7 @@
 #include "Input/InputDevice.h"
 
 #include <EASTL/string.h>
+#include <ImGuizmo.h>
 #include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -37,7 +38,8 @@ namespace NeneEngine
 	}
 
 	void EditorLayer::Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput,
-	                             RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged)
+	                             ECS::Entity cameraEntity, RequestShutdownCallback requestShutdown,
+	                             ModeChangedCallback onModeChanged)
 	{
 		Shutdown();
 
@@ -52,6 +54,7 @@ namespace NeneEngine
 		m_requestShutdown = std::move(requestShutdown);
 		m_onModeChanged = std::move(onModeChanged);
 		m_context = eastl::make_unique<EditorContext>(EditorContext{world, m_history});
+		m_context->cameraEntity = cameraEntity;
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
@@ -87,6 +90,7 @@ namespace NeneEngine
 		if (m_imguiBackend == nullptr) return;
 
 		m_imguiBackend->BeginFrame();
+		ImGuizmo::BeginFrame();
 
 		m_context->isViewportHovered = false;
 		m_context->isViewportFocused = false;

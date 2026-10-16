@@ -25,7 +25,7 @@ namespace NeneEngine
 		EditorLayer();
 		~EditorLayer();
 
-		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput,
+		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput, ECS::Entity cameraEntity,
 		                RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged);
 		void Shutdown();
 

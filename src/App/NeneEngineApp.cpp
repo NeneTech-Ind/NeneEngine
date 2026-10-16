@@ -43,7 +43,8 @@ namespace NeneEngine
 
 			m_editorLayer.Initialize(
 			    m_world, m_windowRuntimeService.GetMainImGuiBackend(), m_windowRuntimeService.GetMainWindowInput(),
-			    [this]() { RequestShutdown(); }, [this](EditorMode mode) { OnEditorModeChanged(mode); });
+			    m_windowRuntimeService.GetMainCameraEntity(), [this]() { RequestShutdown(); },
+			    [this](EditorMode mode) { OnEditorModeChanged(mode); });
 			return true;
 		}
 		catch (const std::exception& e)
