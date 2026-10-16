@@ -45,6 +45,7 @@ namespace NeneEngine
 		std::atomic<bool> m_running{false};
 
 		void ApplyRuntimeAppConfig(const AppConfig& config);
+		void OnEditorModeChanged(EditorMode mode);
 	};
 
 } // namespace NeneEngine

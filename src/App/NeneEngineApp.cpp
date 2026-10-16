@@ -41,8 +41,9 @@ namespace NeneEngine
 			        width, height))
 				return false;
 
-			m_editorLayer.Initialize(m_world, m_windowRuntimeService.GetMainImGuiBackend(),
-			                         m_windowRuntimeService.GetMainWindowInput(), [this]() { RequestShutdown(); });
+			m_editorLayer.Initialize(
+			    m_world, m_windowRuntimeService.GetMainImGuiBackend(), m_windowRuntimeService.GetMainWindowInput(),
+			    [this]() { RequestShutdown(); }, [this](EditorMode mode) { OnEditorModeChanged(mode); });
 			return true;
 		}
 		catch (const std::exception& e)
@@ -65,6 +66,11 @@ namespace NeneEngine
 		    m_running, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService, m_windowRuntimeService,
 		    m_editorLayer, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
 		    [this]() { return m_windowRuntimeService.GetFocusedInput(); });
+	}
+
+	void NeneEngineApp::OnEditorModeChanged(EditorMode mode)
+	{
+		if (mode == EditorMode::Edit) m_gameStateMachine.PopToBaseState();
 	}
 
 	void NeneEngineApp::RequestShutdown()

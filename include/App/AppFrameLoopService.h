@@ -30,9 +30,10 @@ namespace NeneEngine
 
 	  private:
 		void InputPhase(float deltaTime, InputManager& inputManager, AppWindowRuntimeService& windowRuntimeService,
-		                FocusedInputCallback getFocusedInput);
+		                FocusedInputCallback getFocusedInput, bool isGameplayRunning);
 		void GameplayPhase(float deltaTime, GameTimer& timer, GameStateMachine& gameStateMachine,
-		                   AppRuntimeConfigService& runtimeConfigService, ApplyConfigCallback applyRuntimeConfig);
+		                   AppRuntimeConfigService& runtimeConfigService, ApplyConfigCallback applyRuntimeConfig,
+		                   bool isGameplayRunning);
 		void EditorPhase(EditorLayer& editorLayer);
 		void SyncPhase(float deltaTime);
 		void EndFramePhase(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService);

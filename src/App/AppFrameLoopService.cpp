@@ -45,8 +45,10 @@ namespace NeneEngine
 			timer.Tick();
 			const float deltaTime = timer.GetDeltaTime();
 
-			InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput);
-			GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig);
+			const bool isGameplayRunning = editorLayer.IsGameplayRunning();
+			InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput, isGameplayRunning);
+			GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig,
+			              isGameplayRunning);
 			EditorPhase(editorLayer);
 			SyncPhase(deltaTime);
 			{
@@ -60,22 +62,25 @@ namespace NeneEngine
 
 	void AppFrameLoopService::InputPhase(float deltaTime, InputManager& inputManager,
 	                                     AppWindowRuntimeService& windowRuntimeService,
-	                                     FocusedInputCallback getFocusedInput)
+	                                     FocusedInputCallback getFocusedInput, bool isGameplayRunning)
 	{
 		NENE_PROFILE_SCOPE("Input");
 		inputManager.SetInputDevice(getFocusedInput());
 		inputManager.UpdateState();
 		windowRuntimeService.UpdateInputManagers();
-		windowRuntimeService.UpdateWindowSystems(deltaTime);
+		windowRuntimeService.UpdateWindowSystems(deltaTime, isGameplayRunning);
 	}
 
 	void AppFrameLoopService::GameplayPhase(float deltaTime, GameTimer& timer, GameStateMachine& gameStateMachine,
 	                                        AppRuntimeConfigService& runtimeConfigService,
-	                                        ApplyConfigCallback applyRuntimeConfig)
+	                                        ApplyConfigCallback applyRuntimeConfig, bool isGameplayRunning)
 	{
 		NENE_PROFILE_SCOPE("Gameplay");
-		gameStateMachine.HandleInput();
-		gameStateMachine.Update(deltaTime);
+		if (isGameplayRunning)
+		{
+			gameStateMachine.HandleInput();
+			gameStateMachine.Update(deltaTime);
+		}
 		LogDeltaTimeStats(timer, deltaTime);
 		runtimeConfigService.Update(deltaTime, applyRuntimeConfig);
 	}

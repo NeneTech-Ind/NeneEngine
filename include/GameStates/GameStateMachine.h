@@ -20,6 +20,7 @@ namespace NeneEngine
 		void PushState(eastl::unique_ptr<IGameState> newState);
 
 		void PopState();
+		void PopToBaseState();
 		void Clear();
 
 		void Update(float deltaTime);

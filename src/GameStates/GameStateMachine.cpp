@@ -54,6 +54,11 @@ namespace NeneEngine
 		}
 	}
 
+	void GameStateMachine::PopToBaseState()
+	{
+		while (m_states.size() > 1) PopState();
+	}
+
 	void GameStateMachine::Clear()
 	{
 		while (!m_states.empty())

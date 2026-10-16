@@ -33,7 +33,7 @@ namespace NeneEngine
 		void PumpWindowMessages();
 		void WaitForWindowMessages(uint32_t timeoutMs);
 		void UpdateInputManagers();
-		void UpdateWindowSystems(float deltaTime);
+		void UpdateWindowSystems(float deltaTime, bool isGameplayRunning);
 		void Render();
 		void EndFrameInputs();
 		void UpdateFrameStatsText(const std::string& statsText);
@@ -49,6 +49,7 @@ namespace NeneEngine
 		bool CreateWindowContext(uint32_t width, uint32_t height, const std::string& title, ECS::Entity cameraEntity,
 		                         bool isMain);
 		void AddAppSystem(eastl::unique_ptr<ECS::ISystem> system);
+		void AddGameplayAppSystem(eastl::unique_ptr<ECS::ISystem> system);
 		void HandleWindowResize(size_t windowIndex, uint32_t width, uint32_t height);
 		[[nodiscard]] AppWindowContext* FindMainWindow();
 
@@ -57,6 +58,7 @@ namespace NeneEngine
 		AppWindowContextFactory m_windowContextFactory;
 		eastl::vector<AppWindowContext> m_windows;
 		eastl::vector<eastl::unique_ptr<ECS::ISystem>> m_appSystems;
+		eastl::vector<eastl::unique_ptr<ECS::ISystem>> m_gameplayAppSystems;
 	};
 
 } // namespace NeneEngine

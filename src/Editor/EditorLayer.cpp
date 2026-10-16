@@ -3,6 +3,7 @@
 #include "Editor/EditorLayer.h"
 
 #include "Core/NeneLogger.h"
+#include "ECS/World.h"
 #include "Editor/Panels/HierarchyPanel.h"
 #include "Editor/Panels/InspectorPanel.h"
 #include "Editor/Panels/StatisticsPanel.h"
@@ -11,6 +12,7 @@
 #include "Input/InputDevice.h"
 
 #include <EASTL/string.h>
+#include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -22,6 +24,9 @@ namespace NeneEngine
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
+		constexpr ImU32 kPlayModeMenuBarColor = IM_COL32(90, 50, 20, 255);
+		constexpr ImU32 kStopButtonColor = IM_COL32(170, 60, 40, 255);
+		constexpr ImU32 kStopButtonHoveredColor = IM_COL32(200, 80, 55, 255);
 	} // namespace
 
 	EditorLayer::EditorLayer() = default;
@@ -32,7 +37,7 @@ namespace NeneEngine
 	}
 
 	void EditorLayer::Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput,
-	                             RequestShutdownCallback requestShutdown)
+	                             RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged)
 	{
 		Shutdown();
 
@@ -45,6 +50,7 @@ namespace NeneEngine
 		m_imguiBackend = imguiBackend;
 		m_uiInput = uiInput;
 		m_requestShutdown = std::move(requestShutdown);
+		m_onModeChanged = std::move(onModeChanged);
 		m_context = eastl::make_unique<EditorContext>(EditorContext{world, m_history});
 
 		ImGuiIO& io = ImGui::GetIO();
@@ -68,8 +74,10 @@ namespace NeneEngine
 
 		m_panels.clear();
 		m_history.Clear();
+		m_sceneSnapshot.Clear();
 		m_context.reset();
 		m_requestShutdown = nullptr;
+		m_onModeChanged = nullptr;
 		m_uiInput = nullptr;
 		m_imguiBackend = nullptr;
 	}
@@ -93,7 +101,11 @@ namespace NeneEngine
 
 	void EditorLayer::DrawMainMenuBar()
 	{
-		if (!ImGui::BeginMainMenuBar()) return;
+		const bool isPlaying = m_context->mode == EditorMode::Play;
+		if (isPlaying) ImGui::PushStyleColor(ImGuiCol_MenuBarBg, kPlayModeMenuBarColor);
+		const bool isMenuBarOpen = ImGui::BeginMainMenuBar();
+		if (isPlaying) ImGui::PopStyleColor();
+		if (!isMenuBarOpen) return;
 
 		if (ImGui::BeginMenu("File"))
 		{
@@ -113,6 +125,7 @@ namespace NeneEngine
 			ImGui::EndMenu();
 		}
 
+		DrawPlayControls();
 		ImGui::EndMainMenuBar();
 	}
 
@@ -131,8 +144,53 @@ namespace NeneEngine
 			m_history.Redo(m_context->world);
 	}
 
+	void EditorLayer::DrawPlayControls()
+	{
+		const bool isPlaying = m_context->mode == EditorMode::Play;
+		const ImGuiStyle& style = ImGui::GetStyle();
+		const float buttonWidth =
+		    (std::max)(ImGui::CalcTextSize("Play").x, ImGui::CalcTextSize("Stop").x) + style.FramePadding.x * 2.0f;
+		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth) * 0.5f);
+
+		if (isPlaying)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, kStopButtonColor);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kStopButtonHoveredColor);
+		}
+
+		if (ImGui::Button(isPlaying ? "Stop" : "Play", ImVec2(buttonWidth, 0.0f)))
+			SetMode(isPlaying ? EditorMode::Edit : EditorMode::Play);
+		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+
+		if (isPlaying) ImGui::PopStyleColor(2);
+	}
+
+	void EditorLayer::SetMode(EditorMode mode)
+	{
+		if (m_context->mode == mode) return;
+
+		ECS::World& world = m_context->world;
+		if (mode == EditorMode::Play)
+		{
+			m_sceneSnapshot.Capture(world);
+		}
+		else
+		{
+			m_sceneSnapshot.Restore(world);
+			if (!world.GetRegistry().valid(m_context->selectedEntity)) m_context->selectedEntity = ECS::NullEntity;
+		}
+
+		m_context->mode = mode;
+		NENE_LOG_INFO("Editor switched to {} mode", mode == EditorMode::Play ? "Play" : "Edit");
+
+		if (m_onModeChanged) m_onModeChanged(mode);
+	}
+
 	void EditorLayer::HandleShortcuts()
 	{
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, ImGuiInputFlags_RouteGlobal))
+			SetMode(m_context->mode == EditorMode::Play ? EditorMode::Edit : EditorMode::Play);
+
 		if (m_context->mode != EditorMode::Edit) return;
 
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) m_history.Undo(m_context->world);
