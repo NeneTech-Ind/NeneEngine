@@ -105,9 +105,9 @@ namespace NeneEngine
 		if (!context.isViewportHovered || ImGui::GetIO().WantTextInput || ImGui::IsMouseDown(ImGuiMouseButton_Right))
 			return;
 
-		if (ImGui::IsKeyPressed(ImGuiKey_1, false)) m_operation = GizmoOperation::Translate;
-		if (ImGui::IsKeyPressed(ImGuiKey_2, false)) m_operation = GizmoOperation::Rotate;
-		if (ImGui::IsKeyPressed(ImGuiKey_3, false)) m_operation = GizmoOperation::Scale;
+		if (ImGui::IsKeyPressed(ImGuiKey_W, false)) m_operation = GizmoOperation::Translate;
+		if (ImGui::IsKeyPressed(ImGuiKey_E, false)) m_operation = GizmoOperation::Rotate;
+		if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_operation = GizmoOperation::Scale;
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			m_space = m_space == GizmoSpace::World ? GizmoSpace::Local : GizmoSpace::World;
 	}
@@ -115,13 +115,13 @@ namespace NeneEngine
 	void ViewportPanel::DrawToolbar()
 	{
 		if (ToolbarToggle("Move", m_operation == GizmoOperation::Translate)) m_operation = GizmoOperation::Translate;
-		ImGui::SetItemTooltip("Translate gizmo (1)");
+		ImGui::SetItemTooltip("Translate gizmo (W)");
 		ImGui::SameLine();
 		if (ToolbarToggle("Rotate", m_operation == GizmoOperation::Rotate)) m_operation = GizmoOperation::Rotate;
-		ImGui::SetItemTooltip("Rotate gizmo (2)");
+		ImGui::SetItemTooltip("Rotate gizmo (E)");
 		ImGui::SameLine();
 		if (ToolbarToggle("Scale", m_operation == GizmoOperation::Scale)) m_operation = GizmoOperation::Scale;
-		ImGui::SetItemTooltip("Scale gizmo (3)");
+		ImGui::SetItemTooltip("Scale gizmo (R)");
 
 		ImGui::SameLine(0.0f, ImGui::GetStyle().ItemSpacing.x * 4.0f);
 		const bool isScale = m_operation == GizmoOperation::Scale;

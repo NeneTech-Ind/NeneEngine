@@ -34,11 +34,11 @@ namespace NeneEngine::ECS
 			auto& transform = view.get<TransformComponent>(entity);
 			auto& controller = view.get<CameraControllerComponent>(entity);
 
-			const bool canRotate =
+			const bool isFlying =
 			    !controller.rotateWithRightMouse || m_input.IsActionActive(InputActions::LookModifier);
 			const glm::vec2 mouseDelta = m_input.GetMouseDelta();
 
-			if (canRotate && glm::dot(mouseDelta, mouseDelta) > 0.0f)
+			if (isFlying && glm::dot(mouseDelta, mouseDelta) > 0.0f)
 			{
 				// Store yaw/pitch explicitly to avoid extracting Euler angles from the camera quaternion every frame.
 				controller.yawRadians -= mouseDelta.x * controller.lookSensitivity;
@@ -60,7 +60,7 @@ namespace NeneEngine::ECS
 			if (m_input.IsActionActive(InputActions::MoveUp)) direction.y += 1.0f;
 			if (m_input.IsActionActive(InputActions::MoveDown)) direction.y -= 1.0f;
 
-			if (glm::dot(direction, direction) > 0.0f)
+			if (isFlying && glm::dot(direction, direction) > 0.0f)
 			{
 				const bool isSprinting = m_input.IsActionActive(InputActions::Sprint);
 				const float moveSpeed =
