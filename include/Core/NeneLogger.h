@@ -5,7 +5,6 @@
 #include <EASTL/memory.h>
 #include <EASTL/string.h>
 #include <memory>
-#include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
@@ -24,7 +23,7 @@ namespace NeneEngine
 
 		static NeneLogger& GetInstance();
 
-		bool Initialize(const std::string& logFileName = "NeneEngine.log", bool async = false,
+		bool Initialize(const std::string& logFileName = "NeneEngine.log",
 		                spdlog::level::level_enum logLevel = spdlog::level::level_enum::info,
 		                bool consoleWithColor = true);
 		void Shutdown();

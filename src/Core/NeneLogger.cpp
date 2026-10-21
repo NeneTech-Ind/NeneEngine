@@ -7,7 +7,6 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
-#include <spdlog/async_logger.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
@@ -20,8 +19,7 @@ namespace NeneEngine
 		return instance;
 	}
 
-	bool NeneLogger::Initialize(const std::string& logFileName, bool async, spdlog::level::level_enum logLevel,
-	                            bool consoleWithColor)
+	bool NeneLogger::Initialize(const std::string& logFileName, spdlog::level::level_enum logLevel, bool consoleWithColor)
 	{
 		try
 		{
@@ -55,23 +53,14 @@ namespace NeneEngine
 				sinks.push_back(file);
 			}
 
-			if (async)
-			{
-				spdlog::init_thread_pool(8192, 1);
-				m_logger = std::make_shared<spdlog::async_logger>(
-				    "game", sinks.begin(), sinks.end(), spdlog::thread_pool(), spdlog::async_overflow_policy::block);
-			}
-			else
-			{
-				m_logger = std::make_shared<spdlog::logger>("game", sinks.begin(), sinks.end());
-			}
+			m_logger = std::make_shared<spdlog::logger>("game", sinks.begin(), sinks.end());
 
 			m_logger->set_level(logLevel);
 			m_logger->flush_on((std::max)(logLevel, spdlog::level::warn));
 
 			spdlog::set_default_logger(m_logger);
 			spdlog::flush_every(std::chrono::seconds(1));
-			m_logger->info("Logger initialized (async={}, level={})", async, spdlog::level::to_string_view(logLevel));
+			m_logger->info("Logger initialized (level={})", spdlog::level::to_string_view(logLevel));
 
 			return true;
 		}
