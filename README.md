@@ -19,7 +19,7 @@ Current module naming rules are tracked in [docs/architecture/naming-conventions
 - Win32 multi-window application framework with per-window input focus
 - DirectX 12 renderer powered by Diligent Engine
 - ECS architecture based on EnTT with gameplay, camera, primitive control, and render systems
-- Game state machine with Play / Pause / Menu flow
+- Game state machine with Play / Pause flow
 - JSON-based engine and scene configuration
 - Scene serialization and loading from JSON
 - Runtime hot-reload for background color via `assets/config/engine.json` with window layout changes applied on next launch
