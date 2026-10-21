@@ -3,6 +3,8 @@
 #include "Core/NeneLogger.h"
 
 #include <EASTL/vector.h>
+#include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <iostream>
 #include <spdlog/async_logger.h>
@@ -65,9 +67,10 @@ namespace NeneEngine
 			}
 
 			m_logger->set_level(logLevel);
-			m_logger->flush_on(logLevel);
+			m_logger->flush_on((std::max)(logLevel, spdlog::level::warn));
 
 			spdlog::set_default_logger(m_logger);
+			spdlog::flush_every(std::chrono::seconds(1));
 			m_logger->info("Logger initialized (async={}, level={})", async, spdlog::level::to_string_view(logLevel));
 
 			return true;

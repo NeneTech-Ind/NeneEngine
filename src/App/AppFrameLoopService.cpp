@@ -129,8 +129,9 @@ namespace NeneEngine
 		const float averageDeltaTime =
 		    m_deltaSampleCount > 0 ? m_accumulatedDeltaTime / static_cast<float>(m_deltaSampleCount) : 0.0f;
 
-		NENE_LOG_INFO("deltaTime: last={:.6f} s ({:.3f} ms), avg={:.6f} s ({:.3f} ms), samples={}", m_lastDeltaTime,
-		              m_lastDeltaTime * 1000.0f, averageDeltaTime, averageDeltaTime * 1000.0f, m_deltaSampleCount);
+		NENE_LOG_DEBUG("deltaTime: last={:.6f} s ({:.3f} ms), avg={:.6f} s ({:.3f} ms), samples={}",
+		               m_lastDeltaTime, m_lastDeltaTime * 1000.0f, averageDeltaTime, averageDeltaTime * 1000.0f,
+		               m_deltaSampleCount);
 
 		m_deltaSampleCount = 0;
 		m_accumulatedDeltaTime = 0.0f;
