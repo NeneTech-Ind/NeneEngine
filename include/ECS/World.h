@@ -46,9 +46,8 @@ namespace NeneEngine::ECS
 		// ===== Systems =====
 		void AddSystem(eastl::unique_ptr<ISystem> system);
 
-		// ===== Update / Render =====
+		// ===== Update =====
 		void Update(float deltaTime);
-		void Render();
 
 		EventBus& GetEventBus() { return m_eventBus; }
 		const EventBus& GetEventBus() const { return m_eventBus; }

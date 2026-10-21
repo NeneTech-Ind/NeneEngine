@@ -3,7 +3,6 @@
 #pragma once
 
 #include "ECS/Entity.h"
-#include "ECS/Systems/ISystem.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 
 #include <EASTL/unordered_map.h>
@@ -13,7 +12,9 @@
 namespace NeneEngine::ECS
 {
 
-	class RenderSystem final : public ISystem
+	class World;
+
+	class RenderSystem final
 	{
 	  public:
 		explicit RenderSystem(IRenderAdapter* adapter, Entity cameraEntity = NullEntity)
@@ -21,9 +22,7 @@ namespace NeneEngine::ECS
 		{
 		}
 
-		void Update(World& world, float deltaTime) override;
-
-		void Render(World& world) override;
+		void Render(World& world);
 		void SetCameraEntity(Entity cameraEntity) { m_cameraEntity = cameraEntity; }
 
 	  private:

@@ -94,8 +94,6 @@ namespace NeneEngine::ECS
 		}
 	} // namespace
 
-	void RenderSystem::Update(World& /*world*/, float /*deltaTime*/) {}
-
 	void RenderSystem::Render(World& world)
 	{
 		if (m_renderer == nullptr)

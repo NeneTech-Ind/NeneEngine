@@ -32,9 +32,4 @@ namespace NeneEngine::ECS
 		for (auto& system : m_systems) system->Update(*this, deltaTime);
 	}
 
-	void World::Render()
-	{
-		for (auto& system : m_systems) system->Render(*this);
-	}
-
 } // namespace NeneEngine::ECS
