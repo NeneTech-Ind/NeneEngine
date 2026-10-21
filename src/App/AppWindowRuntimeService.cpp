@@ -330,17 +330,6 @@ namespace NeneEngine
 		return nullptr;
 	}
 
-	IRenderAdapter* AppWindowRuntimeService::GetPrimaryRenderer()
-	{
-		for (auto& windowContext : m_windows)
-		{
-			if (windowContext.isMain) return windowContext.renderer.get();
-		}
-
-		if (m_windows.empty()) return nullptr;
-		return m_windows.front().renderer.get();
-	}
-
 	eastl::vector<IRenderAdapter*> AppWindowRuntimeService::GetRenderers() const
 	{
 		eastl::vector<IRenderAdapter*> renderers;

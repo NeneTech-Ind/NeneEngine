@@ -43,7 +43,6 @@ namespace NeneEngine
 		[[nodiscard]] IImGuiBackend* GetMainImGuiBackend();
 		[[nodiscard]] InputDevice* GetMainWindowInput();
 		[[nodiscard]] ECS::Entity GetMainCameraEntity();
-		[[nodiscard]] IRenderAdapter* GetPrimaryRenderer();
 		[[nodiscard]] eastl::vector<IRenderAdapter*> GetRenderers() const;
 
 	  private:
