@@ -16,6 +16,7 @@
 
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
+#include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
 #include <array>
 
@@ -133,6 +134,7 @@ namespace NeneEngine
 		eastl::shared_ptr<DiligentDX12SharedDevice> m_shared;
 		Diligent::RefCntAutoPtr<Diligent::ISwapChain> m_swapChain;
 		eastl::vector<RenderItem> m_renderQueue;
+		eastl::unordered_set<uint64_t> m_reportedTextureFallbacks;
 		glm::vec4 m_clearColor{0.1f, 0.1f, 0.2f, 1.0f};
 	};
 

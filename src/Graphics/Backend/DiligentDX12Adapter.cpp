@@ -798,9 +798,11 @@ namespace NeneEngine
 			}
 			else
 			{
-				NENE_LOG_WARN("DiligentDX12Adapter: shader {} requires texture {}, falling back to default mesh "
-				              "pipeline for mesh {}",
-				              item.shaderId.value, item.textureId.value, item.meshId.value);
+				const uint64_t fallbackKey = (static_cast<uint64_t>(item.shaderId.value) << 32) | item.meshId.value;
+				if (m_reportedTextureFallbacks.insert(fallbackKey).second)
+					NENE_LOG_WARN("DiligentDX12Adapter: shader {} requires texture {}, falling back to default mesh "
+					              "pipeline for mesh {}",
+					              item.shaderId.value, item.textureId.value, item.meshId.value);
 			}
 		}
 
