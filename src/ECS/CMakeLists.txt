@@ -25,7 +25,6 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/PrimitiveControlSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/RenderSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/MeshRenderRuntimeComponent.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/PhysicsComponents.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/World.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/CameraControllerSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/MovementSystem.cpp"
