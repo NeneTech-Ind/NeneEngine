@@ -32,7 +32,7 @@ void NeneEngine::PauseState::HandleInput()
 {
 	const IInputHandler& input = m_context.input;
 
-	if (input.IsActionPressed(InputActions::Pause)) m_context.stateMachine.PopState();
-
 	if (input.IsActionPressed(InputActions::Quit) && m_context.requestShutdown) m_context.requestShutdown();
+
+	if (input.IsActionPressed(InputActions::Pause)) m_context.stateMachine.PopState();
 }

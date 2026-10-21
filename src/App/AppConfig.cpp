@@ -36,8 +36,8 @@ namespace NeneEngine
 			config.actions[std::string(InputActions::PrimitiveMoveDown)] = {KeyCode::NumPad2};
 			config.actions[std::string(InputActions::PrimitiveMoveLeft)] = {KeyCode::NumPad4};
 			config.actions[std::string(InputActions::PrimitiveMoveRight)] = {KeyCode::NumPad6};
-			config.actions[std::string(InputActions::ScaleStep)] = {KeyCode::MouseLeft};
-			config.actions[std::string(InputActions::RotateStep)] = {KeyCode::MouseRight};
+			config.actions[std::string(InputActions::ScaleStep)] = {KeyCode::NumPad7};
+			config.actions[std::string(InputActions::RotateStep)] = {KeyCode::NumPad9};
 			config.actions[std::string(InputActions::PlayerMoveForward)] = {KeyCode::Up};
 			config.actions[std::string(InputActions::PlayerMoveBackward)] = {KeyCode::Down};
 			config.actions[std::string(InputActions::PlayerMoveLeft)] = {KeyCode::Left};
