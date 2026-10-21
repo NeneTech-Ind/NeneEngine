@@ -6,7 +6,6 @@
 #include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Systems/CameraControllerSystem.h"
-#include "ECS/Systems/PrimitiveControlSystem.h"
 #include "ECS/World.h"
 
 namespace NeneEngine
@@ -111,7 +110,6 @@ namespace NeneEngine
 		}
 
 		m_appSystems.clear();
-		m_gameplayAppSystems.clear();
 		m_windows.clear();
 		m_world = nullptr;
 	}
@@ -130,7 +128,6 @@ namespace NeneEngine
 		m_windows.push_back(std::move(*windowContext));
 		auto& storedWindowContext = m_windows.back();
 		AddAppSystem(eastl::make_unique<ECS::CameraControllerSystem>(storedWindowContext.inputManager, cameraEntity));
-		AddGameplayAppSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(storedWindowContext.inputManager));
 
 		HandleWindowResize(windowIndex, width, height);
 		return true;
@@ -139,11 +136,6 @@ namespace NeneEngine
 	void AppWindowRuntimeService::AddAppSystem(eastl::unique_ptr<ECS::ISystem> system)
 	{
 		m_appSystems.push_back(std::move(system));
-	}
-
-	void AppWindowRuntimeService::AddGameplayAppSystem(eastl::unique_ptr<ECS::ISystem> system)
-	{
-		m_gameplayAppSystems.push_back(std::move(system));
 	}
 
 	bool AppWindowRuntimeService::AreAllWindowsClosed() const
@@ -232,12 +224,10 @@ namespace NeneEngine
 		}
 	}
 
-	void AppWindowRuntimeService::UpdateWindowSystems(float deltaTime, bool isGameplayRunning)
+	void AppWindowRuntimeService::UpdateWindowSystems(float deltaTime)
 	{
 		if (m_world == nullptr) return;
 		for (auto& system : m_appSystems) system->Update(*m_world, deltaTime);
-		if (!isGameplayRunning) return;
-		for (auto& system : m_gameplayAppSystems) system->Update(*m_world, deltaTime);
 	}
 
 	void AppWindowRuntimeService::Render()

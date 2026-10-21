@@ -46,7 +46,7 @@ namespace NeneEngine
 			const float deltaTime = timer.GetDeltaTime();
 
 			const bool isGameplayRunning = editorLayer.IsGameplayRunning();
-			InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput, isGameplayRunning);
+			InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput);
 			GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig,
 			              isGameplayRunning);
 			EditorPhase(editorLayer);
@@ -62,13 +62,13 @@ namespace NeneEngine
 
 	void AppFrameLoopService::InputPhase(float deltaTime, InputManager& inputManager,
 	                                     AppWindowRuntimeService& windowRuntimeService,
-	                                     FocusedInputCallback getFocusedInput, bool isGameplayRunning)
+	                                     FocusedInputCallback getFocusedInput)
 	{
 		NENE_PROFILE_SCOPE("Input");
 		inputManager.SetInputDevice(getFocusedInput());
 		inputManager.UpdateState();
 		windowRuntimeService.UpdateInputManagers();
-		windowRuntimeService.UpdateWindowSystems(deltaTime, isGameplayRunning);
+		windowRuntimeService.UpdateWindowSystems(deltaTime);
 	}
 
 	void AppFrameLoopService::GameplayPhase(float deltaTime, GameTimer& timer, GameStateMachine& gameStateMachine,

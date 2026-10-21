@@ -15,6 +15,7 @@
 #include "ECS/Systems/MovementSystem.h"
 #include "ECS/Systems/PhysicsSystem.h"
 #include "ECS/Systems/PlayerControllerSystem.h"
+#include "ECS/Systems/PrimitiveControlSystem.h"
 #include "GameStates/GameStateMachine.h"
 #include "GameStates/PlayState.h"
 #include "Graphics/Loaders/ResourceLoaderRegistration.h"
@@ -77,6 +78,7 @@ namespace NeneEngine
 
 		world.AddSystem(eastl::make_unique<ECS::MovementSystem>());
 		world.AddSystem(eastl::make_unique<ECS::PlayerControllerSystem>(app.GetInputManager()));
+		world.AddSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(app.GetInputManager()));
 		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>());
 		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, width, height);
