@@ -30,9 +30,8 @@ namespace NeneEngine
 		NeneLogger::GetInstance().Shutdown();
 	}
 
-	bool NeneEngineApp::Init(uint32_t width, uint32_t height, const std::string& title)
+	bool NeneEngineApp::Init(uint32_t width, uint32_t height)
 	{
-		(void)title;
 		try
 		{
 			if (!m_bootstrapService.Initialize(

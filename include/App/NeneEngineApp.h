@@ -14,7 +14,6 @@
 #include "Input/InputManager.h"
 
 #include <atomic>
-#include <string>
 
 namespace NeneEngine
 {
@@ -25,7 +24,7 @@ namespace NeneEngine
 		NeneEngineApp();
 		~NeneEngineApp();
 
-		bool Init(uint32_t width = 1280, uint32_t height = 720, const std::string& title = "NeneEngine");
+		bool Init(uint32_t width = 1280, uint32_t height = 720);
 		void Run();
 		void RequestShutdown();
 		InputManager& GetInputManager() { return m_inputManager; }

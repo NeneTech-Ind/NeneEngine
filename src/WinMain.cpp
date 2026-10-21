@@ -27,7 +27,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR commandLine, int)
 		const bool smokeTestMode = HasCommandLineFlag(commandLine, L"--smoke-test");
 
 		NeneEngine::NeneEngineApp app;
-		if (!app.Init(1280, 720, "NeneEngine"))
+		if (!app.Init(1280, 720))
 		{
 			std::cerr << "Failed to initialize application\n";
 			return -1;
