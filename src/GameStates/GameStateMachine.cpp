@@ -11,18 +11,6 @@ namespace NeneEngine
 		Clear();
 	}
 
-	void GameStateMachine::ChangeState(eastl::unique_ptr<IGameState> newState)
-	{
-		while (!m_states.empty())
-		{
-			m_states.back()->OnExit();
-			NENE_LOG_INFO("Popped state during ChangeState: {}", typeid(*m_states.back()).name());
-			m_states.pop_back();
-		}
-
-		PushState(eastl::move(newState));
-	}
-
 	void GameStateMachine::PushState(eastl::unique_ptr<IGameState> newState)
 	{
 		if (!m_states.empty())

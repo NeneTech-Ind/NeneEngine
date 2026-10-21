@@ -15,8 +15,6 @@ namespace NeneEngine
 		GameStateMachine() = default;
 		~GameStateMachine();
 
-		void ChangeState(eastl::unique_ptr<IGameState> newState);
-
 		void PushState(eastl::unique_ptr<IGameState> newState);
 
 		void PopState();
