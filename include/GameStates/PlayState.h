@@ -19,7 +19,6 @@ namespace NeneEngine
 		void Update(float dt) override;
 		void HandleInput() override;
 
-		bool IsTransparent() const override { return false; }
 		bool IsPausing() const override { return false; }
 	};
 

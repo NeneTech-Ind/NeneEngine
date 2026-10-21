@@ -40,7 +40,6 @@ namespace NeneEngine
 
 		virtual void HandleInput() = 0;
 
-		virtual bool IsTransparent() const { return false; }
 		virtual bool IsPausing() const { return false; }
 
 	  protected:
