@@ -27,17 +27,9 @@ namespace NeneEngine
 
 			eastl::vector<spdlog::sink_ptr> sinks;
 			auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-
-			if (consoleWithColor)
-			{
-				console->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
-				sinks.push_back(console);
-			}
-			else
-			{
-				console->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
-				sinks.push_back(console);
-			}
+			console->set_pattern(consoleWithColor ? "[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v"
+			                                      : "[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+			sinks.push_back(console);
 
 			if (!logFileName.empty())
 			{

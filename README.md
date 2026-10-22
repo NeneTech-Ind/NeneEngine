@@ -29,7 +29,7 @@ Current module naming rules are tracked in [docs/architecture/naming-conventions
 - GPU mesh upload path with indexed rendering for loaded meshes
 - Free-look camera controller with mouse, WASD movement, and Shift acceleration
 - Interactive test primitive controls for movement, scaling, and rotation
-- Async logging with spdlog
+- Logging with spdlog
 
 ### Build
 

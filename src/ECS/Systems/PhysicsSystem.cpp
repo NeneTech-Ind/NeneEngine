@@ -634,4 +634,16 @@ namespace NeneEngine::ECS
 		impl.PublishPendingEvents(world);
 	}
 
+	void PhysicsSystem::Reset()
+	{
+		Impl& impl = *m_impl;
+
+		for (const auto& [entity, record] : impl.bodies) impl.DestroyJoltBody(record.bodyId);
+		impl.bodies.clear();
+		impl.contacts.clear();
+		impl.contactListener.TakeChanges();
+		impl.pendingEvents.clear();
+		impl.accumulator = 0.0f;
+	}
+
 } // namespace NeneEngine::ECS

@@ -12,6 +12,7 @@
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Events/CollisionEvent.h"
+#include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/Systems/MovementSystem.h"
 #include "ECS/Systems/PhysicsSystem.h"
 #include "ECS/Systems/PlayerControllerSystem.h"
@@ -79,7 +80,11 @@ namespace NeneEngine
 		world.AddSystem(eastl::make_unique<ECS::MovementSystem>());
 		world.AddSystem(eastl::make_unique<ECS::PlayerControllerSystem>(app.GetInputManager()));
 		world.AddSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(app.GetInputManager()));
-		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>());
+		auto physicsSystem = eastl::make_unique<ECS::PhysicsSystem>();
+		ECS::PhysicsSystem& physics = *physicsSystem;
+		world.AddSystem(eastl::move(physicsSystem));
+		world.GetEventBus().Subscribe<ECS::SceneRestoredEvent>([&physics](const ECS::SceneRestoredEvent&)
+		                                                       { physics.Reset(); });
 		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, width, height);
 		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::GetDefaultScenePath().string());

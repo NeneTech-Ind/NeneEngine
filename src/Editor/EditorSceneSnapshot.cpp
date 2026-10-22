@@ -4,6 +4,7 @@
 
 #include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
+#include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/World.h"
 
 #include <EASTL/algorithm.h>
@@ -101,6 +102,8 @@ namespace NeneEngine
 			NENE_LOG_WARN("Editor snapshot: {} components belong to entities destroyed during play and were not "
 			              "restored",
 			              missingCount);
+
+		world.GetEventBus().Publish(ECS::SceneRestoredEvent{});
 
 		NENE_LOG_INFO("Editor snapshot restored, {} entities created during play removed", createdDuringPlay.size());
 		Clear();
