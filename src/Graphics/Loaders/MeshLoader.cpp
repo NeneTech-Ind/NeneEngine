@@ -18,9 +18,6 @@ namespace NeneEngine
 		                                      aiProcess_PreTransformVertices | aiProcess_GenSmoothNormals |
 		                                      aiProcess_ImproveCacheLocality | aiProcess_ValidateDataStructure |
 		                                      aiProcess_FlipUVs;
-		constexpr unsigned kMeshPartsImportFlags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-		                                           aiProcess_PreTransformVertices | aiProcess_GenSmoothNormals |
-		                                           aiProcess_ImproveCacheLocality | aiProcess_ValidateDataStructure;
 
 		void AppendAssimpMesh(const aiMesh& mesh, MeshData& meshData)
 		{
