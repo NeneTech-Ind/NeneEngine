@@ -182,9 +182,15 @@ namespace NeneEngine
 			                                 TrackItem(edits);
 		                                 });
 
+		const bool isPlaying = context.mode == EditorMode::Play;
 		DrawComponent<ECS::TransformComponent>(context, "Transform",
-		                                       [this, entity](ECS::TransformComponent& transform, FieldEdits& edits)
-		                                       { DrawTransformFields(entity, transform, edits); });
+		                                       [this, entity, isPlaying](ECS::TransformComponent& transform,
+		                                                                 FieldEdits& edits)
+		                                       {
+			                                       ImGui::BeginDisabled(isPlaying);
+			                                       DrawTransformFields(entity, transform, edits);
+			                                       ImGui::EndDisabled();
+		                                       });
 
 		DrawComponent<ECS::MeshRendererComponent>(context, "Mesh Renderer",
 		                                          [](ECS::MeshRendererComponent& meshRenderer, FieldEdits& edits)

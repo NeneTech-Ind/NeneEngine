@@ -102,7 +102,8 @@ namespace NeneEngine
 
 	void ViewportPanel::HandleShortcuts(const EditorContext& context)
 	{
-		if (!context.isViewportHovered || ImGui::GetIO().WantTextInput || ImGui::IsMouseDown(ImGuiMouseButton_Right))
+		if (context.mode != EditorMode::Edit || !context.isViewportHovered || ImGui::GetIO().WantTextInput ||
+		    ImGui::IsMouseDown(ImGuiMouseButton_Right))
 			return;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_W, false)) m_operation = GizmoOperation::Translate;
