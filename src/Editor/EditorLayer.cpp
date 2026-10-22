@@ -266,9 +266,14 @@ namespace NeneEngine
 	{
 		if (m_uiInput == nullptr) return;
 
-		const ImGuiIO& io = ImGui::GetIO();
+		ImGuiIO& io = ImGui::GetIO();
 		m_uiInput->SetMouseCaptured(io.WantCaptureMouse && !m_context->isViewportHovered);
 		m_uiInput->SetKeyboardCaptured(io.WantCaptureKeyboard && !m_context->isViewportFocused);
+
+		if (m_context->isViewportFocused)
+			io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+		else
+			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	}
 
 } // namespace NeneEngine
