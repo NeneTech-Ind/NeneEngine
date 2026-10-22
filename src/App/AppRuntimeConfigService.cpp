@@ -55,7 +55,17 @@ namespace NeneEngine
 
 		if (!pathChanged && currentWriteTime == m_loadedAppConfig.lastWriteTime) return;
 
-		const LoadedAppConfig resolvedConfig = LoadStartupAppConfig(resolvedConfigPath);
+		const auto reloadedConfig = TryLoadAppConfig(resolvedConfigPath);
+		if (!reloadedConfig)
+		{
+			NENE_LOG_WARN("App config hot-reload: keeping current settings until '{}' is valid",
+			              resolvedConfigPath.string());
+			m_loadedAppConfig.path = resolvedConfigPath;
+			m_loadedAppConfig.lastWriteTime = currentWriteTime;
+			return;
+		}
+
+		const LoadedAppConfig resolvedConfig{*reloadedConfig, resolvedConfigPath, currentWriteTime};
 
 		const auto hotReloadResult = EvaluateAppConfigHotReload(m_loadedAppConfig.config, resolvedConfig.config);
 		if (hotReloadResult.requiresRestart)

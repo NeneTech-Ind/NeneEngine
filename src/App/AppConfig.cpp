@@ -273,19 +273,13 @@ namespace NeneEngine
 		return std::filesystem::path{"assets"} / "config" / "engine.json";
 	}
 
-	AppConfig LoadAppConfig(const std::filesystem::path& configPath)
+	eastl::optional<AppConfig> TryLoadAppConfig(const std::filesystem::path& configPath)
 	{
-		AppConfig config{};
-		config.window.backgroundColor = kDefaultBackgroundColor;
-		config.input = DefaultInputConfig();
-		config.windows.push_back(
-		    WindowDefinitionConfig{std::string(kDefaultWindowTitle), kDefaultWindowWidth, kDefaultWindowHeight, true});
-
 		std::ifstream input(configPath);
 		if (!input.is_open())
 		{
-			NENE_LOG_WARN("App config: failed to open '{}', using defaults", configPath.string());
-			return config;
+			NENE_LOG_WARN("App config: failed to open '{}'", configPath.string());
+			return eastl::nullopt;
 		}
 
 		try
@@ -293,6 +287,7 @@ namespace NeneEngine
 			nlohmann::json root;
 			input >> root;
 
+			AppConfig config{};
 			config.window.backgroundColor = ReadBackgroundColorOrDefault(root);
 			config.input = ReadInputConfigOrDefault(root);
 			config.windows = ReadWindowsOrDefault(root);
@@ -301,12 +296,25 @@ namespace NeneEngine
 			              configPath.string(), config.window.backgroundColor.r, config.window.backgroundColor.g,
 			              config.window.backgroundColor.b, config.window.backgroundColor.a, config.windows.size(),
 			              config.input.actions.size());
+			return config;
 		}
 		catch (const std::exception& ex)
 		{
-			NENE_LOG_WARN("App config: failed to parse '{}': {}. Using defaults", configPath.string(), ex.what());
+			NENE_LOG_WARN("App config: failed to parse '{}': {}", configPath.string(), ex.what());
+			return eastl::nullopt;
 		}
+	}
 
+	AppConfig LoadAppConfig(const std::filesystem::path& configPath)
+	{
+		if (auto loadedConfig = TryLoadAppConfig(configPath)) return *loadedConfig;
+
+		NENE_LOG_WARN("App config: using defaults");
+		AppConfig config{};
+		config.window.backgroundColor = kDefaultBackgroundColor;
+		config.input = DefaultInputConfig();
+		config.windows.push_back(
+		    WindowDefinitionConfig{std::string(kDefaultWindowTitle), kDefaultWindowWidth, kDefaultWindowHeight, true});
 		return config;
 	}
 } // namespace NeneEngine

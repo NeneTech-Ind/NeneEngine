@@ -3,6 +3,7 @@
 #include "Core/EASTLStdHash.h"
 #include "Input/KeyCode.h"
 
+#include <EASTL/optional.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
 #include <cstdint>
@@ -39,5 +40,6 @@ namespace NeneEngine
 	};
 
 	[[nodiscard]] std::filesystem::path GetDefaultAppConfigPath();
+	[[nodiscard]] eastl::optional<AppConfig> TryLoadAppConfig(const std::filesystem::path& configPath);
 	[[nodiscard]] AppConfig LoadAppConfig(const std::filesystem::path& configPath = GetDefaultAppConfigPath());
 } // namespace NeneEngine
