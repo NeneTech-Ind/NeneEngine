@@ -47,6 +47,7 @@ namespace NeneEngine
 		void SetMouseCaptured(bool captured) { m_isMouseCaptured = captured; }
 		void SetKeyboardCaptured(bool captured) { m_isKeyboardCaptured = captured; }
 		void ResetState();
+		void ResetMouseState();
 
 		bool IsKeyDown(KeyCode key) const;
 		bool IsKeyPressed(KeyCode key) const;

@@ -78,6 +78,14 @@ namespace NeneEngine
 		m_mouseWheelDelta = 0.0f;
 	}
 
+	void InputDevice::ResetMouseState()
+	{
+		eastl::erase_if(m_pressedKeys, IsMouseButton);
+		eastl::erase_if(m_pressedThisFrame, IsMouseButton);
+		m_mouseDelta = {0.0f, 0.0f};
+		m_mouseWheelDelta = 0.0f;
+	}
+
 	bool InputDevice::IsKeyDown(KeyCode key) const
 	{
 		return m_pressedKeys.contains(key);

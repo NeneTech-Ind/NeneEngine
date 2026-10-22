@@ -187,7 +187,7 @@ namespace NeneEngine
 
 		case WM_MOUSELEAVE:
 			m_isTrackingMouseLeave = false;
-			m_input.ResetState();
+			m_input.ResetMouseState();
 			return 0;
 
 		case WM_MOUSEWHEEL:
