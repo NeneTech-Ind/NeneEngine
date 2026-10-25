@@ -20,7 +20,7 @@ function(neneengine_set_default_option option_name option_value description)
 endfunction()
 
 function(neneengine_try_set_python3_executable candidate_path)
-    if(DEFINED Python3_EXECUTABLE AND NOT "${Python3_EXECUTABLE}" STREQUAL "")
+    if(Python3_EXECUTABLE AND EXISTS "${Python3_EXECUTABLE}")
         return()
     endif()
 
@@ -29,11 +29,13 @@ function(neneengine_try_set_python3_executable candidate_path)
     endif()
 endfunction()
 
-if(WIN32 AND (NOT DEFINED Python3_EXECUTABLE OR "${Python3_EXECUTABLE}" STREQUAL ""))
-    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python313/python.exe")
-    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python312/python.exe")
-    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python311/python.exe")
-    neneengine_try_set_python3_executable("$ENV{LOCALAPPDATA}/Programs/Python/Python310/python.exe")
+if(WIN32 AND NOT (Python3_EXECUTABLE AND EXISTS "${Python3_EXECUTABLE}"))
+    file(GLOB NENEENGINE_PYTHON3_CANDIDATES "$ENV{LOCALAPPDATA}/Programs/Python/Python3*/python.exe")
+    list(SORT NENEENGINE_PYTHON3_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
+
+    foreach(candidate IN LISTS NENEENGINE_PYTHON3_CANDIDATES)
+        neneengine_try_set_python3_executable("${candidate}")
+    endforeach()
 endif()
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
