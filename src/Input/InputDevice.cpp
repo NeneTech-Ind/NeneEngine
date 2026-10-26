@@ -27,7 +27,8 @@ namespace NeneEngine
 
 	void InputDevice::NotifyMouseMove(glm::vec2 position)
 	{
-		const glm::vec2 delta = position - m_mousePosition;
+		const glm::vec2 delta = m_hasMousePosition ? position - m_mousePosition : glm::vec2(0.0f);
+		m_hasMousePosition = true;
 		NotifyMouseDelta(delta, position);
 	}
 
@@ -74,6 +75,7 @@ namespace NeneEngine
 	{
 		m_pressedKeys.clear();
 		m_pressedThisFrame.clear();
+		m_hasMousePosition = false;
 		m_mouseDelta = {0.0f, 0.0f};
 		m_mouseWheelDelta = 0.0f;
 	}
@@ -82,6 +84,7 @@ namespace NeneEngine
 	{
 		eastl::erase_if(m_pressedKeys, IsMouseButton);
 		eastl::erase_if(m_pressedThisFrame, IsMouseButton);
+		m_hasMousePosition = false;
 		m_mouseDelta = {0.0f, 0.0f};
 		m_mouseWheelDelta = 0.0f;
 	}

@@ -66,6 +66,7 @@ namespace NeneEngine
 		glm::vec2 m_mousePosition = {0.0f, 0.0f};
 		glm::vec2 m_mouseDelta = {0.0f, 0.0f};
 		float m_mouseWheelDelta = 0.0f;
+		bool m_hasMousePosition = false;
 		bool m_isFocused = true;
 		bool m_isMouseCaptured = false;
 		bool m_isKeyboardCaptured = false;
