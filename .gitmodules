@@ -1,10 +1,13 @@
 [submodule "external/DiligentEngine"]
 	path = external/DiligentEngine
 	url = https://github.com/DiligentGraphics/DiligentEngine
+	ignore = dirty
 [submodule "external/imgui"]
 	path = external/imgui
 	url = https://github.com/ocornut/imgui
 	branch = docking
+	ignore = dirty
 [submodule "external/imguizmo"]
 	path = external/imguizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo
+	ignore = dirty
