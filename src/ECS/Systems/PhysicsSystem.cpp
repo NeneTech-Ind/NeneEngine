@@ -442,6 +442,7 @@ namespace NeneEngine::ECS
 				}
 
 				DestroyJoltBody(it->second.bodyId);
+				if (registry.valid(entity)) registry.remove<ContactStateComponent>(entity);
 				it = bodies.erase(it);
 			}
 
@@ -458,6 +459,7 @@ namespace NeneEngine::ECS
 				{
 					DestroyJoltBody(recordIt->second.bodyId);
 					bodies.erase(recordIt);
+					registry.remove<ContactStateComponent>(entity);
 					recordIt = bodies.end();
 				}
 
@@ -634,9 +636,11 @@ namespace NeneEngine::ECS
 		impl.PublishPendingEvents(world);
 	}
 
-	void PhysicsSystem::Reset()
+	void PhysicsSystem::Reset(World& world)
 	{
 		Impl& impl = *m_impl;
+
+		world.GetRegistry().clear<ContactStateComponent>();
 
 		for (const auto& [entity, record] : impl.bodies) impl.DestroyJoltBody(record.bodyId);
 		impl.bodies.clear();

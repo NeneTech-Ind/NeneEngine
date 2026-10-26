@@ -83,8 +83,8 @@ namespace NeneEngine
 		auto physicsSystem = eastl::make_unique<ECS::PhysicsSystem>();
 		ECS::PhysicsSystem& physics = *physicsSystem;
 		world.AddSystem(eastl::move(physicsSystem));
-		world.GetEventBus().Subscribe<ECS::SceneRestoredEvent>([&physics](const ECS::SceneRestoredEvent&)
-		                                                       { physics.Reset(); });
+		world.GetEventBus().Subscribe<ECS::SceneRestoredEvent>([&physics, &world](const ECS::SceneRestoredEvent&)
+		                                                       { physics.Reset(world); });
 		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, width, height);
 		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::GetDefaultScenePath().string());

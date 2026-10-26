@@ -25,7 +25,7 @@ namespace NeneEngine::ECS
 		PhysicsSystem& operator=(const PhysicsSystem&) = delete;
 
 		void Update(World& world, float deltaTime) override;
-		void Reset();
+		void Reset(World& world);
 
 	  private:
 		struct Impl;
