@@ -13,6 +13,7 @@ namespace NeneEngine::ECS
 		virtual ~ISystem() = default;
 
 		virtual void Update(World& world, float deltaTime) = 0;
+		virtual void OnSceneRestored(World& /*world*/) {}
 	};
 
 } // namespace NeneEngine::ECS

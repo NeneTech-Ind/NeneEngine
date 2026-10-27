@@ -21,6 +21,11 @@ namespace NeneEngine::ECS
 		World();
 		~World() = default;
 
+		World(const World&) = delete;
+		World& operator=(const World&) = delete;
+		World(World&&) = delete;
+		World& operator=(World&&) = delete;
+
 		// ===== Entity =====
 		Entity CreateEntity(const std::string& name = "Entity");
 		void DestroyEntity(Entity entity);

@@ -2,11 +2,19 @@
 
 #include "ECS/World.h"
 #include "ECS/Components/TagComponent.h"
+#include "ECS/Events/SceneRestoredEvent.h"
 
 namespace NeneEngine::ECS
 {
 
-	World::World() = default;
+	World::World()
+	{
+		m_eventBus.Subscribe<SceneRestoredEvent>(
+		    [this](const SceneRestoredEvent&)
+		    {
+			    for (auto& system : m_systems) system->OnSceneRestored(*this);
+		    });
+	}
 
 	Entity World::CreateEntity(const std::string& name)
 	{

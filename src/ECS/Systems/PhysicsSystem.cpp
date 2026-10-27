@@ -636,7 +636,7 @@ namespace NeneEngine::ECS
 		impl.PublishPendingEvents(world);
 	}
 
-	void PhysicsSystem::Reset(World& world)
+	void PhysicsSystem::OnSceneRestored(World& world)
 	{
 		Impl& impl = *m_impl;
 
