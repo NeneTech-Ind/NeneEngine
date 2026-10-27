@@ -105,13 +105,16 @@ namespace NeneEngine
 		Component* component = context.world.GetComponent<Component>(entity);
 		if (component == nullptr || !ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen)) return;
 
+		const bool isEditMode = context.mode == EditorMode::Edit;
 		const Component before = *component;
 		FieldEdits edits;
 		ImGui::PushID(label);
+		ImGui::BeginDisabled(!isEditMode);
 		drawFields(*component, edits);
+		ImGui::EndDisabled();
 		ImGui::PopID();
 
-		if (context.mode != EditorMode::Edit) return;
+		if (!isEditMode) return;
 
 		const std::string commandName = std::string("Edit ") + label;
 		if (edits.changedInstantly) context.history.RecordComponentChange(commandName, entity, before, *component);
@@ -160,7 +163,7 @@ namespace NeneEngine
 		if (context.mode == EditorMode::Play)
 		{
 			ImGui::SameLine();
-			ImGui::TextDisabled("(play mode: changes are reverted on Stop)");
+			ImGui::TextDisabled("(play mode: read-only)");
 		}
 
 		if (const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(context.selectedEntity))
@@ -182,15 +185,9 @@ namespace NeneEngine
 			                                 TrackItem(edits);
 		                                 });
 
-		const bool isPlaying = context.mode == EditorMode::Play;
 		DrawComponent<ECS::TransformComponent>(context, "Transform",
-		                                       [this, entity, isPlaying](ECS::TransformComponent& transform,
-		                                                                 FieldEdits& edits)
-		                                       {
-			                                       ImGui::BeginDisabled(isPlaying);
-			                                       DrawTransformFields(entity, transform, edits);
-			                                       ImGui::EndDisabled();
-		                                       });
+		                                       [this, entity](ECS::TransformComponent& transform, FieldEdits& edits)
+		                                       { DrawTransformFields(entity, transform, edits); });
 
 		DrawComponent<ECS::MeshRendererComponent>(context, "Mesh Renderer",
 		                                          [](ECS::MeshRendererComponent& meshRenderer, FieldEdits& edits)
