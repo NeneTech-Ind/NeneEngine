@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <EASTL/memory.h>
-#include <EASTL/string.h>
 #include <memory>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -27,8 +25,6 @@ namespace NeneEngine
 		                spdlog::level::level_enum logLevel = spdlog::level::level_enum::info,
 		                bool consoleWithColor = true);
 		void Shutdown();
-
-		void SetLevel(spdlog::level::level_enum lvl);
 
 		template <typename... Args> void Trace(std::string_view fmt, Args&&... args) const
 		{
@@ -55,13 +51,6 @@ namespace NeneEngine
 			if (m_logger) m_logger->error(spdlog::fmt_lib::runtime(fmt), std::forward<Args>(args)...);
 		}
 
-		template <typename... Args> void Critical(std::string_view fmt, Args&&... args) const
-		{
-			if (m_logger) m_logger->critical(spdlog::fmt_lib::runtime(fmt), std::forward<Args>(args)...);
-		}
-
-		std::shared_ptr<spdlog::logger> GetRawLogger() const { return m_logger; }
-
 	  private:
 		NeneLogger() = default;
 		~NeneLogger() = default;
@@ -87,13 +76,9 @@ namespace NeneEngine
 #ifdef NENE_LOG_ERROR
 #undef NENE_LOG_ERROR
 #endif
-#ifdef NENE_LOG_CRITICAL
-#undef NENE_LOG_CRITICAL
-#endif
 
 #define NENE_LOG_TRACE(...) ::NeneEngine::NeneLogger::GetInstance().Trace(__VA_ARGS__)
 #define NENE_LOG_DEBUG(...) ::NeneEngine::NeneLogger::GetInstance().Debug(__VA_ARGS__)
 #define NENE_LOG_INFO(...) ::NeneEngine::NeneLogger::GetInstance().Info(__VA_ARGS__)
 #define NENE_LOG_WARN(...) ::NeneEngine::NeneLogger::GetInstance().Warn(__VA_ARGS__)
 #define NENE_LOG_ERROR(...) ::NeneEngine::NeneLogger::GetInstance().Error(__VA_ARGS__)
-#define NENE_LOG_CRITICAL(...) ::NeneEngine::NeneLogger::GetInstance().Critical(__VA_ARGS__)

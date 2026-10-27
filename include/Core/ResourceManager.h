@@ -53,7 +53,7 @@ namespace NeneEngine
 
 			try
 			{
-				auto resource = eastl::make_shared<CachedResource<T>>(path, (*loader)(path));
+				auto resource = eastl::make_shared<CachedResource<T>>((*loader)(path));
 				cache.emplace(path, resource);
 				NENE_LOG_INFO("ResourceManager: loaded '{}' ({})", path, typeid(T).name());
 				return resource;
@@ -70,8 +70,6 @@ namespace NeneEngine
 
 			return nullptr;
 		}
-
-		void Clear();
 
 	  private:
 		ResourceManager() = default;

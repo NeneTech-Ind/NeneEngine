@@ -63,14 +63,6 @@ namespace NeneEngine
 		}
 	}
 
-	void NeneLogger::SetLevel(spdlog::level::level_enum lvl)
-	{
-		if (m_logger)
-		{
-			m_logger->set_level(lvl);
-		}
-	}
-
 	void NeneLogger::Shutdown()
 	{
 		if (m_logger)
