@@ -138,13 +138,11 @@ namespace NeneEngine
 		m_appSystems.push_back(std::move(system));
 	}
 
-	bool AppWindowRuntimeService::AreAllWindowsClosed() const
+	bool AppWindowRuntimeService::IsMainWindowClosed() const
 	{
-		if (m_windows.empty()) return true;
-
 		for (const auto& windowContext : m_windows)
 		{
-			if (windowContext.window && !windowContext.window->ShouldClose()) return false;
+			if (windowContext.isMain) return !windowContext.window || windowContext.window->ShouldClose();
 		}
 
 		return true;

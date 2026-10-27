@@ -29,7 +29,7 @@ namespace NeneEngine
 		running = true;
 		timer.Reset();
 
-		while (running.load() && !windowRuntimeService.AreAllWindowsClosed())
+		while (running.load() && !windowRuntimeService.IsMainWindowClosed())
 		{
 			NENE_PROFILE_SCOPE("Frame");
 			windowRuntimeService.PumpWindowMessages();

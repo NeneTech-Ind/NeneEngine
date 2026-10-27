@@ -28,7 +28,7 @@ namespace NeneEngine
 		                uint32_t height);
 		void Shutdown();
 
-		[[nodiscard]] bool AreAllWindowsClosed() const;
+		[[nodiscard]] bool IsMainWindowClosed() const;
 		[[nodiscard]] bool AreAllWindowsMinimized() const;
 		void PumpWindowMessages();
 		void WaitForWindowMessages(uint32_t timeoutMs);
