@@ -93,6 +93,22 @@ namespace NeneEngine
 		}
 		for (const ECS::Entity entity : createdDuringPlay) world.DestroyEntity(entity);
 
+		size_t recreatedCount = 0;
+		for (const ECS::Entity entity : m_entities)
+		{
+			if (registry.valid(entity)) continue;
+
+			const ECS::Entity recreated = registry.create(entity);
+			if (recreated == entity)
+			{
+				++recreatedCount;
+				continue;
+			}
+
+			registry.destroy(recreated);
+			NENE_LOG_WARN("Editor snapshot: failed to recreate entity {}", entt::to_integral(entity));
+		}
+
 		size_t missingCount = 0;
 		eastl::apply(
 		    [&](const auto&... stores) { ((missingCount += RestoreComponents(registry, stores.values)), ...); },
@@ -105,7 +121,9 @@ namespace NeneEngine
 
 		world.GetEventBus().Publish(ECS::SceneRestoredEvent{});
 
-		NENE_LOG_INFO("Editor snapshot restored, {} entities created during play removed", createdDuringPlay.size());
+		NENE_LOG_INFO("Editor snapshot restored, {} entities created during play removed, {} destroyed during play "
+		              "recreated",
+		              createdDuringPlay.size(), recreatedCount);
 		Clear();
 	}
 
