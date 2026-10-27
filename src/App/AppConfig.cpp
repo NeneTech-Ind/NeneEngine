@@ -309,7 +309,7 @@ namespace NeneEngine
 	{
 		if (auto loadedConfig = TryLoadAppConfig(configPath)) return *loadedConfig;
 
-		NENE_LOG_WARN("App config: using defaults");
+		NENE_LOG_INFO("App config: using defaults");
 		AppConfig config{};
 		config.window.backgroundColor = kDefaultBackgroundColor;
 		config.input = DefaultInputConfig();
