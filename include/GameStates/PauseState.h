@@ -18,8 +18,6 @@ namespace NeneEngine
 		void OnExit() override;
 		void Update(float dt) override;
 		void HandleInput() override;
-
-		bool IsPausing() const override { return false; }
 	};
 
 } // namespace NeneEngine

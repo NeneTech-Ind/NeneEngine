@@ -40,7 +40,7 @@ namespace NeneEngine
 
 		virtual void HandleInput() = 0;
 
-		virtual bool IsPausing() const { return false; }
+		virtual bool IsPausing() const { return true; }
 
 	  protected:
 		GameStateContext m_context;
