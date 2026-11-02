@@ -235,6 +235,10 @@ namespace NeneEngine
 		case WM_SYSCHAR:
 			if (wParam != VK_SPACE) return 0;
 			break;
+
+		case WM_SYSCOMMAND:
+			if ((wParam & 0xFFF0) == SC_KEYMENU && lParam != VK_SPACE) return 0;
+			break;
 		}
 
 		return DefWindowProcW(m_hwnd, message, wParam, lParam);
