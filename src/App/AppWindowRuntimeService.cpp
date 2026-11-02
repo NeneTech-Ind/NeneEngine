@@ -6,6 +6,7 @@
 #include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Systems/CameraControllerSystem.h"
+#include "ECS/Systems/DebugDrawControlSystem.h"
 #include "ECS/World.h"
 
 namespace NeneEngine
@@ -128,6 +129,7 @@ namespace NeneEngine
 		m_windows.push_back(std::move(*windowContext));
 		auto& storedWindowContext = m_windows.back();
 		AddAppSystem(eastl::make_unique<ECS::CameraControllerSystem>(storedWindowContext.inputManager, cameraEntity));
+		AddAppSystem(eastl::make_unique<ECS::DebugDrawControlSystem>(storedWindowContext.inputManager));
 
 		HandleWindowResize(windowIndex, width, height);
 		return true;
