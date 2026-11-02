@@ -45,6 +45,7 @@ namespace NeneEngine
 			    m_world, m_windowRuntimeService.GetMainImGuiBackend(), m_windowRuntimeService.GetMainWindowInput(),
 			    m_windowRuntimeService.GetMainCameraEntity(), [this]() { RequestShutdown(); },
 			    [this](EditorMode mode) { OnEditorModeChanged(mode); });
+			m_editorLayer.SetRenderer(m_windowRuntimeService.GetMainRenderer());
 			return true;
 		}
 		catch (const std::exception& e)

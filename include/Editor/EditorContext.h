@@ -7,6 +7,7 @@
 namespace NeneEngine
 {
 	class EditorHistory;
+	class IRenderAdapter;
 
 	namespace ECS
 	{
@@ -28,6 +29,7 @@ namespace NeneEngine
 		EditorMode mode = EditorMode::Edit;
 		bool isViewportHovered = false;
 		bool isViewportFocused = false;
+		IRenderAdapter* renderer = nullptr;
 	};
 
 } // namespace NeneEngine

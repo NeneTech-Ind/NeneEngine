@@ -27,6 +27,7 @@ namespace NeneEngine
 
 		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput, ECS::Entity cameraEntity,
 		                RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged);
+		void SetRenderer(IRenderAdapter* renderer);
 		void Shutdown();
 
 		void Update();

@@ -514,6 +514,8 @@ namespace NeneEngine
 		if (m_shared && m_shared->immediateContext) m_shared->immediateContext->Flush();
 
 		m_renderQueue.clear();
+		m_activeTarget = {};
+		m_renderTargets.clear();
 		m_swapChain.Release();
 	}
 
@@ -727,12 +729,63 @@ namespace NeneEngine
 		return GPUShaderProgram{shaderId};
 	}
 
+	RenderTarget DiligentDX12Adapter::CreateRenderTarget(uint32_t width, uint32_t height)
+	{
+		if (!IsDeviceReady("CreateRenderTarget") || width == 0 || height == 0) return {};
+		TextureDesc desc{};
+		desc.Name = "Editor render target";
+		desc.Type = RESOURCE_DIM_TEX_2D;
+		desc.Width = width;
+		desc.Height = height;
+		desc.Format = m_shared->colorBufferFormat;
+		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
+		OffscreenTarget target;
+		m_shared->device->CreateTexture(desc, nullptr, &target.color);
+		desc.Name = "Editor render target depth";
+		desc.Format = m_shared->depthBufferFormat;
+		desc.BindFlags = BIND_DEPTH_STENCIL;
+		m_shared->device->CreateTexture(desc, nullptr, &target.depth);
+		if (!target.color || !target.depth) return {};
+		const RenderTargetId id{m_nextTargetId++};
+		m_renderTargets.emplace(id.value, std::move(target));
+		return {id, width, height};
+	}
+
+	void DiligentDX12Adapter::DestroyRenderTarget(RenderTargetId target)
+	{
+		if (m_activeTarget == target) m_activeTarget = {};
+		m_renderTargets.erase(target.value);
+	}
+
+	void DiligentDX12Adapter::SetRenderTarget(RenderTargetId target)
+	{
+		m_activeTarget = m_renderTargets.find(target.value) != m_renderTargets.end() ? target : RenderTargetId{};
+	}
+
+	uintptr_t DiligentDX12Adapter::GetRenderTargetTextureHandle(RenderTargetId target) const
+	{
+		const auto it = m_renderTargets.find(target.value);
+		return it == m_renderTargets.end() ? 0 : reinterpret_cast<uintptr_t>(
+		    it->second.color->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE));
+	}
+
+	uintptr_t DiligentDX12Adapter::GetTextureHandle(TextureId texture) const
+	{
+		const auto it = m_shared->uploadedTextures.find(texture.value);
+		return it == m_shared->uploadedTextures.end() ? 0 : reinterpret_cast<uintptr_t>(it->second.shaderResourceView.RawPtr());
+	}
+
 	void DiligentDX12Adapter::BeginFrame()
 	{
 		if (!m_swapChain || !m_shared->immediateContext) return;
 
 		ITextureView* renderTargetView = m_swapChain->GetCurrentBackBufferRTV();
 		ITextureView* depthStencilView = m_swapChain->GetDepthBufferDSV();
+		if (const auto it = m_renderTargets.find(m_activeTarget.value); it != m_renderTargets.end())
+		{
+			renderTargetView = it->second.color->GetDefaultView(TEXTURE_VIEW_RENDER_TARGET);
+			depthStencilView = it->second.depth->GetDefaultView(TEXTURE_VIEW_DEPTH_STENCIL);
+		}
 		if (renderTargetView == nullptr)
 		{
 			NENE_LOG_WARN("DiligentDX12Adapter: current back buffer RTV is missing");
@@ -764,12 +817,15 @@ namespace NeneEngine
 		if (!m_shared->immediateContext || !m_swapChain) return;
 
 		const auto& swapChainDesc = m_swapChain->GetDesc();
+		const auto targetIt = m_renderTargets.find(m_activeTarget.value);
+		const uint32_t width = targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Width : swapChainDesc.Width;
+		const uint32_t height = targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Height : swapChainDesc.Height;
 		Viewport viewport{};
-		viewport.Width = static_cast<float>(swapChainDesc.Width);
-		viewport.Height = static_cast<float>(swapChainDesc.Height);
+		viewport.Width = static_cast<float>(width);
+		viewport.Height = static_cast<float>(height);
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
-		m_shared->immediateContext->SetViewports(1, &viewport, swapChainDesc.Width, swapChainDesc.Height);
+		m_shared->immediateContext->SetViewports(1, &viewport, width, height);
 
 		for (const auto& item : m_renderQueue)
 		{
@@ -777,6 +833,19 @@ namespace NeneEngine
 				DrawMesh(item, *mesh);
 			else
 				DrawPrimitive(item);
+		}
+
+		if (targetIt != m_renderTargets.end())
+		{
+			// Unbind before sampling the scene in ImGui, then restore the full-window UI target.
+			ITextureView* backBuffer = m_swapChain->GetCurrentBackBufferRTV();
+			m_shared->immediateContext->SetRenderTargets(1, &backBuffer, m_swapChain->GetDepthBufferDSV(),
+			                                             RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+			StateTransitionDesc barrier(targetIt->second.color, RESOURCE_STATE_UNKNOWN, RESOURCE_STATE_SHADER_RESOURCE,
+			                            STATE_TRANSITION_FLAG_UPDATE_STATE);
+			m_shared->immediateContext->TransitionResourceState(barrier);
+			const float background[] = {0.08f, 0.08f, 0.08f, 1.0f};
+			m_shared->immediateContext->ClearRenderTarget(backBuffer, background, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 		}
 	}
 

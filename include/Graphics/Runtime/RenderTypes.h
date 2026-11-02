@@ -13,6 +13,20 @@
 
 namespace NeneEngine
 {
+	struct RenderTargetId
+	{
+		uint32_t value = 0;
+		constexpr bool IsValid() const noexcept { return value != 0; }
+		auto operator<=>(const RenderTargetId&) const = default;
+	};
+
+	struct RenderTarget
+	{
+		RenderTargetId id{};
+		uint32_t width = 0;
+		uint32_t height = 0;
+		constexpr bool IsValid() const noexcept { return id.IsValid(); }
+	};
 
 	struct MeshId
 	{

@@ -32,6 +32,11 @@ namespace NeneEngine
 
 	EditorLayer::EditorLayer() = default;
 
+	void EditorLayer::SetRenderer(IRenderAdapter* renderer)
+	{
+		if (m_context) m_context->renderer = renderer;
+	}
+
 	EditorLayer::~EditorLayer()
 	{
 		Shutdown();
@@ -209,9 +214,7 @@ namespace NeneEngine
 
 		if (ImGui::DockBuilderGetNode(dockSpaceId) == nullptr) BuildDefaultLayout(dockSpaceId);
 
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(0, 0, 0, 0));
-		ImGui::DockSpaceOverViewport(dockSpaceId, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
-		ImGui::PopStyleColor();
+		ImGui::DockSpaceOverViewport(dockSpaceId, ImGui::GetMainViewport());
 	}
 
 	void EditorLayer::BuildDefaultLayout(ImGuiID dockSpaceId)

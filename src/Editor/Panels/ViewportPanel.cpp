@@ -7,6 +7,7 @@
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 
 #include <ImGuizmo.h>
 #include <cmath>
@@ -90,14 +91,41 @@ namespace NeneEngine
 		}
 	} // namespace
 
+	ViewportPanel::~ViewportPanel()
+	{
+		if (m_renderer && m_target.IsValid()) m_renderer->DestroyRenderTarget(m_target.id);
+	}
+
 	void ViewportPanel::Draw(EditorContext& context)
 	{
-		context.isViewportHovered = ImGui::IsWindowHovered();
 		context.isViewportFocused = ImGui::IsWindowFocused();
-
-		HandleShortcuts(context);
 		DrawToolbar();
+		m_imagePosition = ImGui::GetCursorScreenPos();
+		m_imageSize = ImGui::GetContentRegionAvail();
+		if (context.renderer == nullptr || m_imageSize.x < 1.0f || m_imageSize.y < 1.0f) return;
+		m_renderer = context.renderer;
+		const auto width = static_cast<uint32_t>(m_imageSize.x);
+		const auto height = static_cast<uint32_t>(m_imageSize.y);
+		if (m_target.width != width || m_target.height != height)
+		{
+			const RenderTarget replacement = m_renderer->CreateRenderTarget(width, height);
+			if (replacement.IsValid())
+			{
+				m_renderer->DestroyRenderTarget(m_target.id);
+				m_target = replacement;
+			}
+		}
+		if (!m_target.IsValid()) return;
+		m_renderer->SetRenderTarget(m_target.id);
+		if (auto* camera = context.world.GetComponent<ECS::CameraComponent>(context.cameraEntity))
+			camera->aspectRatio = m_imageSize.x / m_imageSize.y;
+		ImGui::Image(static_cast<ImTextureID>(m_renderer->GetRenderTargetTextureHandle(m_target.id)), m_imageSize);
+		context.isViewportHovered = ImGui::IsItemHovered();
+		HandleShortcuts(context);
+		ImGui::GetWindowDrawList()->PushClipRect(m_imagePosition,
+		    ImVec2(m_imagePosition.x + m_imageSize.x, m_imagePosition.y + m_imageSize.y), true);
 		DrawGizmo(context);
+		ImGui::GetWindowDrawList()->PopClipRect();
 	}
 
 	void ViewportPanel::HandleShortcuts(const EditorContext& context)
@@ -159,10 +187,9 @@ namespace NeneEngine
 		    glm::lookAt(cameraPosition, cameraPosition + glm::normalize(camera.forward), glm::normalize(camera.up));
 		const glm::mat4 projection = camera.GetProjectionMatrix();
 
-		const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
 		ImGuizmo::SetOrthographic(false);
 		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-		ImGuizmo::SetRect(mainViewport->Pos.x, mainViewport->Pos.y, mainViewport->Size.x, mainViewport->Size.y);
+		ImGuizmo::SetRect(m_imagePosition.x, m_imagePosition.y, m_imageSize.x, m_imageSize.y);
 
 		const glm::mat4 parentWorld = ComputeParentWorldMatrix(world, entity);
 		auto* transform = context.world.GetComponent<ECS::TransformComponent>(entity);

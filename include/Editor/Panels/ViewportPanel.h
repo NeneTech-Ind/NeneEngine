@@ -5,9 +5,11 @@
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Entity.h"
 #include "Editor/IEditorPanel.h"
+#include "Graphics/Runtime/RenderTypes.h"
 
 namespace NeneEngine
 {
+	class IRenderAdapter;
 
 	enum class GizmoOperation
 	{
@@ -25,11 +27,12 @@ namespace NeneEngine
 	class ViewportPanel final : public IEditorPanel
 	{
 	  public:
+		~ViewportPanel() override;
 		[[nodiscard]] const char* GetName() const override { return "Viewport"; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Center; }
 		[[nodiscard]] ImGuiWindowFlags GetWindowFlags() const override
 		{
-			return ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+			return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
 			       ImGuiWindowFlags_NoMove;
 		}
 
@@ -48,6 +51,10 @@ namespace NeneEngine
 		bool m_wasUsingGizmo = false;
 		ECS::Entity m_dragEntity = ECS::NullEntity;
 		ECS::TransformComponent m_transformBeforeDrag{};
+		IRenderAdapter* m_renderer = nullptr;
+		RenderTarget m_target{};
+		ImVec2 m_imagePosition{};
+		ImVec2 m_imageSize{};
 	};
 
 } // namespace NeneEngine
