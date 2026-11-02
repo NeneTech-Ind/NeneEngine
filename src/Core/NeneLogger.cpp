@@ -25,6 +25,7 @@ namespace NeneEngine
 		{
 			Shutdown();
 
+			std::string fileSinkError;
 			eastl::vector<spdlog::sink_ptr> sinks;
 			auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 			console->set_pattern(consoleWithColor ? "[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v"
@@ -40,9 +41,16 @@ namespace NeneEngine
 					std::filesystem::create_directories(parentPath, errorCode);
 				}
 
-				auto file = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName.c_str(), true);
-				file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
-				sinks.push_back(file);
+				try
+				{
+					auto file = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName.c_str(), true);
+					file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+					sinks.push_back(file);
+				}
+				catch (const spdlog::spdlog_ex& ex)
+				{
+					fileSinkError = ex.what();
+				}
 			}
 
 			m_logger = std::make_shared<spdlog::logger>("game", sinks.begin(), sinks.end());
@@ -53,6 +61,7 @@ namespace NeneEngine
 			spdlog::set_default_logger(m_logger);
 			spdlog::flush_every(std::chrono::seconds(1));
 			m_logger->info("Logger initialized (level={})", spdlog::level::to_string_view(logLevel));
+			if (!fileSinkError.empty()) m_logger->error("Logger: file logging is disabled: {}", fileSinkError);
 
 			return true;
 		}

@@ -18,18 +18,25 @@ namespace
 
 		return false;
 	}
+
+	void ReportFatalError(const std::string& message, bool showDialog)
+	{
+		std::cerr << message << "\n";
+		if (showDialog) MessageBoxA(nullptr, message.c_str(), "NeneEngine", MB_OK | MB_ICONERROR);
+	}
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR commandLine, int)
 {
+	const bool smokeTestMode = HasCommandLineFlag(commandLine, L"--smoke-test");
+
 	try
 	{
-		const bool smokeTestMode = HasCommandLineFlag(commandLine, L"--smoke-test");
-
 		NeneEngine::NeneEngineApp app;
 		if (!app.Init(1280, 720))
 		{
-			std::cerr << "Failed to initialize application\n";
+			ReportFatalError("Failed to initialize the application. See logs\nene_engine.log next to the executable.",
+			                 !smokeTestMode);
 			return -1;
 		}
 
@@ -40,7 +47,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR commandLine, int)
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << "Fatal error: " << e.what() << "\n";
+		ReportFatalError(std::string("Fatal error: ") + e.what(), !smokeTestMode);
+		return -1;
+	}
+	catch (...)
+	{
+		ReportFatalError("Fatal error: unknown exception", !smokeTestMode);
 		return -1;
 	}
 }

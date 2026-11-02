@@ -64,7 +64,7 @@ namespace NeneEngine
 	                                     ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath,
 	                                     uint32_t width, uint32_t height)
 	{
-		NeneLogger::GetInstance().Initialize(logFilePath, spdlog::level::info, true);
+		if (!NeneLogger::GetInstance().Initialize(logFilePath, spdlog::level::info, true)) return false;
 		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
 		RegisterGraphicsResourceLoaders(ResourceManager::GetInstance());
 		RunStartupLibraryChecks();

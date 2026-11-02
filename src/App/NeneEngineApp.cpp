@@ -62,10 +62,23 @@ namespace NeneEngine
 
 	void NeneEngineApp::Run()
 	{
-		m_frameLoopService.Run(
-		    m_running, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService, m_windowRuntimeService,
-		    m_editorLayer, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
-		    [this]() { return m_windowRuntimeService.GetFocusedInput(); });
+		try
+		{
+			m_frameLoopService.Run(
+			    m_running, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService, m_windowRuntimeService,
+			    m_editorLayer, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
+			    [this]() { return m_windowRuntimeService.GetFocusedInput(); });
+		}
+		catch (const std::exception& e)
+		{
+			NENE_LOG_ERROR("Frame loop terminated by an exception: {}", e.what());
+			throw;
+		}
+		catch (...)
+		{
+			NENE_LOG_ERROR("Frame loop terminated by an unknown exception");
+			throw;
+		}
 	}
 
 	void NeneEngineApp::OnEditorModeChanged(EditorMode mode)
