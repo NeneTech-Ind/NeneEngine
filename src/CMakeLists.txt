@@ -50,6 +50,7 @@ find_package(assimp         CONFIG REQUIRED)
 find_package(nlohmann_json  CONFIG REQUIRED)
 find_package(EASTL          CONFIG REQUIRED)
 find_package(EnTT           CONFIG REQUIRED)
+find_package(enkiTS         CONFIG REQUIRED)
 find_package(glm            CONFIG REQUIRED)
 find_package(Stb            MODULE REQUIRED)
 find_package(Jolt           CONFIG REQUIRED)
@@ -82,6 +83,7 @@ target_link_libraries(NeneEngine
         nlohmann_json::nlohmann_json
         EASTL
         EnTT::EnTT
+        enkiTS::enkiTS
         glm::glm
         Jolt::Jolt
         Diligent-Win32Platform

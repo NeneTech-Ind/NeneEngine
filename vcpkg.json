@@ -2,6 +2,7 @@
   "dependencies": [
     "assimp",
     "eastl",
+    "enkits",
     "entt",
     "nlohmann-json",
     "spdlog",
