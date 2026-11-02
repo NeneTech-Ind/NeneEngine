@@ -5,6 +5,8 @@
 namespace NeneEngine
 {
 
-	void RunStartupLibraryChecks();
+	class JobSystem;
+
+	void RunStartupLibraryChecks(JobSystem& jobSystem);
 
 } // namespace NeneEngine

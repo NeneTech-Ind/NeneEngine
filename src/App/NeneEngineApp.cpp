@@ -26,6 +26,7 @@ namespace NeneEngine
 	NeneEngineApp::~NeneEngineApp()
 	{
 		if (m_running) RequestShutdown();
+		m_jobSystem.Shutdown();
 		m_gameStateMachine.Clear();
 		NeneLogger::GetInstance().Shutdown();
 	}
@@ -35,7 +36,7 @@ namespace NeneEngine
 		try
 		{
 			if (!m_bootstrapService.Initialize(
-			        *this, m_gameStateMachine, m_world, m_runtimeConfigService, m_windowRuntimeService,
+			        *this, m_jobSystem, m_gameStateMachine, m_world, m_runtimeConfigService, m_windowRuntimeService,
 			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, ResolveLogFilePath().string(),
 			        width, height))
 				return false;

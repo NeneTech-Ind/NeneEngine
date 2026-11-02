@@ -7,6 +7,7 @@
 #include "App/DemoBootstrapRunner.h"
 #include "App/NeneEngineApp.h"
 #include "App/StartupLibraryCheck.h"
+#include "Core/JobSystem.h"
 #include "Core/NeneLogger.h"
 #include "Core/ResourceManager.h"
 #include "ECS/Components/CameraComponent.h"
@@ -58,16 +59,17 @@ namespace NeneEngine
 		}
 	} // namespace
 
-	bool AppBootstrapService::Initialize(NeneEngineApp& app, GameStateMachine& gameStateMachine, ECS::World& world,
-	                                     AppRuntimeConfigService& runtimeConfigService,
+	bool AppBootstrapService::Initialize(NeneEngineApp& app, JobSystem& jobSystem, GameStateMachine& gameStateMachine,
+	                                     ECS::World& world, AppRuntimeConfigService& runtimeConfigService,
 	                                     AppWindowRuntimeService& windowRuntimeService,
 	                                     ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath,
 	                                     uint32_t width, uint32_t height)
 	{
 		if (!NeneLogger::GetInstance().Initialize(logFilePath, spdlog::level::info, true)) return false;
 		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
+		jobSystem.Initialize();
 		RegisterGraphicsResourceLoaders(ResourceManager::GetInstance());
-		RunStartupLibraryChecks();
+		RunStartupLibraryChecks(jobSystem);
 
 		runtimeConfigService.LoadStartupConfig();
 		const AppConfig& appConfig = runtimeConfigService.GetConfig();

@@ -13,6 +13,7 @@ namespace NeneEngine
 	class AppRuntimeConfigService;
 	class AppWindowRuntimeService;
 	class GameStateMachine;
+	class JobSystem;
 	class NeneEngineApp;
 
 	namespace ECS
@@ -25,7 +26,7 @@ namespace NeneEngine
 	  public:
 		using ApplyConfigCallback = eastl::function<void(const AppConfig&)>;
 
-		bool Initialize(NeneEngineApp& app, GameStateMachine& gameStateMachine, ECS::World& world,
+		bool Initialize(NeneEngineApp& app, JobSystem& jobSystem, GameStateMachine& gameStateMachine, ECS::World& world,
 		                AppRuntimeConfigService& runtimeConfigService, AppWindowRuntimeService& windowRuntimeService,
 		                ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath, uint32_t width,
 		                uint32_t height);

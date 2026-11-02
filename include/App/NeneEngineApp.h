@@ -8,6 +8,7 @@
 #include "App/AppRuntimeConfigService.h"
 #include "App/AppWindowRuntimeService.h"
 #include "Core/GameTimer.h"
+#include "Core/JobSystem.h"
 #include "ECS/World.h"
 #include "Editor/EditorLayer.h"
 #include "GameStates/GameStateMachine.h"
@@ -31,6 +32,7 @@ namespace NeneEngine
 		const InputManager& GetInputManager() const { return m_inputManager; }
 
 	  private:
+		JobSystem m_jobSystem;
 		GameTimer m_timer;
 		GameStateMachine m_gameStateMachine;
 		ECS::World m_world;

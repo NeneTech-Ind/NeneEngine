@@ -2,6 +2,7 @@
 
 #include "App/StartupLibraryCheck.h"
 
+#include "Core/JobSystem.h"
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "Core/ResourceManager.h"
@@ -10,6 +11,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <atomic>
 #include <filesystem>
 #include <string>
 
@@ -71,13 +73,41 @@ namespace NeneEngine
 
 			stbi_image_free(pixels);
 		}
+
+		void CheckJobSystem(JobSystem& jobSystem)
+		{
+			constexpr uint32_t kItemCount = 100000;
+			constexpr uint32_t kMinRange = 1024;
+			constexpr uint64_t kExpectedSum = static_cast<uint64_t>(kItemCount) * (kItemCount - 1) / 2;
+
+			std::atomic<uint64_t> sum{0};
+			const JobHandle job = jobSystem.ParallelFor("StartupCheck", kItemCount, kMinRange,
+			                                            [&sum](uint32_t begin, uint32_t end)
+			                                            {
+				                                            uint64_t rangeSum = 0;
+				                                            for (uint32_t index = begin; index < end; ++index)
+					                                            rangeSum += index;
+				                                            sum.fetch_add(rangeSum, std::memory_order_relaxed);
+			                                            });
+			jobSystem.Wait(job);
+
+			if (job.HasFailed() || sum.load(std::memory_order_relaxed) != kExpectedSum)
+			{
+				NENE_LOG_ERROR("Job system check failed: sum={} expected={}", sum.load(std::memory_order_relaxed),
+				               kExpectedSum);
+				return;
+			}
+
+			NENE_LOG_INFO("Job system check: sum={} over {} items", kExpectedSum, kItemCount);
+		}
 	} // namespace
 
-	void RunStartupLibraryChecks()
+	void RunStartupLibraryChecks(JobSystem& jobSystem)
 	{
 		NENE_LOG_INFO("Startup library checks: started");
 		CheckAssimp();
 		CheckStbImage();
+		CheckJobSystem(jobSystem);
 		NENE_LOG_INFO("Startup library checks: finished");
 	}
 
