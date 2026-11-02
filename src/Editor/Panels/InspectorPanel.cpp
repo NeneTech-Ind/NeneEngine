@@ -195,7 +195,7 @@ namespace NeneEngine
 			                                          EnumCombo("Primitive", meshRenderer.primitiveType,
 			                                                    kPrimitiveTypeNames, edits);
 			                                          Checkbox("Visible", meshRenderer.visible, edits);
-			                                          ImGui::ColorEdit4("Tint", glm::value_ptr(meshRenderer.tint));
+			                                          ImGui::ColorEdit3("Tint", glm::value_ptr(meshRenderer.tint));
 			                                          TrackItem(edits);
 		                                          });
 
