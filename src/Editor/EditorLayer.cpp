@@ -25,9 +25,14 @@ namespace NeneEngine
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
-		constexpr ImU32 kPlayModeMenuBarColor = IM_COL32(90, 50, 20, 255);
-		constexpr ImU32 kStopButtonColor = IM_COL32(170, 60, 40, 255);
-		constexpr ImU32 kStopButtonHoveredColor = IM_COL32(200, 80, 55, 255);
+		constexpr float kPlayModeMenuBarTint = 0.3f;
+		constexpr float kStopButtonHoveredTint = 0.25f;
+
+		ImVec4 Mix(const ImVec4& from, const ImVec4& to, float amount)
+		{
+			return ImVec4(from.x + (to.x - from.x) * amount, from.y + (to.y - from.y) * amount,
+			              from.z + (to.z - from.z) * amount, from.w + (to.w - from.w) * amount);
+		}
 	} // namespace
 
 	EditorLayer::EditorLayer() = default;
@@ -107,7 +112,10 @@ namespace NeneEngine
 	void EditorLayer::DrawMainMenuBar()
 	{
 		const bool isPlaying = m_context->mode == EditorMode::Play;
-		if (isPlaying) ImGui::PushStyleColor(ImGuiCol_MenuBarBg, kPlayModeMenuBarColor);
+		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+		if (isPlaying)
+			ImGui::PushStyleColor(ImGuiCol_MenuBarBg,
+			                      Mix(colors.backgroundRaised, colors.accentPlay, kPlayModeMenuBarTint));
 		const bool isMenuBarOpen = ImGui::BeginMainMenuBar();
 		if (isPlaying) ImGui::PopStyleColor();
 		if (!isMenuBarOpen) return;
@@ -159,15 +167,18 @@ namespace NeneEngine
 
 		if (isPlaying)
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, kStopButtonColor);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kStopButtonHoveredColor);
+			const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+			ImGui::PushStyleColor(ImGuiCol_Button, colors.accentPlay);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Mix(colors.accentPlay, colors.text, kStopButtonHoveredTint));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.accentPlay);
+			ImGui::PushStyleColor(ImGuiCol_Text, colors.background);
 		}
 
 		if (ImGui::Button(isPlaying ? "Stop" : "Play", ImVec2(buttonWidth, 0.0f)))
 			SetMode(isPlaying ? EditorMode::Edit : EditorMode::Play);
-		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+		if (isPlaying) ImGui::PopStyleColor(4);
 
-		if (isPlaying) ImGui::PopStyleColor(2);
+		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
 	}
 
 	void EditorLayer::SetMode(EditorMode mode)

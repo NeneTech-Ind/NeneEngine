@@ -11,6 +11,8 @@ namespace NeneEngine
 	  public:
 		void Apply(const EditorThemeConfig& config);
 
+		[[nodiscard]] const EditorThemeColorsConfig& GetColors() const { return m_config.colors; }
+
 	  private:
 		void ApplyColors() const;
 
