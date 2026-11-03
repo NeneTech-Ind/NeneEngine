@@ -46,22 +46,49 @@ namespace NeneEngine
 			edits.deactivatedAfterEdit |= ImGui::IsItemDeactivatedAfterEdit();
 		}
 
+		template <typename DrawWidget>
+		bool DrawValueField(const char* label, FieldEdits& edits, DrawWidget&& drawWidget)
+		{
+			if (edits.valueFont == nullptr)
+			{
+				const bool changed = drawWidget(label);
+				TrackItem(edits);
+				return changed;
+			}
+
+			const std::string widgetId = std::string("##") + label;
+			ImGui::PushFont(edits.valueFont, 0.0f);
+			const bool changed = drawWidget(widgetId.c_str());
+			ImGui::PopFont();
+			TrackItem(edits);
+
+			ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+			ImGui::TextUnformatted(label);
+			return changed;
+		}
+
 		bool DragVec3(const char* label, glm::vec3& value, float speed, FieldEdits& edits, float min = 0.0f,
 		              float max = 0.0f)
 		{
-			const bool changed = ImGui::DragFloat3(label, glm::value_ptr(value), speed, min, max, "%.3f",
-			                                       min < max ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
-			TrackItem(edits);
-			return changed;
+			return DrawValueField(label, edits,
+			                      [&](const char* widgetId)
+			                      {
+				                      return ImGui::DragFloat3(widgetId, glm::value_ptr(value), speed, min, max, "%.3f",
+				                                               min < max ? ImGuiSliderFlags_AlwaysClamp
+				                                                         : ImGuiSliderFlags_None);
+			                      });
 		}
 
 		bool DragFloat(const char* label, float& value, float speed, FieldEdits& edits, float min = 0.0f,
 		               float max = 0.0f)
 		{
-			const bool changed = ImGui::DragFloat(label, &value, speed, min, max, "%.3f",
-			                                      min < max ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
-			TrackItem(edits);
-			return changed;
+			return DrawValueField(label, edits,
+			                      [&](const char* widgetId)
+			                      {
+				                      return ImGui::DragFloat(widgetId, &value, speed, min, max, "%.3f",
+				                                              min < max ? ImGuiSliderFlags_AlwaysClamp
+				                                                        : ImGuiSliderFlags_None);
+			                      });
 		}
 
 		bool Checkbox(const char* label, bool& value, FieldEdits& edits)
@@ -82,11 +109,12 @@ namespace NeneEngine
 			return true;
 		}
 
-		void ReadOnlyVec3(const char* label, const glm::vec3& value)
+		void ReadOnlyVec3(const char* label, const glm::vec3& value, FieldEdits& edits)
 		{
 			glm::vec3 copy = value;
 			ImGui::BeginDisabled();
-			ImGui::DragFloat3(label, glm::value_ptr(copy));
+			DrawValueField(label, edits,
+			               [&](const char* widgetId) { return ImGui::DragFloat3(widgetId, glm::value_ptr(copy)); });
 			ImGui::EndDisabled();
 		}
 
@@ -108,6 +136,7 @@ namespace NeneEngine
 		const bool isEditMode = context.mode == EditorMode::Edit;
 		const Component before = *component;
 		FieldEdits edits;
+		edits.valueFont = context.monospaceFont;
 		ImGui::PushID(label);
 		ImGui::BeginDisabled(!isEditMode);
 		drawFields(*component, edits);
@@ -218,7 +247,7 @@ namespace NeneEngine
 			                                       Checkbox("Use Gravity", rigidbody.useGravity, edits);
 			                                       Checkbox("Freeze Rotation", rigidbody.freezeRotation, edits);
 			                                       DragVec3("Acceleration", rigidbody.acceleration, 0.05f, edits);
-			                                       ReadOnlyVec3("Velocity", rigidbody.velocity);
+			                                       ReadOnlyVec3("Velocity", rigidbody.velocity, edits);
 		                                       });
 
 		if (const auto* contactState = context.world.GetComponent<ECS::ContactStateComponent>(entity);

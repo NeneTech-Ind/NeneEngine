@@ -4,6 +4,8 @@
 
 #include "ECS/Entity.h"
 
+struct ImFont;
+
 namespace NeneEngine
 {
 	class EditorHistory;
@@ -28,6 +30,7 @@ namespace NeneEngine
 		EditorMode mode = EditorMode::Edit;
 		bool isViewportHovered = false;
 		bool isViewportFocused = false;
+		ImFont* monospaceFont = nullptr;
 	};
 
 } // namespace NeneEngine

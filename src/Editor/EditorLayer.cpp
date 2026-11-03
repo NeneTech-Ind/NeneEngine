@@ -65,6 +65,7 @@ namespace NeneEngine
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		m_themeService.Apply(GetDefaultEditorThemeConfig());
 		m_themeService.LoadFonts();
+		m_context->monospaceFont = m_themeService.GetMonospaceFont();
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});

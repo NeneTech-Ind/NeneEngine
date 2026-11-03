@@ -29,6 +29,7 @@ namespace NeneEngine
 			bool activated = false;
 			bool deactivatedAfterEdit = false;
 			bool changedInstantly = false;
+			ImFont* valueFont = nullptr;
 		};
 
 	  private:
