@@ -85,6 +85,7 @@ namespace NeneEngine
 		uint32_t nextMeshId = 1;
 		uint32_t nextTextureId = 1;
 		uint32_t nextShaderId = 1;
+		TextureId whiteTextureId{};
 
 	  private:
 		bool CreatePrimitivePipeline(PrimitiveType primitiveType, const char* name, const char* vertexShaderBody);

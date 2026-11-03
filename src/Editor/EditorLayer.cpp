@@ -3,18 +3,19 @@
 #include "Editor/EditorLayer.h"
 
 #include "Core/NeneLogger.h"
+#include "Core/PathResolver.h"
 #include "ECS/World.h"
+#include "Editor/Panels/AssetBrowserPanel.h"
 #include "Editor/Panels/HierarchyPanel.h"
 #include "Editor/Panels/InspectorPanel.h"
+#include "Editor/Panels/MaterialEditorPanel.h"
 #include "Editor/Panels/StatisticsPanel.h"
 #include "Editor/Panels/ViewportPanel.h"
-#include "Editor/Panels/AssetBrowserPanel.h"
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
 #include "Scene/SceneSerializer.h"
 #include <Windows.h>
 #include <commdlg.h>
-#include "Core/PathResolver.h"
 
 #include <EASTL/string.h>
 #include <ImGuizmo.h>
@@ -49,7 +50,8 @@ namespace NeneEngine
 			dialog.lpstrDefExt = L"json";
 			dialog.lpstrInitialDir = directory.c_str();
 			dialog.Flags = OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | (save ? OFN_OVERWRITEPROMPT : OFN_FILEMUSTEXIST);
-			return (save ? GetSaveFileNameW(&dialog) : GetOpenFileNameW(&dialog)) ? std::filesystem::path(buffer) : std::filesystem::path{};
+			return (save ? GetSaveFileNameW(&dialog) : GetOpenFileNameW(&dialog)) ? std::filesystem::path(buffer)
+			                                                                      : std::filesystem::path{};
 		}
 	} // namespace
 
@@ -93,6 +95,7 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
+		m_panels.push_back({eastl::make_unique<MaterialEditorPanel>()});
 
 		NENE_LOG_INFO("Editor initialized with {} panels", m_panels.size());
 	}
@@ -108,6 +111,7 @@ namespace NeneEngine
 		m_panels.clear();
 		m_scenePath.clear();
 		m_fileStatus.clear();
+		m_layoutInitialized = false;
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
 		m_context.reset();
@@ -149,7 +153,11 @@ namespace NeneEngine
 			if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
 			if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
 			if (ImGui::MenuItem("Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
-			if (!m_fileStatus.empty()) { ImGui::Separator(); ImGui::TextWrapped("%s", m_fileStatus.c_str()); }
+			if (!m_fileStatus.empty())
+			{
+				ImGui::Separator();
+				ImGui::TextWrapped("%s", m_fileStatus.c_str());
+			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Exit") && m_requestShutdown) m_requestShutdown();
 			ImGui::EndMenu();
@@ -167,7 +175,7 @@ namespace NeneEngine
 			ImGui::Separator();
 			if (ImGui::MenuItem("Reset Layout"))
 			{
-				const auto dockSpaceId = ImGui::GetID(kDockSpaceName);
+				const auto dockSpaceId = ImHashStr(kDockSpaceName);
 				ImGui::DockBuilderRemoveNode(dockSpaceId);
 				BuildDefaultLayout(dockSpaceId);
 			}
@@ -189,7 +197,11 @@ namespace NeneEngine
 			m_fileStatus = "Saved: " + path.string();
 			NENE_LOG_INFO("{}", m_fileStatus);
 		}
-		catch (const std::exception& e) { m_fileStatus = e.what(); NENE_LOG_ERROR("Save scene: {}", e.what()); }
+		catch (const std::exception& e)
+		{
+			m_fileStatus = e.what();
+			NENE_LOG_ERROR("Save scene: {}", e.what());
+		}
 	}
 
 	void EditorLayer::LoadScene()
@@ -207,7 +219,11 @@ namespace NeneEngine
 			m_fileStatus = "Loaded: " + path.string();
 			NENE_LOG_INFO("{}", m_fileStatus);
 		}
-		catch (const std::exception& e) { m_fileStatus = e.what(); NENE_LOG_ERROR("Load scene: {}", e.what()); }
+		catch (const std::exception& e)
+		{
+			m_fileStatus = e.what();
+			NENE_LOG_ERROR("Load scene: {}", e.what());
+		}
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()
@@ -273,8 +289,10 @@ namespace NeneEngine
 			SetMode(m_context->mode == EditorMode::Play ? EditorMode::Edit : EditorMode::Play);
 
 		if (m_context->mode != EditorMode::Edit) return;
-		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) SaveScene(true);
-		else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) SaveScene(false);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+			SaveScene(true);
+		else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+			SaveScene(false);
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) LoadScene();
 
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) m_history.Undo(m_context->world);
@@ -285,24 +303,32 @@ namespace NeneEngine
 
 	void EditorLayer::DrawDockSpace()
 	{
-		const ImGuiID dockSpaceId = ImGui::GetID(kDockSpaceName);
+		const ImGuiID dockSpaceId = ImHashStr(kDockSpaceName);
 
-		if (ImGui::DockBuilderGetNode(dockSpaceId) == nullptr) BuildDefaultLayout(dockSpaceId);
-		else
+		if (ImGui::DockBuilderGetNode(dockSpaceId) == nullptr)
+			BuildDefaultLayout(dockSpaceId);
+		else if (!m_layoutInitialized)
 		{
 			for (const auto& entry : m_panels)
 			{
 				if (ImGui::FindWindowSettingsByID(ImHashStr(entry.panel->GetName())) != nullptr) continue;
-				ImGuiID nodeId = ImGui::DockBuilderGetCentralNode(dockSpaceId)->ID;
+				const auto* centralNode = ImGui::DockBuilderGetCentralNode(dockSpaceId);
+				ImGuiID nodeId = centralNode != nullptr ? centralNode->ID : dockSpaceId;
 				for (const auto& other : m_panels)
 				{
 					if (other.panel->GetDefaultDockSlot() != entry.panel->GetDefaultDockSlot()) continue;
-					if (const auto* settings = ImGui::FindWindowSettingsByID(ImHashStr(other.panel->GetName())); settings && settings->DockId)
-					{ nodeId = settings->DockId; break; }
+					if (const auto* settings = ImGui::FindWindowSettingsByID(ImHashStr(other.panel->GetName()));
+					    settings && settings->DockId)
+					{
+						nodeId = settings->DockId;
+						break;
+					}
 				}
 				ImGui::DockBuilderDockWindow(entry.panel->GetName(), nodeId);
 			}
+			ImGui::DockBuilderFinish(dockSpaceId);
 		}
+		m_layoutInitialized = true;
 
 		ImGui::DockSpaceOverViewport(dockSpaceId, ImGui::GetMainViewport());
 	}

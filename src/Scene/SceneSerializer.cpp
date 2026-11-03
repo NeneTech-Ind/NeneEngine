@@ -121,12 +121,9 @@ namespace NeneEngine
 
 		nlohmann::json SerializeCamera(const ECS::CameraComponent& camera)
 		{
-			return {{"forward", ToJson(camera.forward)},
-			        {"up", ToJson(camera.up)},
-			        {"fovDegrees", camera.fovDegrees},
-			        {"nearPlane", camera.nearPlane},
-			        {"farPlane", camera.farPlane},
-			        {"aspectRatio", camera.aspectRatio},
+			return {{"forward", ToJson(camera.forward)}, {"up", ToJson(camera.up)},
+			        {"fovDegrees", camera.fovDegrees},   {"nearPlane", camera.nearPlane},
+			        {"farPlane", camera.farPlane},       {"aspectRatio", camera.aspectRatio},
 			        {"isPrimary", camera.isPrimary}};
 		}
 
@@ -145,9 +142,12 @@ namespace NeneEngine
 		{
 			return {{"primitiveType", ToString(renderer.primitiveType)},
 			        {"visible", renderer.visible},
-			        {"meshPath", renderer.meshPath}, {"meshPart", renderer.meshPart},
-			        {"material", {{"tint", ToJson(renderer.tint)}, {"texturePath", renderer.texturePath},
-			                      {"shaderPath", renderer.shaderPath}}}};
+			        {"meshPath", renderer.meshPath},
+			        {"meshPart", renderer.meshPart},
+			        {"material",
+			         {{"tint", ToJson(renderer.tint)},
+			          {"texturePath", renderer.texturePath},
+			          {"shaderPath", renderer.shaderPath}}}};
 		}
 
 		nlohmann::json SerializeMovement(const ECS::MovementComponent& movement)
@@ -476,18 +476,23 @@ namespace NeneEngine
 		template <typename... Components>
 		void CopyComponents(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to)
 		{
-			([&] { if (const auto* component = source.try_get<Components>(from))
-				target.emplace_or_replace<Components>(to, *component); }(), ...);
+			(
+			    [&]
+			    {
+				    if (const auto* component = source.try_get<Components>(from))
+					    target.emplace_or_replace<Components>(to, *component);
+			    }(),
+			    ...);
 		}
 
 		void CopyEntity(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to)
 		{
 			CopyComponents<ECS::TagComponent, ECS::TransformComponent, ECS::CameraComponent,
-			    ECS::CameraControllerComponent, ECS::MeshRendererComponent, ECS::MovementComponent,
-			    ECS::PlayerControllerComponent, ECS::PrimitiveControlComponent, ECS::RigidbodyComponent,
-			    ECS::ColliderComponent>(source, target, from, to);
+			               ECS::CameraControllerComponent, ECS::MeshRendererComponent, ECS::MovementComponent,
+			               ECS::PlayerControllerComponent, ECS::PrimitiveControlComponent, ECS::RigidbodyComponent,
+			               ECS::ColliderComponent>(source, target, from, to);
 		}
-	}
+	} // namespace
 
 	void SceneSerializer::Deserialize(const nlohmann::json& sceneJson, ECS::World& world, bool preserveCameras)
 	{
@@ -514,11 +519,21 @@ namespace NeneEngine
 				{
 					if (usedCameras.contains(camera)) continue;
 					const auto* oldTag = world.GetRegistry().try_get<ECS::TagComponent>(camera);
-					if (source.get<ECS::CameraComponent>(entity).isPrimary != target.get<ECS::CameraComponent>(camera).isPrimary) continue;
+					if (source.get<ECS::CameraComponent>(entity).isPrimary !=
+					    target.get<ECS::CameraComponent>(camera).isPrimary)
+						continue;
 					if (match == ECS::NullEntity) match = camera;
-					if (tag && oldTag && tag->name == oldTag->name) { match = camera; break; }
+					if (tag && oldTag && tag->name == oldTag->name)
+					{
+						match = camera;
+						break;
+					}
 				}
-				if (match != ECS::NullEntity) { remap.emplace(entity, match); usedCameras.insert(match); }
+				if (match != ECS::NullEntity)
+				{
+					remap.emplace(entity, match);
+					usedCameras.insert(match);
+				}
 			}
 		}
 		for (const auto entity : source.view<entt::entity>())

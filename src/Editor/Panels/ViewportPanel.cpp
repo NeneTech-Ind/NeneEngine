@@ -5,9 +5,9 @@
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/World.h"
+#include "Editor/EditorAssetActions.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
-#include "Editor/EditorAssetActions.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 
 #include <ImGuizmo.h>
@@ -126,17 +126,20 @@ namespace NeneEngine
 		{
 			for (const bool isTexture : {false, true})
 			{
-				if (const auto* payload = ImGui::AcceptDragDropPayload(isTexture ? TextureAssetPayload : ModelAssetPayload))
+				if (const auto* payload =
+				        ImGui::AcceptDragDropPayload(isTexture ? TextureAssetPayload : ModelAssetPayload))
 				{
 					glm::vec3 position(0.0f);
 					if (const auto* camera = context.world.GetComponent<ECS::CameraComponent>(context.cameraEntity))
 					{
 						const glm::vec3 origin = glm::vec3(ComputeWorldMatrix(context.world, context.cameraEntity)[3]);
-						const glm::mat4 view = glm::lookAt(origin, origin + glm::normalize(camera->forward), glm::normalize(camera->up));
+						const glm::mat4 view =
+						    glm::lookAt(origin, origin + glm::normalize(camera->forward), glm::normalize(camera->up));
 						const ImVec2 mouse = ImGui::GetMousePos();
 						const glm::vec2 ndc(2.0f * (mouse.x - m_imagePosition.x) / m_imageSize.x - 1.0f,
-						    1.0f - 2.0f * (mouse.y - m_imagePosition.y) / m_imageSize.y);
-						glm::vec4 point = glm::inverse(camera->GetProjectionMatrix() * view) * glm::vec4(ndc, 0.5f, 1.0f);
+						                    1.0f - 2.0f * (mouse.y - m_imagePosition.y) / m_imageSize.y);
+						glm::vec4 point =
+						    glm::inverse(camera->GetProjectionMatrix() * view) * glm::vec4(ndc, 0.5f, 1.0f);
 						const glm::vec3 ray = glm::normalize(glm::vec3(point) / point.w - origin);
 						const float distance = std::abs(ray.y) > 1e-5f ? -origin.y / ray.y : -1.0f;
 						position = origin + ray * (distance > 0.1f && distance < 1000.0f ? distance : 5.0f);
@@ -147,8 +150,8 @@ namespace NeneEngine
 			ImGui::EndDragDropTarget();
 		}
 		HandleShortcuts(context);
-		ImGui::GetWindowDrawList()->PushClipRect(m_imagePosition,
-		    ImVec2(m_imagePosition.x + m_imageSize.x, m_imagePosition.y + m_imageSize.y), true);
+		ImGui::GetWindowDrawList()->PushClipRect(
+		    m_imagePosition, ImVec2(m_imagePosition.x + m_imageSize.x, m_imagePosition.y + m_imageSize.y), true);
 		DrawGizmo(context);
 		ImGui::GetWindowDrawList()->PopClipRect();
 	}
@@ -202,7 +205,7 @@ namespace NeneEngine
 		                           registry.all_of<ECS::TransformComponent, ECS::CameraComponent>(context.cameraEntity);
 		if (!canManipulate)
 		{
-			TrackGizmoUndo(context, entity, false);
+			TrackGizmoUndo(context, false);
 			return;
 		}
 
@@ -218,6 +221,11 @@ namespace NeneEngine
 
 		const glm::mat4 parentWorld = ComputeParentWorldMatrix(world, entity);
 		auto* transform = context.world.GetComponent<ECS::TransformComponent>(entity);
+		if (!m_wasUsingGizmo)
+		{
+			m_dragEntity = entity;
+			m_transformBeforeDrag = *transform;
+		}
 		glm::mat4 worldMatrix = parentWorld * transform->GetModelMatrix();
 
 		const ImGuizmo::OPERATION operation = ToImGuizmo(m_operation);
@@ -251,20 +259,12 @@ namespace NeneEngine
 			}
 		}
 
-		TrackGizmoUndo(context, entity, ImGuizmo::IsUsing());
+		TrackGizmoUndo(context, ImGuizmo::IsUsing());
 	}
 
-	void ViewportPanel::TrackGizmoUndo(EditorContext& context, ECS::Entity entity, bool isUsing)
+	void ViewportPanel::TrackGizmoUndo(EditorContext& context, bool isUsing)
 	{
-		if (isUsing && !m_wasUsingGizmo)
-		{
-			if (const auto* transform = context.world.GetComponent<ECS::TransformComponent>(entity))
-			{
-				m_dragEntity = entity;
-				m_transformBeforeDrag = *transform;
-			}
-		}
-		else if (!isUsing && m_wasUsingGizmo && m_dragEntity != ECS::NullEntity)
+		if (!isUsing && m_wasUsingGizmo && m_dragEntity != ECS::NullEntity)
 		{
 			const auto* transform = context.world.GetRegistry().valid(m_dragEntity)
 			                            ? context.world.GetComponent<ECS::TransformComponent>(m_dragEntity)

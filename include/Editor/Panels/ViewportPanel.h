@@ -32,18 +32,21 @@ namespace NeneEngine
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Center; }
 		[[nodiscard]] ImGuiWindowFlags GetWindowFlags() const override
 		{
-			return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
-			       ImGuiWindowFlags_NoMove;
+			return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoMove;
 		}
 
 		void Draw(EditorContext& context) override;
-		void OnSceneLoaded() override { m_wasUsingGizmo = false; m_dragEntity = ECS::NullEntity; }
+		void OnSceneLoaded() override
+		{
+			m_wasUsingGizmo = false;
+			m_dragEntity = ECS::NullEntity;
+		}
 
 	  private:
 		void HandleShortcuts(const EditorContext& context);
 		void DrawToolbar();
 		void DrawGizmo(EditorContext& context);
-		void TrackGizmoUndo(EditorContext& context, ECS::Entity entity, bool isUsing);
+		void TrackGizmoUndo(EditorContext& context, bool isUsing);
 
 		GizmoOperation m_operation = GizmoOperation::Translate;
 		GizmoSpace m_space = GizmoSpace::World;

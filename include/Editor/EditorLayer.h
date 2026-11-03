@@ -66,6 +66,7 @@ namespace NeneEngine
 		eastl::vector<PanelEntry> m_panels;
 		std::filesystem::path m_scenePath;
 		std::string m_fileStatus;
+		bool m_layoutInitialized = false;
 	};
 
 } // namespace NeneEngine

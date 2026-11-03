@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ECS/Components/MeshRendererComponent.h"
-#include "Graphics/Runtime/MeshRenderBinding.h"
-#include "Graphics/Loaders/MeshLoader.h"
 #include "Core/EASTLStdHash.h"
+#include "ECS/Components/MeshRendererComponent.h"
+#include "Graphics/Loaders/MeshLoader.h"
+#include "Graphics/Runtime/MeshRenderBinding.h"
 
 #include <filesystem>
 #include <string>
@@ -32,4 +32,4 @@ namespace NeneEngine
 
 	std::string PortableAssetPath(const std::filesystem::path& path);
 	std::filesystem::path ResolveAssetPath(const std::string& path);
-}
+} // namespace NeneEngine

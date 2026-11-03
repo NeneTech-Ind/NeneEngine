@@ -20,6 +20,7 @@ add_executable(NeneEngineEditorTests
     ../src/Editor/EditorAssetActions.cpp
     ../src/Editor/AssetCatalog.cpp
     ../src/Editor/Panels/ViewportPanel.cpp
+    ../src/Editor/Panels/MaterialEditorPanel.cpp
     ../src/Graphics/Backend/IRenderAdapter.cpp
     ../src/Graphics/Runtime/SceneAssetResolver.cpp
     ../src/Graphics/Loaders/MeshLoader.cpp
@@ -34,6 +35,7 @@ target_include_directories(NeneEngineEditorTests PRIVATE ../include ../external/
 target_link_libraries(NeneEngineEditorTests PRIVATE assimp::assimp spdlog::spdlog nlohmann_json::nlohmann_json
     EASTL EnTT::EnTT glm::glm Diligent-Imgui)
 target_compile_features(NeneEngineEditorTests PRIVATE cxx_std_20)
+add_dependencies(NeneEngineEditorTests NeneEngine)
 set_target_properties(NeneEngineEditorTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/src")
 add_test(NAME EditorRegression COMMAND NeneEngineEditorTests)
 set_tests_properties(EditorRegression PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")

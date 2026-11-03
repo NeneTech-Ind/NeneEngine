@@ -681,6 +681,30 @@ namespace NeneEngine
 			return {};
 		}
 
+		if (!m_shared->whiteTextureId.IsValid())
+		{
+			TextureDesc desc{};
+			desc.Name = "Material white texture";
+			desc.Type = RESOURCE_DIM_TEX_2D;
+			desc.Width = desc.Height = 1;
+			desc.Format = TEX_FORMAT_RGBA8_UNORM;
+			desc.BindFlags = BIND_SHADER_RESOURCE;
+			desc.Usage = USAGE_IMMUTABLE;
+			const uint32_t white = 0xffffffffu;
+			TextureSubResData subresource{};
+			subresource.pData = &white;
+			subresource.Stride = sizeof(white);
+			TextureData data{};
+			data.pSubResources = &subresource;
+			data.NumSubresources = 1;
+			DiligentDX12SharedDevice::UploadedTexture texture;
+			m_shared->device->CreateTexture(desc, &data, &texture.texture);
+			if (!texture.texture) return {};
+			texture.shaderResourceView = texture.texture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+			m_shared->whiteTextureId = TextureId{m_shared->nextTextureId++};
+			m_shared->uploadedTextures.emplace(m_shared->whiteTextureId.value, std::move(texture));
+		}
+
 		const ShaderPair shaders =
 		    CreateShaderPair(*m_shared->device, shaderProgram.vertexPath.c_str(), shaderProgram.vertexSource.c_str(),
 		                     shaderProgram.pixelPath.c_str(), shaderProgram.pixelSource.c_str());
@@ -765,14 +789,17 @@ namespace NeneEngine
 	uintptr_t DiligentDX12Adapter::GetRenderTargetTextureHandle(RenderTargetId target) const
 	{
 		const auto it = m_renderTargets.find(target.value);
-		return it == m_renderTargets.end() ? 0 : reinterpret_cast<uintptr_t>(
-		    it->second.color->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE));
+		return it == m_renderTargets.end()
+		           ? 0
+		           : reinterpret_cast<uintptr_t>(it->second.color->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE));
 	}
 
 	uintptr_t DiligentDX12Adapter::GetTextureHandle(TextureId texture) const
 	{
 		const auto it = m_shared->uploadedTextures.find(texture.value);
-		return it == m_shared->uploadedTextures.end() ? 0 : reinterpret_cast<uintptr_t>(it->second.shaderResourceView.RawPtr());
+		return it == m_shared->uploadedTextures.end()
+		           ? 0
+		           : reinterpret_cast<uintptr_t>(it->second.shaderResourceView.RawPtr());
 	}
 
 	void DiligentDX12Adapter::BeginFrame()
@@ -818,8 +845,10 @@ namespace NeneEngine
 
 		const auto& swapChainDesc = m_swapChain->GetDesc();
 		const auto targetIt = m_renderTargets.find(m_activeTarget.value);
-		const uint32_t width = targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Width : swapChainDesc.Width;
-		const uint32_t height = targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Height : swapChainDesc.Height;
+		const uint32_t width =
+		    targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Width : swapChainDesc.Width;
+		const uint32_t height =
+		    targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Height : swapChainDesc.Height;
 		Viewport viewport{};
 		viewport.Width = static_cast<float>(width);
 		viewport.Height = static_cast<float>(height);
@@ -845,7 +874,8 @@ namespace NeneEngine
 			                            STATE_TRANSITION_FLAG_UPDATE_STATE);
 			m_shared->immediateContext->TransitionResourceState(barrier);
 			const float background[] = {0.08f, 0.08f, 0.08f, 1.0f};
-			m_shared->immediateContext->ClearRenderTarget(backBuffer, background, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+			m_shared->immediateContext->ClearRenderTarget(backBuffer, background,
+			                                              RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 		}
 	}
 
@@ -857,8 +887,9 @@ namespace NeneEngine
 		if (UploadedShaderProgram* shaderProgram = FindUploaded(m_shared->uploadedShaderPrograms, item.shaderId.value);
 		    shaderProgram != nullptr)
 		{
-			const auto* texture = FindUploaded(m_shared->uploadedTextures, item.textureId.value);
-			IShaderResourceBinding* textureBinding = GetShaderResourceBinding(*shaderProgram, item.textureId);
+			const TextureId textureId = item.textureId.IsValid() ? item.textureId : m_shared->whiteTextureId;
+			const auto* texture = FindUploaded(m_shared->uploadedTextures, textureId.value);
+			IShaderResourceBinding* textureBinding = GetShaderResourceBinding(*shaderProgram, textureId);
 			if (texture != nullptr && textureBinding != nullptr)
 			{
 				pipelineState =

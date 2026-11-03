@@ -4,6 +4,7 @@
 #include "Core/ResourceManager.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Graphics/Loaders/MeshLoader.h"
+#include <cmath>
 
 namespace NeneEngine
 {
@@ -21,7 +22,8 @@ namespace NeneEngine
 		const auto root = ResolveFromExecutionRoots("assets");
 		if (!root.empty())
 		{
-			const auto relative = std::filesystem::absolute(path).lexically_normal().lexically_relative(root.parent_path());
+			const auto relative =
+			    std::filesystem::absolute(path).lexically_normal().lexically_relative(root.parent_path());
 			if (!relative.empty() && *relative.begin() != "..") return relative.generic_string();
 		}
 		return std::filesystem::absolute(path).lexically_normal().generic_string();
@@ -33,7 +35,7 @@ namespace NeneEngine
 		{
 			return std::to_string(renderer.GetResourceDomainKey()) + ":" + path;
 		}
-	}
+	} // namespace
 
 	GPUMesh SceneAssetResolver::Mesh(const std::string& path, int part, IRenderAdapter& renderer)
 	{
@@ -44,7 +46,7 @@ namespace NeneEngine
 		try
 		{
 			const auto resolved = ResolveAssetPath(path).string();
-			if (path == "@quad")
+			if (path == "@quad" || path == "@triangle" || path == "@cube")
 			{
 				MeshData quad;
 				quad.vertices = {{{-0.5f, -0.5f, 0}, {0, 0, 1}, {0, 1}},
@@ -52,6 +54,29 @@ namespace NeneEngine
 				                 {{0.5f, 0.5f, 0}, {0, 0, 1}, {1, 0}},
 				                 {{-0.5f, 0.5f, 0}, {0, 0, 1}, {0, 0}}};
 				quad.indices = {0, 1, 2, 0, 2, 3};
+				if (path == "@triangle")
+				{
+					quad.vertices = {{{-0.5f, -0.5f, 0}, {0, 0, 1}, {0, 1}},
+					                 {{0, 0.5f, 0}, {0, 0, 1}, {0.5f, 0}},
+					                 {{0.5f, -0.5f, 0}, {0, 0, 1}, {1, 1}}};
+					quad.indices = {0, 1, 2};
+				}
+				else if (path == "@cube")
+				{
+					quad = {};
+					const glm::vec3 normals[] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+					for (const auto& normal : normals)
+					{
+						const glm::vec3 tangent = std::abs(normal.y) > 0.5f ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+						const glm::vec3 bitangent = glm::cross(normal, tangent);
+						const uint32_t base = static_cast<uint32_t>(quad.vertices.size());
+						quad.vertices.push_back({0.4f * (normal - tangent - bitangent), normal, {0, 1}});
+						quad.vertices.push_back({0.4f * (normal + tangent - bitangent), normal, {1, 1}});
+						quad.vertices.push_back({0.4f * (normal + tangent + bitangent), normal, {1, 0}});
+						quad.vertices.push_back({0.4f * (normal - tangent + bitangent), normal, {0, 0}});
+						for (uint32_t index : {0u, 1u, 2u, 0u, 2u, 3u}) quad.indices.push_back(base + index);
+					}
+				}
 				result = renderer.UploadMesh(quad);
 			}
 			else if (part < 0)
@@ -61,12 +86,16 @@ namespace NeneEngine
 			}
 			else
 			{
-				if (m_modelParts.find(resolved) == m_modelParts.end()) m_modelParts.emplace(resolved, LoadMeshPartsFromFile(resolved));
+				if (m_modelParts.find(resolved) == m_modelParts.end())
+					m_modelParts.emplace(resolved, LoadMeshPartsFromFile(resolved));
 				const auto& parts = m_modelParts.at(resolved);
 				if (static_cast<size_t>(part) < parts.size()) result = renderer.UploadMesh(parts[part].data);
 			}
 		}
-		catch (const std::exception& e) { NENE_LOG_ERROR("Model import failed: {}", e.what()); }
+		catch (const std::exception& e)
+		{
+			NENE_LOG_ERROR("Model import failed: {}", e.what());
+		}
 		if (!result.IsValid()) m_error = "Could not load model: " + path;
 		m_meshes.emplace(key, result);
 		return result;
@@ -98,13 +127,32 @@ namespace NeneEngine
 		return result;
 	}
 
-	MeshRenderRuntimeBinding SceneAssetResolver::Resolve(const ECS::MeshRendererComponent& source, IRenderAdapter& renderer)
+	MeshRenderRuntimeBinding SceneAssetResolver::Resolve(const ECS::MeshRendererComponent& source,
+	                                                     IRenderAdapter& renderer)
 	{
 		m_error.clear();
 		MeshRenderRuntimeBinding result;
-		result.meshId = Mesh(source.meshPath, source.meshPart, renderer).meshId;
+		std::string meshPath = source.meshPath;
+		if (meshPath.empty() && (!source.texturePath.empty() || !source.shaderPath.empty()))
+		{
+			switch (source.primitiveType)
+			{
+			case PrimitiveType::Cube:
+				meshPath = "@cube";
+				break;
+			case PrimitiveType::Quad:
+				meshPath = "@quad";
+				break;
+			case PrimitiveType::Triangle:
+				meshPath = "@triangle";
+				break;
+			default:
+				break;
+			}
+		}
+		result.meshId = Mesh(meshPath, source.meshPart, renderer).meshId;
 		result.textureId = Texture(source.texturePath, renderer).textureId;
 		result.shaderId = Shader(source.shaderPath, renderer).shaderId;
 		return result;
 	}
-}
+} // namespace NeneEngine
