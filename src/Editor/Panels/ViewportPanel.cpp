@@ -81,6 +81,9 @@ namespace NeneEngine
 			return ImGuizmo::TRANSLATE;
 		}
 
+		constexpr float kToolbarBackdropPadding = 4.0f;
+		constexpr float kToolbarBackdropAlpha = 0.85f;
+
 		bool ToolbarToggle(const char* label, bool isActive)
 		{
 			if (isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -115,25 +118,55 @@ namespace NeneEngine
 
 	void ViewportPanel::DrawToolbar()
 	{
-		if (ToolbarToggle("Move", m_operation == GizmoOperation::Translate)) m_operation = GizmoOperation::Translate;
+		const ImGuiStyle& style = ImGui::GetStyle();
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		drawList->ChannelsSplit(2);
+		drawList->ChannelsSetCurrent(1);
+
+		ImGui::BeginGroup();
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, style.ItemSpacing.y));
+
+		if (ToolbarToggle(NENE_ICON_MOVE "##Move", m_operation == GizmoOperation::Translate))
+			m_operation = GizmoOperation::Translate;
 		ImGui::SetItemTooltip("Translate gizmo (W)");
 		ImGui::SameLine();
-		if (ToolbarToggle("Rotate", m_operation == GizmoOperation::Rotate)) m_operation = GizmoOperation::Rotate;
+		if (ToolbarToggle(NENE_ICON_ROTATE "##Rotate", m_operation == GizmoOperation::Rotate))
+			m_operation = GizmoOperation::Rotate;
 		ImGui::SetItemTooltip("Rotate gizmo (E)");
 		ImGui::SameLine();
-		if (ToolbarToggle("Scale", m_operation == GizmoOperation::Scale)) m_operation = GizmoOperation::Scale;
+		if (ToolbarToggle(NENE_ICON_SCALE "##Scale", m_operation == GizmoOperation::Scale))
+			m_operation = GizmoOperation::Scale;
 		ImGui::SetItemTooltip("Scale gizmo (R)");
 
-		ImGui::SameLine(0.0f, ImGui::GetStyle().ItemSpacing.x * 4.0f);
+		ImGui::PopStyleVar();
+		ImGui::SameLine(0.0f, style.ItemSpacing.x * 3.0f);
 		const bool isScale = m_operation == GizmoOperation::Scale;
+		const bool isLocal = isScale || m_space == GizmoSpace::Local;
 		ImGui::BeginDisabled(isScale);
-		if (ImGui::Button(isScale || m_space == GizmoSpace::Local ? "Local" : "World"))
+		if (ImGui::Button(isLocal ? NENE_ICON_LOCAL "##Space" : NENE_ICON_WORLD "##Space"))
 			m_space = m_space == GizmoSpace::World ? GizmoSpace::Local : GizmoSpace::World;
 		ImGui::EndDisabled();
-		ImGui::SetItemTooltip(isScale ? "Scale always uses local axes" : "Toggle local/world axes (X)");
+		if (isScale)
+			ImGui::SetItemTooltip("Scale always uses local axes");
+		else
+			ImGui::SetItemTooltip(isLocal ? "Local axes, click for world (X)" : "World axes, click for local (X)");
 
 		ImGui::SameLine();
-		ImGui::Checkbox("Snap", &m_useSnap);
+		if (ToolbarToggle(NENE_ICON_SNAP "##Snap", m_useSnap)) m_useSnap = !m_useSnap;
+		ImGui::SetItemTooltip(m_useSnap ? "Snapping on" : "Snapping off");
+
+		ImGui::PopStyleColor();
+		ImGui::EndGroup();
+
+		const ImVec2 groupMin = ImGui::GetItemRectMin();
+		const ImVec2 groupMax = ImGui::GetItemRectMax();
+		drawList->ChannelsSetCurrent(0);
+		drawList->AddRectFilled(ImVec2(groupMin.x - kToolbarBackdropPadding, groupMin.y - kToolbarBackdropPadding),
+		                        ImVec2(groupMax.x + kToolbarBackdropPadding, groupMax.y + kToolbarBackdropPadding),
+		                        ImGui::GetColorU32(ImGuiCol_PopupBg, kToolbarBackdropAlpha),
+		                        style.FrameRounding + kToolbarBackdropPadding);
+		drawList->ChannelsMerge();
 	}
 
 	void ViewportPanel::DrawGizmo(EditorContext& context)

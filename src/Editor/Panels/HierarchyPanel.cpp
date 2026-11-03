@@ -4,9 +4,12 @@
 
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
+#include "ECS/Components/MeshRenderRuntimeComponent.h"
+#include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
+#include "Editor/Theme/EditorIcons.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
@@ -37,6 +40,19 @@ namespace NeneEngine
 			return name;
 		}
 
+		const char* GetEntityIcon(const entt::registry& registry, ECS::Entity entity)
+		{
+			if (registry.all_of<ECS::CameraComponent>(entity)) return NENE_ICON_CAMERA;
+			if (registry.all_of<ECS::MeshRenderRuntimeComponent>(entity)) return NENE_ICON_MESH;
+			if (registry.all_of<ECS::MeshRendererComponent>(entity)) return NENE_ICON_PRIMITIVE;
+			return NENE_ICON_ENTITY;
+		}
+
+		std::string GetRowLabel(const entt::registry& registry, ECS::Entity entity)
+		{
+			return std::string(GetEntityIcon(registry, entity)) + " " + GetDisplayName(registry, entity);
+		}
+
 		void* ToTreeId(ECS::Entity entity)
 		{
 			return reinterpret_cast<void*>(static_cast<uintptr_t>(entt::to_integral(entity)));
@@ -50,8 +66,10 @@ namespace NeneEngine
 		if (context.selectedEntity != ECS::NullEntity && !registry.valid(context.selectedEntity))
 			context.selectedEntity = ECS::NullEntity;
 
-		m_filter.Draw("##Filter", -FLT_MIN);
-		if (ImGui::IsItemHovered() && !m_filter.IsActive()) ImGui::SetTooltip("Filter by name");
+		ImGui::SetNextItemWidth(-FLT_MIN);
+		if (ImGui::InputTextWithHint("##Filter", NENE_ICON_SEARCH " Filter by name", m_filter.InputBuf,
+		                             IM_ARRAYSIZE(m_filter.InputBuf)))
+			m_filter.Build();
 
 		size_t entityCount = 0;
 		for ([[maybe_unused]] const ECS::Entity entity : registry.view<entt::entity>()) ++entityCount;
@@ -134,8 +152,8 @@ namespace NeneEngine
 			m_revealPath.erase(revealIt);
 		}
 
-		const std::string name = GetDisplayName(registry, entity);
-		const bool isOpen = ImGui::TreeNodeEx(ToTreeId(entity), flags, "%s", name.c_str());
+		const std::string label = GetRowLabel(registry, entity);
+		const bool isOpen = ImGui::TreeNodeEx(ToTreeId(entity), flags, "%s", label.c_str());
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) context.selectedEntity = entity;
 
 		if (!hasChildren || !isOpen) return;
@@ -172,8 +190,9 @@ namespace NeneEngine
 			{
 				const ECS::Entity entity = m_matches[static_cast<size_t>(row)];
 				ImGui::PushID(ToTreeId(entity));
-				const std::string name = GetDisplayName(registry, entity);
-				if (ImGui::Selectable(name.c_str(), entity == context.selectedEntity)) context.selectedEntity = entity;
+				const std::string label = GetRowLabel(registry, entity);
+				if (ImGui::Selectable(label.c_str(), entity == context.selectedEntity))
+					context.selectedEntity = entity;
 				ImGui::PopID();
 			}
 		}
