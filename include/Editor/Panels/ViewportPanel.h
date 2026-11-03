@@ -32,7 +32,7 @@ namespace NeneEngine
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Center; }
 		[[nodiscard]] ImGuiWindowFlags GetWindowFlags() const override
 		{
-			return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoMove;
+			return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 		}
 
 		void Draw(EditorContext& context) override;
