@@ -22,6 +22,7 @@ namespace NeneEngine
 	{
 		m_config = config;
 		ApplyColors();
+		ApplyMetrics();
 	}
 
 	void EditorThemeService::ApplyColors() const
@@ -105,6 +106,26 @@ namespace NeneEngine
 		colors[ImGuiCol_NavWindowingHighlight] = WithAlpha(theme.text, 0.7f);
 		colors[ImGuiCol_NavWindowingDimBg] = WithAlpha(theme.backgroundSunken, 0.6f);
 		colors[ImGuiCol_ModalWindowDimBg] = WithAlpha(theme.backgroundSunken, 0.6f);
+	}
+
+	void EditorThemeService::ApplyMetrics() const
+	{
+		const EditorThemeMetricsConfig& metrics = m_config.metrics;
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		style.WindowPadding = metrics.windowPadding;
+		style.FramePadding = metrics.framePadding;
+		style.ItemSpacing = metrics.itemSpacing;
+		style.WindowRounding = metrics.windowRounding;
+		style.ChildRounding = metrics.childRounding;
+		style.PopupRounding = metrics.popupRounding;
+		style.FrameRounding = metrics.frameRounding;
+		style.TabRounding = metrics.tabRounding;
+		style.GrabRounding = metrics.grabRounding;
+		style.ScrollbarRounding = metrics.scrollbarRounding;
+		style.WindowBorderSize = metrics.windowBorderSize;
+		style.FrameBorderSize = metrics.frameBorderSize;
+		style.TabBarOverlineSize = metrics.tabBarOverlineSize;
 	}
 
 } // namespace NeneEngine

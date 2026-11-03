@@ -15,6 +15,7 @@ namespace NeneEngine
 
 	  private:
 		void ApplyColors() const;
+		void ApplyMetrics() const;
 
 		EditorThemeConfig m_config{};
 	};

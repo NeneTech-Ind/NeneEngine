@@ -23,9 +23,27 @@ namespace NeneEngine
 		ImVec4 axisZ{};
 	};
 
+	struct EditorThemeMetricsConfig
+	{
+		ImVec2 windowPadding{10.0f, 10.0f};
+		ImVec2 framePadding{8.0f, 5.0f};
+		ImVec2 itemSpacing{8.0f, 6.0f};
+		float windowRounding = 8.0f;
+		float childRounding = 6.0f;
+		float popupRounding = 8.0f;
+		float frameRounding = 6.0f;
+		float tabRounding = 6.0f;
+		float grabRounding = 6.0f;
+		float scrollbarRounding = 9.0f;
+		float windowBorderSize = 1.0f;
+		float frameBorderSize = 0.0f;
+		float tabBarOverlineSize = 2.0f;
+	};
+
 	struct EditorThemeConfig
 	{
 		EditorThemeColorsConfig colors{};
+		EditorThemeMetricsConfig metrics{};
 	};
 
 	[[nodiscard]] EditorThemeConfig GetDefaultEditorThemeConfig();
