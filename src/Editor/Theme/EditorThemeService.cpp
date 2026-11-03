@@ -17,6 +17,7 @@ namespace NeneEngine
 		constexpr float kSelectedAlpha = 0.25f;
 		constexpr float kFrameHoveredAlpha = 0.18f;
 		constexpr float kFrameActiveAlpha = 0.28f;
+		constexpr float kIconGlyphOffsetRatio = 0.125f;
 
 		ImVec4 WithAlpha(const ImVec4& color, float alpha)
 		{
@@ -71,6 +72,7 @@ namespace NeneEngine
 
 		ImFontConfig iconConfig = mergeConfig;
 		iconConfig.GlyphMinAdvanceX = fonts.size;
+		iconConfig.GlyphOffset.y = fonts.size * kIconGlyphOffsetRatio;
 		if (const std::filesystem::path iconFontPath = FindFontFile(fonts.iconFontPath); !iconFontPath.empty())
 			AddFont(iconFontPath, fonts.size, iconConfig);
 		ImGui::GetIO().FontDefault = m_uiFont;
