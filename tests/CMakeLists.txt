@@ -39,3 +39,20 @@ add_dependencies(NeneEngineEditorTests NeneEngine)
 set_target_properties(NeneEngineEditorTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/src")
 add_test(NAME EditorRegression COMMAND NeneEngineEditorTests)
 set_tests_properties(EditorRegression PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+add_executable(NeneEngineColorTests
+    ColorPresentationTests.cpp
+    ../src/Core/EASTLAllocator.cpp
+    ../src/Core/NeneLogger.cpp
+    ../src/Graphics/Backend/IRenderAdapter.cpp
+    ../src/Graphics/Backend/DiligentDX12Adapter.cpp
+    ../src/Graphics/Backend/DiligentImGuiBackend.cpp
+)
+target_include_directories(NeneEngineColorTests PRIVATE ../include)
+target_link_libraries(NeneEngineColorTests PRIVATE EASTL spdlog::spdlog glm::glm
+    Diligent-Win32Platform Diligent-GraphicsEngineD3D12-shared Diligent-TextureLoader Diligent-Imgui)
+target_compile_features(NeneEngineColorTests PRIVATE cxx_std_20)
+add_dependencies(NeneEngineColorTests NeneEngine)
+set_target_properties(NeneEngineColorTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/src")
+add_test(NAME ColorPresentation COMMAND NeneEngineColorTests)
+set_tests_properties(ColorPresentation PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" LABELS "gpu" SKIP_RETURN_CODE 77)

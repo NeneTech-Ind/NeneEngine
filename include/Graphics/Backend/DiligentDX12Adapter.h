@@ -51,6 +51,7 @@ namespace NeneEngine
 		{
 			Diligent::RefCntAutoPtr<Diligent::ITexture> texture;
 			Diligent::RefCntAutoPtr<Diligent::ITextureView> shaderResourceView;
+			Diligent::RefCntAutoPtr<Diligent::ITextureView> imguiView;
 			TextureFilterMode filterMode = TextureFilterMode::Linear;
 			TextureAddressMode addressMode = TextureAddressMode::Wrap;
 		};
@@ -143,6 +144,8 @@ namespace NeneEngine
 		{
 			Diligent::RefCntAutoPtr<Diligent::ITexture> color;
 			Diligent::RefCntAutoPtr<Diligent::ITexture> depth;
+			Diligent::RefCntAutoPtr<Diligent::ITextureView> renderTargetView;
+			Diligent::RefCntAutoPtr<Diligent::ITextureView> imguiView;
 		};
 		eastl::unordered_map<uint32_t, OffscreenTarget> m_renderTargets;
 		RenderTargetId m_activeTarget{};
