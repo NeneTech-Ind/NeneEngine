@@ -8,6 +8,7 @@
 #include "Editor/Panels/InspectorPanel.h"
 #include "Editor/Panels/StatisticsPanel.h"
 #include "Editor/Panels/ViewportPanel.h"
+#include "Editor/Panels/AssetBrowserPanel.h"
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
 
@@ -60,6 +61,7 @@ namespace NeneEngine
 		m_onModeChanged = std::move(onModeChanged);
 		m_context = eastl::make_unique<EditorContext>(EditorContext{world, m_history});
 		m_context->cameraEntity = cameraEntity;
+		m_context->assets.Refresh();
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -68,6 +70,7 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
+		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
 
 		NENE_LOG_INFO("Editor initialized with {} panels", m_panels.size());
 	}

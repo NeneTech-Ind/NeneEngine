@@ -7,6 +7,7 @@
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
+#include "Editor/EditorAssetActions.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 
 #include <ImGuizmo.h>
@@ -121,6 +122,30 @@ namespace NeneEngine
 			camera->aspectRatio = m_imageSize.x / m_imageSize.y;
 		ImGui::Image(static_cast<ImTextureID>(m_renderer->GetRenderTargetTextureHandle(m_target.id)), m_imageSize);
 		context.isViewportHovered = ImGui::IsItemHovered();
+		if (context.mode == EditorMode::Edit && ImGui::BeginDragDropTarget())
+		{
+			for (const bool isTexture : {false, true})
+			{
+				if (const auto* payload = ImGui::AcceptDragDropPayload(isTexture ? TextureAssetPayload : ModelAssetPayload))
+				{
+					glm::vec3 position(0.0f);
+					if (const auto* camera = context.world.GetComponent<ECS::CameraComponent>(context.cameraEntity))
+					{
+						const glm::vec3 origin = glm::vec3(ComputeWorldMatrix(context.world, context.cameraEntity)[3]);
+						const glm::mat4 view = glm::lookAt(origin, origin + glm::normalize(camera->forward), glm::normalize(camera->up));
+						const ImVec2 mouse = ImGui::GetMousePos();
+						const glm::vec2 ndc(2.0f * (mouse.x - m_imagePosition.x) / m_imageSize.x - 1.0f,
+						    1.0f - 2.0f * (mouse.y - m_imagePosition.y) / m_imageSize.y);
+						glm::vec4 point = glm::inverse(camera->GetProjectionMatrix() * view) * glm::vec4(ndc, 0.5f, 1.0f);
+						const glm::vec3 ray = glm::normalize(glm::vec3(point) / point.w - origin);
+						const float distance = std::abs(ray.y) > 1e-5f ? -origin.y / ray.y : -1.0f;
+						position = origin + ray * (distance > 0.1f && distance < 1000.0f ? distance : 5.0f);
+					}
+					CreateSceneAsset(context, static_cast<const char*>(payload->Data), isTexture, position);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
 		HandleShortcuts(context);
 		ImGui::GetWindowDrawList()->PushClipRect(m_imagePosition,
 		    ImVec2(m_imagePosition.x + m_imageSize.x, m_imagePosition.y + m_imageSize.y), true);

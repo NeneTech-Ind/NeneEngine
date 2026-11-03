@@ -3,6 +3,8 @@
 #pragma once
 
 #include "ECS/Entity.h"
+#include "Editor/AssetCatalog.h"
+#include "Graphics/Runtime/SceneAssetResolver.h"
 
 namespace NeneEngine
 {
@@ -30,6 +32,9 @@ namespace NeneEngine
 		bool isViewportHovered = false;
 		bool isViewportFocused = false;
 		IRenderAdapter* renderer = nullptr;
+		AssetCatalog assets;
+		SceneAssetResolver assetResolver;
+		std::string assetError;
 	};
 
 } // namespace NeneEngine
