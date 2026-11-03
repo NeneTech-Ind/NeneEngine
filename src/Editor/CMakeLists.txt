@@ -10,6 +10,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/InspectorPanel.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/StatisticsPanel.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/ViewportPanel.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorIcons.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeConfig.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeService.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorHistory.cpp"

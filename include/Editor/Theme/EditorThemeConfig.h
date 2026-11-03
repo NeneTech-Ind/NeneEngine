@@ -46,6 +46,7 @@ namespace NeneEngine
 		std::string uiFontPath = "assets/fonts/nunito_regular.ttf";
 		std::string japaneseFontPath = "assets/fonts/m_plus_rounded_1c_regular.ttf";
 		std::string monospaceFontPath = "assets/fonts/jetbrains_mono_regular.ttf";
+		std::string iconFontPath = "assets/fonts/lucide_icons.ttf";
 		float size = 16.0f;
 	};
 

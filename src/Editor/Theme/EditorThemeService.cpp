@@ -30,10 +30,8 @@ namespace NeneEngine
 			return path;
 		}
 
-		ImFont* AddFont(const std::filesystem::path& path, float size, bool mergeIntoPrevious)
+		ImFont* AddFont(const std::filesystem::path& path, float size, ImFontConfig fontConfig = {})
 		{
-			ImFontConfig fontConfig;
-			fontConfig.MergeMode = mergeIntoPrevious;
 			fontConfig.Flags |= ImFontFlags_NoLoadError;
 
 			const std::u8string utf8Path = path.u8string();
@@ -58,21 +56,28 @@ namespace NeneEngine
 
 		const EditorThemeFontsConfig& fonts = m_config.fonts;
 		const std::filesystem::path uiFontPath = FindFontFile(fonts.uiFontPath);
-		if (!uiFontPath.empty()) m_uiFont = AddFont(uiFontPath, fonts.size, false);
+		if (!uiFontPath.empty()) m_uiFont = AddFont(uiFontPath, fonts.size);
 		if (m_uiFont == nullptr)
 		{
 			NENE_LOG_WARN("Editor uses the default ImGui font");
 			return;
 		}
 
+		ImFontConfig mergeConfig;
+		mergeConfig.MergeMode = true;
 		if (const std::filesystem::path japaneseFontPath = FindFontFile(fonts.japaneseFontPath);
 		    !japaneseFontPath.empty())
-			AddFont(japaneseFontPath, fonts.size, true);
+			AddFont(japaneseFontPath, fonts.size, mergeConfig);
+
+		ImFontConfig iconConfig = mergeConfig;
+		iconConfig.GlyphMinAdvanceX = fonts.size;
+		if (const std::filesystem::path iconFontPath = FindFontFile(fonts.iconFontPath); !iconFontPath.empty())
+			AddFont(iconFontPath, fonts.size, iconConfig);
 		ImGui::GetIO().FontDefault = m_uiFont;
 
 		if (const std::filesystem::path monospaceFontPath = FindFontFile(fonts.monospaceFontPath);
 		    !monospaceFontPath.empty())
-			m_monospaceFont = AddFont(monospaceFontPath, fonts.size, false);
+			m_monospaceFont = AddFont(monospaceFontPath, fonts.size);
 	}
 
 	void EditorThemeService::ApplyColors() const

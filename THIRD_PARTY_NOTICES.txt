@@ -145,6 +145,15 @@ INCLUDED COMPONENTS
    assets/fonts/m_plus_rounded_1c_license.txt
 
 
+16. Lucide icons
+   Purpose:
+   Editor icon font (subset of lucide-static 0.460.0 font)
+   License:
+   ISC (portions from Feather under MIT)
+   Local license file:
+   assets/fonts/lucide_icons_license.txt
+
+
 NOTES
 =====
 

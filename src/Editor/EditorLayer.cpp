@@ -8,6 +8,7 @@
 #include "Editor/Panels/InspectorPanel.h"
 #include "Editor/Panels/StatisticsPanel.h"
 #include "Editor/Panels/ViewportPanel.h"
+#include "Editor/Theme/EditorIcons.h"
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
 
@@ -121,6 +122,10 @@ namespace NeneEngine
 		const bool isMenuBarOpen = ImGui::BeginMainMenuBar();
 		if (isPlaying) ImGui::PopStyleColor();
 		if (!isMenuBarOpen) return;
+
+		ImGui::PushStyleColor(ImGuiCol_Text, colors.accent);
+		ImGui::TextUnformatted(NENE_ICON_LOGO);
+		ImGui::PopStyleColor();
 
 		if (ImGui::BeginMenu("File"))
 		{
