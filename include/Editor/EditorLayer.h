@@ -6,6 +6,7 @@
 #include "Editor/EditorHistory.h"
 #include "Editor/EditorSceneSnapshot.h"
 #include "Editor/IEditorPanel.h"
+#include "Editor/Theme/EditorThemeService.h"
 
 #include <EASTL/functional.h>
 #include <EASTL/unique_ptr.h>
@@ -59,6 +60,7 @@ namespace NeneEngine
 		ModeChangedCallback m_onModeChanged;
 		EditorHistory m_history;
 		EditorSceneSnapshot m_sceneSnapshot;
+		EditorThemeService m_themeService;
 		eastl::unique_ptr<EditorContext> m_context;
 		eastl::vector<PanelEntry> m_panels;
 	};

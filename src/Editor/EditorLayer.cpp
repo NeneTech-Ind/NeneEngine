@@ -58,6 +58,7 @@ namespace NeneEngine
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		m_themeService.Apply(GetDefaultEditorThemeConfig());
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});

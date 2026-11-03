@@ -11,6 +11,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/StatisticsPanel.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/ViewportPanel.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeConfig.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeService.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorHistory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorLayer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorSceneSnapshot.cpp"
@@ -19,4 +20,5 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Panels/StatisticsPanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Panels/ViewportPanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Theme/EditorThemeConfig.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Theme/EditorThemeService.cpp"
 )
