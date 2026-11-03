@@ -3,6 +3,7 @@
 #pragma once
 
 #include <imgui.h>
+#include <string>
 
 namespace NeneEngine
 {
@@ -40,10 +41,19 @@ namespace NeneEngine
 		float tabBarOverlineSize = 2.0f;
 	};
 
+	struct EditorThemeFontsConfig
+	{
+		std::string uiFontPath = "assets/fonts/nunito_regular.ttf";
+		std::string japaneseFontPath = "assets/fonts/m_plus_rounded_1c_regular.ttf";
+		std::string monospaceFontPath = "assets/fonts/jetbrains_mono_regular.ttf";
+		float size = 16.0f;
+	};
+
 	struct EditorThemeConfig
 	{
 		EditorThemeColorsConfig colors{};
 		EditorThemeMetricsConfig metrics{};
+		EditorThemeFontsConfig fonts{};
 	};
 
 	[[nodiscard]] EditorThemeConfig GetDefaultEditorThemeConfig();

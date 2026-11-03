@@ -2,6 +2,12 @@
 
 #include "Editor/Theme/EditorThemeService.h"
 
+#include "Core/NeneLogger.h"
+#include "Core/PathResolver.h"
+
+#include <filesystem>
+#include <string>
+
 namespace NeneEngine
 {
 	namespace
@@ -16,6 +22,27 @@ namespace NeneEngine
 		{
 			return ImVec4(color.x, color.y, color.z, alpha);
 		}
+
+		std::filesystem::path FindFontFile(const std::string& relativePath)
+		{
+			std::filesystem::path path = ResolveFromExecutionRoots(relativePath);
+			if (path.empty()) NENE_LOG_WARN("Editor font not found: {}", relativePath);
+			return path;
+		}
+
+		ImFont* AddFont(const std::filesystem::path& path, float size, bool mergeIntoPrevious)
+		{
+			ImFontConfig fontConfig;
+			fontConfig.MergeMode = mergeIntoPrevious;
+			fontConfig.Flags |= ImFontFlags_NoLoadError;
+
+			const std::u8string utf8Path = path.u8string();
+			ImFont* font = ImGui::GetIO().Fonts->AddFontFromFileTTF(reinterpret_cast<const char*>(utf8Path.c_str()),
+			                                                         size, &fontConfig);
+			if (font == nullptr)
+				NENE_LOG_WARN("Editor font failed to load: {}", reinterpret_cast<const char*>(utf8Path.c_str()));
+			return font;
+		}
 	} // namespace
 
 	void EditorThemeService::Apply(const EditorThemeConfig& config)
@@ -23,6 +50,29 @@ namespace NeneEngine
 		m_config = config;
 		ApplyColors();
 		ApplyMetrics();
+	}
+
+	void EditorThemeService::LoadFonts()
+	{
+		if (m_uiFont != nullptr) return;
+
+		const EditorThemeFontsConfig& fonts = m_config.fonts;
+		const std::filesystem::path uiFontPath = FindFontFile(fonts.uiFontPath);
+		if (!uiFontPath.empty()) m_uiFont = AddFont(uiFontPath, fonts.size, false);
+		if (m_uiFont == nullptr)
+		{
+			NENE_LOG_WARN("Editor uses the default ImGui font");
+			return;
+		}
+
+		if (const std::filesystem::path japaneseFontPath = FindFontFile(fonts.japaneseFontPath);
+		    !japaneseFontPath.empty())
+			AddFont(japaneseFontPath, fonts.size, true);
+		ImGui::GetIO().FontDefault = m_uiFont;
+
+		if (const std::filesystem::path monospaceFontPath = FindFontFile(fonts.monospaceFontPath);
+		    !monospaceFontPath.empty())
+			m_monospaceFont = AddFont(monospaceFontPath, fonts.size, false);
 	}
 
 	void EditorThemeService::ApplyColors() const
