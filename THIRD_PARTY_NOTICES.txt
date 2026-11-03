@@ -118,6 +118,33 @@ INCLUDED COMPONENTS
    out/build/x64-debug/vcpkg_installed/x64-windows/share/joltphysics/copyright
 
 
+13. Nunito font
+   Purpose:
+   Editor user interface text (Latin, Cyrillic)
+   License:
+   SIL Open Font License 1.1
+   Local license file:
+   assets/fonts/nunito_license.txt
+
+
+14. JetBrains Mono font
+   Purpose:
+   Editor monospaced numbers and paths
+   License:
+   SIL Open Font License 1.1
+   Local license file:
+   assets/fonts/jetbrains_mono_license.txt
+
+
+15. M PLUS Rounded 1c font
+   Purpose:
+   Editor Japanese text (subset: kana and JIS level 1 kanji)
+   License:
+   SIL Open Font License 1.1
+   Local license file:
+   assets/fonts/m_plus_rounded_1c_license.txt
+
+
 NOTES
 =====
 
