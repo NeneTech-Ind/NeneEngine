@@ -37,6 +37,7 @@ namespace NeneEngine
 		}
 
 		void Draw(EditorContext& context) override;
+		void OnSceneLoaded() override { m_wasUsingGizmo = false; m_dragEntity = ECS::NullEntity; }
 
 	  private:
 		void HandleShortcuts(const EditorContext& context);

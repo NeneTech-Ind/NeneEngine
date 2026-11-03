@@ -13,6 +13,11 @@
 #include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
+#include "ECS/DebugDrawSettings.h"
+#include "ECS/Events/SceneRestoredEvent.h"
+#include <Windows.h>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <EASTL/unordered_map.h>
 #include <fstream>
@@ -140,7 +145,9 @@ namespace NeneEngine
 		{
 			return {{"primitiveType", ToString(renderer.primitiveType)},
 			        {"visible", renderer.visible},
-			        {"material", {{"tint", ToJson(renderer.tint)}}}};
+			        {"meshPath", renderer.meshPath}, {"meshPart", renderer.meshPart},
+			        {"material", {{"tint", ToJson(renderer.tint)}, {"texturePath", renderer.texturePath},
+			                      {"shaderPath", renderer.shaderPath}}}};
 		}
 
 		nlohmann::json SerializeMovement(const ECS::MovementComponent& movement)
@@ -262,6 +269,10 @@ namespace NeneEngine
 
 			const auto& material = value.at("material");
 			renderer.tint = ReadVec4(material.at("tint"));
+			renderer.meshPath = value.value("meshPath", "");
+			renderer.meshPart = value.value("meshPart", -1);
+			renderer.texturePath = material.value("texturePath", "");
+			renderer.shaderPath = material.value("shaderPath", "");
 		}
 
 		void DeserializeMovement(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
@@ -409,7 +420,7 @@ namespace NeneEngine
 		return sceneJson;
 	}
 
-	void SceneSerializer::Deserialize(const nlohmann::json& sceneJson, ECS::World& world)
+	void SceneSerializer::DeserializeUnchecked(const nlohmann::json& sceneJson, ECS::World& world)
 	{
 		const int version = sceneJson.at("version").get<int>();
 		// Keep loading strict so scene migrations are explicit instead of silently dropping component data.
@@ -460,6 +471,74 @@ namespace NeneEngine
 		}
 	}
 
+	namespace
+	{
+		template <typename... Components>
+		void CopyComponents(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to)
+		{
+			([&] { if (const auto* component = source.try_get<Components>(from))
+				target.emplace_or_replace<Components>(to, *component); }(), ...);
+		}
+
+		void CopyEntity(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to)
+		{
+			CopyComponents<ECS::TagComponent, ECS::TransformComponent, ECS::CameraComponent,
+			    ECS::CameraControllerComponent, ECS::MeshRendererComponent, ECS::MovementComponent,
+			    ECS::PlayerControllerComponent, ECS::PrimitiveControlComponent, ECS::RigidbodyComponent,
+			    ECS::ColliderComponent>(source, target, from, to);
+		}
+	}
+
+	void SceneSerializer::Deserialize(const nlohmann::json& sceneJson, ECS::World& world, bool preserveCameras)
+	{
+		// Parse and validate in isolation so a malformed file cannot erase the current scene.
+		ECS::World parsed;
+		DeserializeUnchecked(sceneJson, parsed);
+		ECS::World replacement;
+		auto& source = parsed.GetRegistry();
+		auto& target = replacement.GetRegistry();
+		std::unordered_map<ECS::Entity, ECS::Entity> remap;
+		std::unordered_set<ECS::Entity> usedCameras;
+		if (preserveCameras)
+		{
+			for (const auto camera : world.GetRegistry().view<ECS::CameraComponent>())
+			{
+				if (target.create(camera) != camera) throw std::runtime_error("Could not preserve application camera");
+				CopyEntity(world.GetRegistry(), target, camera, camera);
+			}
+			for (const auto entity : source.view<ECS::CameraComponent>())
+			{
+				const auto* tag = source.try_get<ECS::TagComponent>(entity);
+				ECS::Entity match = ECS::NullEntity;
+				for (const auto camera : world.GetRegistry().view<ECS::CameraComponent>())
+				{
+					if (usedCameras.contains(camera)) continue;
+					const auto* oldTag = world.GetRegistry().try_get<ECS::TagComponent>(camera);
+					if (source.get<ECS::CameraComponent>(entity).isPrimary != target.get<ECS::CameraComponent>(camera).isPrimary) continue;
+					if (match == ECS::NullEntity) match = camera;
+					if (tag && oldTag && tag->name == oldTag->name) { match = camera; break; }
+				}
+				if (match != ECS::NullEntity) { remap.emplace(entity, match); usedCameras.insert(match); }
+			}
+		}
+		for (const auto entity : source.view<entt::entity>())
+		{
+			if (!remap.contains(entity)) remap.emplace(entity, target.create());
+			CopyEntity(source, target, entity, remap.at(entity));
+		}
+		for (const auto [entity, hierarchy] : source.view<ECS::HierarchyComponent>().each())
+		{
+			auto copy = hierarchy;
+			if (copy.parent != ECS::NullEntity) copy.parent = remap.at(copy.parent);
+			for (auto& child : copy.children) child = remap.at(child);
+			target.emplace<ECS::HierarchyComponent>(remap.at(entity), std::move(copy));
+		}
+		if (const auto* settings = world.GetRegistry().ctx().find<ECS::DebugDrawSettings>())
+			target.ctx().emplace<ECS::DebugDrawSettings>(*settings);
+		world.GetRegistry().swap(target);
+		world.GetEventBus().Publish(ECS::SceneRestoredEvent{});
+	}
+
 	void SceneSerializer::SaveToFile(const ECS::World& world, const std::filesystem::path& path)
 	{
 		const std::string serializedScene = Serialize(world).dump(4);
@@ -477,22 +556,21 @@ namespace NeneEngine
 		}
 
 		std::error_code errorCode;
-		std::filesystem::rename(tempPath, path, errorCode);
-		if (errorCode)
+		if (!MoveFileExW(tempPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 		{
 			std::filesystem::remove(tempPath, errorCode);
 			throw std::runtime_error("Failed to replace scene file: " + path.string());
 		}
 	}
 
-	void SceneSerializer::LoadFromFile(const std::filesystem::path& path, ECS::World& world)
+	void SceneSerializer::LoadFromFile(const std::filesystem::path& path, ECS::World& world, bool preserveCameras)
 	{
 		std::ifstream file(path);
 		if (!file.is_open()) throw std::runtime_error("Failed to open scene file for reading: " + path.string());
 
 		nlohmann::json sceneJson;
 		file >> sceneJson;
-		Deserialize(sceneJson, world);
+		Deserialize(sceneJson, world, preserveCameras);
 	}
 
 } // namespace NeneEngine

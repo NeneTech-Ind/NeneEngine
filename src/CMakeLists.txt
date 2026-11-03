@@ -90,6 +90,7 @@ target_link_libraries(NeneEngine
         Diligent-GraphicsEngineD3D12-shared
         Diligent-TextureLoader
         Diligent-Imgui
+		comdlg32
 )
 
 file(GLOB NENEENGINE_VCPKG_DEBUG_DLLS   "${NENEENGINE_VCPKG_ROOT_DIR}/debug/bin/*.dll")

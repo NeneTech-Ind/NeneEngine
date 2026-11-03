@@ -11,6 +11,10 @@
 #include "Editor/Panels/AssetBrowserPanel.h"
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
+#include "Scene/SceneSerializer.h"
+#include <Windows.h>
+#include <commdlg.h>
+#include "Core/PathResolver.h"
 
 #include <EASTL/string.h>
 #include <ImGuizmo.h>
@@ -29,6 +33,24 @@ namespace NeneEngine
 		constexpr ImU32 kPlayModeMenuBarColor = IM_COL32(90, 50, 20, 255);
 		constexpr ImU32 kStopButtonColor = IM_COL32(170, 60, 40, 255);
 		constexpr ImU32 kStopButtonHoveredColor = IM_COL32(200, 80, 55, 255);
+
+		std::filesystem::path ChooseSceneFile(bool save, const std::filesystem::path& current)
+		{
+			wchar_t buffer[32768]{};
+			const auto initial = current.empty() ? std::wstring(L"scene.json") : current.wstring();
+			wcsncpy_s(buffer, initial.c_str(), _TRUNCATE);
+			const auto directory = ResolveFromExecutionRoots("assets/scenes").wstring();
+			OPENFILENAMEW dialog{};
+			dialog.lStructSize = sizeof(dialog);
+			dialog.hwndOwner = GetActiveWindow();
+			dialog.lpstrFile = buffer;
+			dialog.nMaxFile = static_cast<DWORD>(std::size(buffer));
+			dialog.lpstrFilter = L"Scene JSON (*.json)\0*.json\0All files (*.*)\0*.*\0";
+			dialog.lpstrDefExt = L"json";
+			dialog.lpstrInitialDir = directory.c_str();
+			dialog.Flags = OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | (save ? OFN_OVERWRITEPROMPT : OFN_FILEMUSTEXIST);
+			return (save ? GetSaveFileNameW(&dialog) : GetOpenFileNameW(&dialog)) ? std::filesystem::path(buffer) : std::filesystem::path{};
+		}
 	} // namespace
 
 	EditorLayer::EditorLayer() = default;
@@ -84,6 +106,8 @@ namespace NeneEngine
 		}
 
 		m_panels.clear();
+		m_scenePath.clear();
+		m_fileStatus.clear();
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
 		m_context.reset();
@@ -121,6 +145,12 @@ namespace NeneEngine
 
 		if (ImGui::BeginMenu("File"))
 		{
+			const bool canEdit = m_context->mode == EditorMode::Edit;
+			if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
+			if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
+			if (ImGui::MenuItem("Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
+			if (!m_fileStatus.empty()) { ImGui::Separator(); ImGui::TextWrapped("%s", m_fileStatus.c_str()); }
+			ImGui::Separator();
 			if (ImGui::MenuItem("Exit") && m_requestShutdown) m_requestShutdown();
 			ImGui::EndMenu();
 		}
@@ -134,11 +164,50 @@ namespace NeneEngine
 		if (ImGui::BeginMenu("View"))
 		{
 			for (auto& entry : m_panels) ImGui::MenuItem(entry.panel->GetName(), nullptr, &entry.isOpen);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Reset Layout"))
+			{
+				const auto dockSpaceId = ImGui::GetID(kDockSpaceName);
+				ImGui::DockBuilderRemoveNode(dockSpaceId);
+				BuildDefaultLayout(dockSpaceId);
+			}
 			ImGui::EndMenu();
 		}
 
 		DrawPlayControls();
 		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::SaveScene(bool saveAs)
+	{
+		try
+		{
+			const auto path = saveAs || m_scenePath.empty() ? ChooseSceneFile(true, m_scenePath) : m_scenePath;
+			if (path.empty()) return;
+			SceneSerializer::SaveToFile(m_context->world, path);
+			m_scenePath = path;
+			m_fileStatus = "Saved: " + path.string();
+			NENE_LOG_INFO("{}", m_fileStatus);
+		}
+		catch (const std::exception& e) { m_fileStatus = e.what(); NENE_LOG_ERROR("Save scene: {}", e.what()); }
+	}
+
+	void EditorLayer::LoadScene()
+	{
+		try
+		{
+			const auto path = ChooseSceneFile(false, m_scenePath);
+			if (path.empty()) return;
+			SceneSerializer::LoadFromFile(path, m_context->world, true);
+			m_history.Clear();
+			m_sceneSnapshot.Clear();
+			m_context->selectedEntity = ECS::NullEntity;
+			for (auto& entry : m_panels) entry.panel->OnSceneLoaded();
+			m_scenePath = path;
+			m_fileStatus = "Loaded: " + path.string();
+			NENE_LOG_INFO("{}", m_fileStatus);
+		}
+		catch (const std::exception& e) { m_fileStatus = e.what(); NENE_LOG_ERROR("Load scene: {}", e.what()); }
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()
@@ -204,6 +273,9 @@ namespace NeneEngine
 			SetMode(m_context->mode == EditorMode::Play ? EditorMode::Edit : EditorMode::Play);
 
 		if (m_context->mode != EditorMode::Edit) return;
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) SaveScene(true);
+		else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) SaveScene(false);
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) LoadScene();
 
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) m_history.Undo(m_context->world);
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) ||
@@ -216,6 +288,21 @@ namespace NeneEngine
 		const ImGuiID dockSpaceId = ImGui::GetID(kDockSpaceName);
 
 		if (ImGui::DockBuilderGetNode(dockSpaceId) == nullptr) BuildDefaultLayout(dockSpaceId);
+		else
+		{
+			for (const auto& entry : m_panels)
+			{
+				if (ImGui::FindWindowSettingsByID(ImHashStr(entry.panel->GetName())) != nullptr) continue;
+				ImGuiID nodeId = ImGui::DockBuilderGetCentralNode(dockSpaceId)->ID;
+				for (const auto& other : m_panels)
+				{
+					if (other.panel->GetDefaultDockSlot() != entry.panel->GetDefaultDockSlot()) continue;
+					if (const auto* settings = ImGui::FindWindowSettingsByID(ImHashStr(other.panel->GetName())); settings && settings->DockId)
+					{ nodeId = settings->DockId; break; }
+				}
+				ImGui::DockBuilderDockWindow(entry.panel->GetName(), nodeId);
+			}
+		}
 
 		ImGui::DockSpaceOverViewport(dockSpaceId, ImGui::GetMainViewport());
 	}

@@ -9,6 +9,7 @@
 #include "ECS/World.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Graphics/Loaders/MeshLoader.h"
+#include "Graphics/Runtime/SceneAssetResolver.h"
 #include "Scene/Instantiation/ModelInstanceConfig.h"
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 
@@ -195,6 +196,10 @@ namespace NeneEngine
 					if (!texturePath.empty() && !std::filesystem::exists(texturePath)) texturePath.clear();
 					const ECS::Entity modelEntity =
 					    CreateUploadedModelEntity(world, modelEntry.entityName, modelConfig.position, modelConfig.scale);
+					auto& source = *world.GetComponent<ECS::MeshRendererComponent>(modelEntity);
+					source.meshPath = PortableAssetPath(meshPath);
+					source.texturePath = PortableAssetPath(texturePath);
+					source.shaderPath = PortableAssetPath(shaderPath);
 					bool boundForAnyRenderer = false;
 
 					for (size_t rendererIndex = 0; rendererIndex < validRenderers.size(); ++rendererIndex)
@@ -247,6 +252,11 @@ namespace NeneEngine
 				const ECS::Entity modelEntity = CreateUploadedModelEntity(
 				    world, modelEntry.entityName + "_" + std::to_string(meshPartIndex), modelConfig.position, scale,
 				    worldOffset, rotationOffsetDegrees, visible);
+				auto& source = *world.GetComponent<ECS::MeshRendererComponent>(modelEntity);
+				source.meshPath = PortableAssetPath(meshPath);
+				source.meshPart = static_cast<int>(meshPartIndex);
+				source.texturePath = PortableAssetPath(texturePath);
+				source.shaderPath = PortableAssetPath(shaderPath);
 				bool boundForAnyRenderer = false;
 
 				for (size_t rendererIndex = 0; rendererIndex < validRenderers.size(); ++rendererIndex)

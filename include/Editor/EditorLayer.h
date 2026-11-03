@@ -46,6 +46,8 @@ namespace NeneEngine
 
 		void HandleShortcuts();
 		void DrawMainMenuBar();
+		void SaveScene(bool saveAs);
+		void LoadScene();
 		void DrawHistoryMenuItems();
 		void DrawPlayControls();
 		void SetMode(EditorMode mode);
@@ -62,6 +64,8 @@ namespace NeneEngine
 		EditorSceneSnapshot m_sceneSnapshot;
 		eastl::unique_ptr<EditorContext> m_context;
 		eastl::vector<PanelEntry> m_panels;
+		std::filesystem::path m_scenePath;
+		std::string m_fileStatus;
 	};
 
 } // namespace NeneEngine
