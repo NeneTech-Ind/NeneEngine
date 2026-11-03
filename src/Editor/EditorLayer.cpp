@@ -22,7 +22,7 @@ namespace NeneEngine
 {
 	namespace
 	{
-		constexpr const char* kDockSpaceName = "EditorDockSpace";
+		constexpr const char* kDockSpaceName = "EditorMainDockSpace";
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
@@ -72,6 +72,10 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
+
+		for (auto& entry : m_panels)
+			entry.windowTitle = eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetName() + "###" +
+			                    entry.panel->GetName();
 
 		NENE_LOG_INFO("Editor initialized with {} panels", m_panels.size());
 	}
@@ -141,7 +145,7 @@ namespace NeneEngine
 
 		if (ImGui::BeginMenu("View"))
 		{
-			for (auto& entry : m_panels) ImGui::MenuItem(entry.panel->GetName(), nullptr, &entry.isOpen);
+			for (auto& entry : m_panels) ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen);
 			ImGui::EndMenu();
 		}
 
@@ -263,7 +267,7 @@ namespace NeneEngine
 				break;
 			}
 
-			ImGui::DockBuilderDockWindow(entry.panel->GetName(), nodeId);
+			ImGui::DockBuilderDockWindow(entry.windowTitle.c_str(), nodeId);
 		}
 
 		ImGui::DockBuilderFinish(dockSpaceId);
@@ -275,7 +279,7 @@ namespace NeneEngine
 		{
 			if (!entry.isOpen) continue;
 
-			if (ImGui::Begin(entry.panel->GetName(), &entry.isOpen, entry.panel->GetWindowFlags()))
+			if (ImGui::Begin(entry.windowTitle.c_str(), &entry.isOpen, entry.panel->GetWindowFlags()))
 				entry.panel->Draw(*m_context);
 			ImGui::End();
 		}

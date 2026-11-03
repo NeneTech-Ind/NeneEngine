@@ -4,6 +4,7 @@
 
 #include "ECS/Entity.h"
 #include "Editor/IEditorPanel.h"
+#include "Editor/Theme/EditorIcons.h"
 
 #include <EASTL/functional.h>
 #include <glm/glm.hpp>
@@ -20,6 +21,7 @@ namespace NeneEngine
 	{
 	  public:
 		[[nodiscard]] const char* GetName() const override { return "Inspector"; }
+		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_INSPECTOR; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Right; }
 
 		void Draw(EditorContext& context) override;

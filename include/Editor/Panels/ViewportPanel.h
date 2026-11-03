@@ -5,6 +5,7 @@
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Entity.h"
 #include "Editor/IEditorPanel.h"
+#include "Editor/Theme/EditorIcons.h"
 
 namespace NeneEngine
 {
@@ -26,6 +27,7 @@ namespace NeneEngine
 	{
 	  public:
 		[[nodiscard]] const char* GetName() const override { return "Viewport"; }
+		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_VIEWPORT; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Center; }
 		[[nodiscard]] ImGuiWindowFlags GetWindowFlags() const override
 		{

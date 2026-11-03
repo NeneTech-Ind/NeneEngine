@@ -9,6 +9,7 @@
 #include "Editor/Theme/EditorThemeService.h"
 
 #include <EASTL/functional.h>
+#include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
 
@@ -42,6 +43,7 @@ namespace NeneEngine
 		{
 			eastl::unique_ptr<IEditorPanel> panel;
 			bool isOpen = true;
+			eastl::string windowTitle;
 		};
 
 		void HandleShortcuts();

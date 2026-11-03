@@ -22,6 +22,7 @@ namespace NeneEngine
 		virtual ~IEditorPanel() = default;
 
 		[[nodiscard]] virtual const char* GetName() const = 0;
+		[[nodiscard]] virtual const char* GetIcon() const = 0;
 		[[nodiscard]] virtual EditorDockSlot GetDefaultDockSlot() const = 0;
 		[[nodiscard]] virtual ImGuiWindowFlags GetWindowFlags() const { return ImGuiWindowFlags_None; }
 
