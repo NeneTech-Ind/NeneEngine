@@ -11,8 +11,6 @@ namespace NeneEngine
 		EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Bottom; }
 		void Draw(EditorContext& context) override;
 	  private:
-		ImGuiTextFilter m_filter;
-		int m_kind = 0;
 		std::string m_selectedPath;
 	};
 }

@@ -9,11 +9,6 @@ namespace NeneEngine
 	void AssetBrowserPanel::Draw(EditorContext& context)
 	{
 		if (ImGui::Button("Refresh")) context.assets.Refresh();
-		ImGui::SameLine();
-		ImGui::SetNextItemWidth(130.0f);
-		ImGui::Combo("##Kind", &m_kind, "All\0Models\0Textures\0Shaders\0");
-		ImGui::SameLine();
-		m_filter.Draw("Search", 180.0f);
 		ImGui::TextDisabled("Drag a model or texture into Viewport to create an object");
 		if (!context.assets.Error().empty()) ImGui::TextWrapped("%s", context.assets.Error().c_str());
 		if (!context.assetError.empty()) ImGui::TextWrapped("%s", context.assetError.c_str());
@@ -21,7 +16,6 @@ namespace NeneEngine
 		{
 			for (const auto& entry : context.assets.Entries())
 			{
-				if ((m_kind != 0 && m_kind != static_cast<int>(entry.kind) + 1) || !m_filter.PassFilter(entry.path.c_str())) continue;
 				const char* label = entry.kind == AssetKind::Model ? "[Model] " : entry.kind == AssetKind::Texture ? "[Texture] " : "[Shader] ";
 				if (ImGui::Selectable((std::string(label) + entry.path).c_str(), m_selectedPath == entry.path)) m_selectedPath = entry.path;
 				if (context.mode == EditorMode::Edit && ImGui::BeginDragDropSource())
