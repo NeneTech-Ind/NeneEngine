@@ -2,6 +2,9 @@
 
 #include "Editor/Theme/EditorWidgets.h"
 
+#include "Editor/Theme/EditorIcons.h"
+#include "Editor/Theme/EditorThemeConfig.h"
+
 #include <algorithm>
 #include <string>
 
@@ -15,6 +18,21 @@ namespace NeneEngine
 		constexpr float kEmptyStateMascotSize = 128.0f;
 		constexpr float kEmptyStateMascotMinSize = 32.0f;
 		constexpr float kEmptyStateMascotWidthRatio = 0.6f;
+		constexpr const char* kReadOnlyLabel = NENE_ICON_LOCK " Read-only";
+
+		const ImVec4& GetStatusColor(const EditorThemeColorsConfig& colors, EditorStatusKind kind)
+		{
+			switch (kind)
+			{
+			case EditorStatusKind::Success:
+				return colors.success;
+			case EditorStatusKind::Danger:
+				return colors.danger;
+			case EditorStatusKind::Muted:
+				break;
+			}
+			return colors.textMuted;
+		}
 	} // namespace
 
 	float ScaledSize(float size)
@@ -62,6 +80,21 @@ namespace NeneEngine
 		drawList->AddText(ImVec2(min.x + style.FramePadding.x, min.y + style.FramePadding.y),
 		                  ImGui::GetColorU32(textColor), label);
 		ImGui::Dummy(size);
+	}
+
+	void DrawReadOnlyPill(const EditorThemeColorsConfig& colors)
+	{
+		ImGui::SameLine();
+		const float offset = (std::max)(0.0f, ImGui::GetContentRegionAvail().x - CalcStatusPillSize(kReadOnlyLabel).x);
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
+		StatusPill(kReadOnlyLabel, colors.accentPlay, colors.background);
+	}
+
+	void StatusText(const EditorThemeColorsConfig& colors, EditorStatusKind kind, const char* text)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, GetStatusColor(colors, kind));
+		ImGui::TextWrapped("%s", text);
+		ImGui::PopStyleColor();
 	}
 
 	void DrawEmptyState(const ImGuiTexture& mascot, const char* hint)
