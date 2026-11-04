@@ -20,6 +20,7 @@ namespace NeneEngine
 		void SetAsset(EditorContext& context, ECS::MeshRendererComponent& material, const std::string& path,
 		              bool texture);
 		void DrawAsset(EditorContext& context, ECS::MeshRendererComponent& material, bool texture);
+		void DrawPreview(EditorContext& context, const ECS::MeshRendererComponent& material);
 		ECS::Entity m_colorEntity = ECS::NullEntity;
 		ECS::MeshRendererComponent m_colorBefore;
 		std::string m_error;
