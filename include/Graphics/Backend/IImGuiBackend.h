@@ -29,6 +29,8 @@ namespace NeneEngine
 		virtual bool HandleWindowMessage(HWND hwnd, uint32_t message, uintptr_t wParam, intptr_t lParam,
 		                                 intptr_t& result) = 0;
 
+		[[nodiscard]] virtual float GetDpiScale() const = 0;
+
 		virtual ImGuiTexture RegisterTexture(const std::filesystem::path& path) = 0;
 		virtual void ReleaseTexture(const ImGuiTexture& texture) = 0;
 	};

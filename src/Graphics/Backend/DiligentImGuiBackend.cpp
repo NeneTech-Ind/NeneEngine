@@ -19,7 +19,7 @@ namespace NeneEngine
 
 	DiligentImGuiBackend::DiligentImGuiBackend(DiligentDX12Adapter& adapter, HWND hwnd,
 	                                           const std::filesystem::path& iniFilePath)
-	    : m_adapter(adapter), m_iniFilePath(iniFilePath.string())
+	    : m_adapter(adapter), m_hwnd(hwnd), m_iniFilePath(iniFilePath.string())
 	{
 		const SwapChainDesc& swapChainDesc = m_adapter.GetSwapChain()->GetDesc();
 		m_impl = eastl::make_unique<ImGuiImplWin32>(ImGuiDiligentCreateInfo{m_adapter.GetDevice(),
@@ -61,6 +61,12 @@ namespace NeneEngine
 		}
 
 		return false;
+	}
+
+	float DiligentImGuiBackend::GetDpiScale() const
+	{
+		const UINT dpi = m_hwnd != nullptr ? GetDpiForWindow(m_hwnd) : 0;
+		return dpi != 0 ? static_cast<float>(dpi) / static_cast<float>(USER_DEFAULT_SCREEN_DPI) : 1.0f;
 	}
 
 	ImGuiTexture DiligentImGuiBackend::RegisterTexture(const std::filesystem::path& path)

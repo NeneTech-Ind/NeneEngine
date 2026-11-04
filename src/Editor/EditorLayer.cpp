@@ -95,6 +95,7 @@ namespace NeneEngine
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		m_themeService.Apply(GetDefaultEditorThemeConfig(LoadEditorThemeVariant(GetDefaultEditorThemeConfigPath())));
+		m_themeService.SetDpiScale(m_imguiBackend->GetDpiScale());
 		m_themeService.LoadFonts();
 		m_context->monospaceFont = m_themeService.GetMonospaceFont();
 		m_context->themeColors = &m_themeService.GetColors();
@@ -164,6 +165,9 @@ namespace NeneEngine
 	void EditorLayer::Update()
 	{
 		if (m_imguiBackend == nullptr) return;
+
+		if (const float dpiScale = m_imguiBackend->GetDpiScale(); dpiScale != m_themeService.GetDpiScale())
+			m_themeService.SetDpiScale(dpiScale);
 
 		m_imguiBackend->BeginFrame();
 		ImGuizmo::BeginFrame();
@@ -323,7 +327,7 @@ namespace NeneEngine
 	{
 		const ImGuiID dockSpaceId = ImGui::GetID(kDockSpaceName);
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		const float margin = m_themeService.GetMetrics().dockingSeparatorSize;
+		const float margin = ImGui::GetStyle().DockingSeparatorSize;
 		const ImVec2 dockSpaceSize((std::max)(1.0f, viewport->WorkSize.x - margin * 2.0f),
 		                           (std::max)(1.0f, viewport->WorkSize.y - margin * 2.0f));
 
@@ -406,7 +410,7 @@ namespace NeneEngine
 	void EditorLayer::DrawDockedPanelCorners() const
 	{
 		const ImGuiWindow* window = ImGui::GetCurrentWindow();
-		const float radius = m_themeService.GetMetrics().windowRounding;
+		const float radius = ImGui::GetStyle().WindowRounding;
 		if (!window->DockIsActive || window->DockNode == nullptr || radius <= 0.0f) return;
 
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
@@ -419,7 +423,9 @@ namespace NeneEngine
 		FillCornerMask(drawList, ImVec2(rect.Min.x, rect.Max.y), 1.0f, -1.0f, radius, color);
 		FillCornerMask(drawList, rect.Max, -1.0f, -1.0f, radius, color);
 
-		const float borderSize = m_themeService.GetMetrics().panelBorderSize;
+		const float baseBorderSize = m_themeService.GetMetrics().panelBorderSize;
+		const float borderSize =
+		    baseBorderSize > 0.0f ? (std::max)(1.0f, ImTrunc(baseBorderSize * m_themeService.GetDpiScale())) : 0.0f;
 		if (borderSize > 0.0f)
 		{
 			const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

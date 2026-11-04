@@ -35,6 +35,13 @@ namespace NeneEngine
 			return atom;
 		}
 
+		void EnsureProcessDpiAwareness()
+		{
+			static const bool isDpiAware =
+			    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) != FALSE;
+			(void)isDpiAware;
+		}
+
 		std::wstring ToWideString(const std::string& value)
 		{
 			if (value.empty()) return {};
@@ -56,6 +63,7 @@ namespace NeneEngine
 
 	bool Win32Window::Create(uint32_t width, uint32_t height, const std::string& title)
 	{
+		EnsureProcessDpiAwareness();
 		if (!EnsureWindowClassRegistered()) return false;
 
 		Destroy();
@@ -66,9 +74,15 @@ namespace NeneEngine
 		m_shouldClose = false;
 		m_isMinimized = false;
 
-		RECT windowRect{0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+		const UINT dpi = GetDpiForSystem();
+		const int scaledWidth = MulDiv(static_cast<int>(width), static_cast<int>(dpi), USER_DEFAULT_SCREEN_DPI);
+		const int scaledHeight = MulDiv(static_cast<int>(height), static_cast<int>(dpi), USER_DEFAULT_SCREEN_DPI);
+		m_width = static_cast<uint32_t>(scaledWidth);
+		m_height = static_cast<uint32_t>(scaledHeight);
+
+		RECT windowRect{0, 0, scaledWidth, scaledHeight};
 		const DWORD style = WS_OVERLAPPEDWINDOW;
-		AdjustWindowRect(&windowRect, style, FALSE);
+		AdjustWindowRectExForDpi(&windowRect, style, FALSE, 0, dpi);
 
 		const std::wstring wideTitle = ToWideString(title);
 		m_hwnd = CreateWindowExW(0, kWindowClassName, wideTitle.c_str(), style, CW_USEDEFAULT, CW_USEDEFAULT,
@@ -178,6 +192,15 @@ namespace NeneEngine
 			m_isMinimized = wParam == SIZE_MINIMIZED;
 			if (!m_isMinimized) m_resized.Broadcast(m_width, m_height);
 			return 0;
+
+		case WM_DPICHANGED:
+		{
+			const RECT* suggestedRect = reinterpret_cast<const RECT*>(lParam);
+			SetWindowPos(m_hwnd, nullptr, suggestedRect->left, suggestedRect->top,
+			             suggestedRect->right - suggestedRect->left, suggestedRect->bottom - suggestedRect->top,
+			             SWP_NOZORDER | SWP_NOACTIVATE);
+			return 0;
+		}
 
 		case WM_MOUSEMOVE:
 			BeginMouseLeaveTracking();

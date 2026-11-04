@@ -5,7 +5,9 @@
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 
+#include <algorithm>
 #include <filesystem>
+#include <iterator>
 #include <string>
 
 namespace NeneEngine
@@ -48,6 +50,12 @@ namespace NeneEngine
 	{
 		m_config = config;
 		ApplyColors();
+		ApplyMetrics();
+	}
+
+	void EditorThemeService::SetDpiScale(float scale)
+	{
+		m_dpiScale = scale;
 		ApplyMetrics();
 	}
 
@@ -168,7 +176,9 @@ namespace NeneEngine
 	void EditorThemeService::ApplyMetrics() const
 	{
 		const EditorThemeMetricsConfig& metrics = m_config.metrics;
-		ImGuiStyle& style = ImGui::GetStyle();
+		ImGuiStyle& currentStyle = ImGui::GetStyle();
+		ImGuiStyle style;
+		std::copy(std::begin(currentStyle.Colors), std::end(currentStyle.Colors), std::begin(style.Colors));
 
 		style.WindowPadding = metrics.windowPadding;
 		style.FramePadding = metrics.framePadding;
@@ -184,6 +194,10 @@ namespace NeneEngine
 		style.FrameBorderSize = metrics.frameBorderSize;
 		style.TabBarOverlineSize = metrics.tabBarOverlineSize;
 		style.DockingSeparatorSize = metrics.dockingSeparatorSize;
+
+		style.ScaleAllSizes(m_dpiScale);
+		style.FontScaleDpi = m_dpiScale;
+		currentStyle = style;
 	}
 
 } // namespace NeneEngine

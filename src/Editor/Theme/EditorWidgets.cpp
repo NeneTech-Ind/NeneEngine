@@ -17,6 +17,11 @@ namespace NeneEngine
 		constexpr float kEmptyStateMascotWidthRatio = 0.6f;
 	} // namespace
 
+	float ScaledSize(float size)
+	{
+		return size * ImGui::GetStyle().FontScaleDpi;
+	}
+
 	bool PillButton(const char* label, const ImVec2& size)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, ImGui::GetFrameHeight() * 0.5f);
@@ -37,7 +42,7 @@ namespace NeneEngine
 		const ImVec2 itemMin = ImGui::GetItemRectMin();
 		const ImVec2 itemMax = ImGui::GetItemRectMax();
 		ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(left, itemMin.y),
-		                                          ImVec2(left + kSelectionMarkerWidth, itemMax.y),
+		                                          ImVec2(left + ScaledSize(kSelectionMarkerWidth), itemMax.y),
 		                                          ImGui::GetColorU32(color));
 	}
 
@@ -53,9 +58,9 @@ namespace NeneEngine
 		{
 			const float aspect = static_cast<float>(mascot.height) / static_cast<float>(mascot.width);
 			const float maxHeight = available.y - textSize.y - style.ItemSpacing.y;
-			const float width = (std::min)({kEmptyStateMascotSize, available.x * kEmptyStateMascotWidthRatio,
-			                                maxHeight / aspect});
-			if (width >= kEmptyStateMascotMinSize) imageSize = ImVec2(width, width * aspect);
+			const float width = (std::min)(
+			    {ScaledSize(kEmptyStateMascotSize), available.x * kEmptyStateMascotWidthRatio, maxHeight / aspect});
+			if (width >= ScaledSize(kEmptyStateMascotMinSize)) imageSize = ImVec2(width, width * aspect);
 		}
 
 		const bool hasImage = imageSize.x > 0.0f;
@@ -116,14 +121,14 @@ namespace NeneEngine
 	{
 		m_drawList->ChannelsSplit(2);
 		m_drawList->ChannelsSetCurrent(1);
-		ImGui::Dummy(ImVec2(0.0f, kCardPadding));
-		ImGui::Indent(kCardPadding);
+		ImGui::Dummy(ImVec2(0.0f, ScaledSize(kCardPadding)));
+		ImGui::Indent(ScaledSize(kCardPadding));
 	}
 
 	ComponentCardScope::~ComponentCardScope()
 	{
-		ImGui::Unindent(kCardPadding);
-		ImGui::Dummy(ImVec2(0.0f, kCardPadding));
+		ImGui::Unindent(ScaledSize(kCardPadding));
+		ImGui::Dummy(ImVec2(0.0f, ScaledSize(kCardPadding)));
 
 		const float bottom = ImGui::GetItemRectMax().y;
 		m_drawList->ChannelsSetCurrent(0);

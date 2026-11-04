@@ -33,7 +33,8 @@ namespace NeneEngine
 		if (!m_sharedDevice) m_sharedDevice = eastl::make_shared<DiligentDX12SharedDevice>();
 
 		auto renderer = eastl::make_unique<DiligentDX12Adapter>(m_sharedDevice);
-		if (!renderer->Init(windowContext.window->GetHWND(), width, height))
+		if (!renderer->Init(windowContext.window->GetHWND(), windowContext.window->GetWidth(),
+		                    windowContext.window->GetHeight()))
 		{
 			NENE_LOG_ERROR("Failed to initialize renderer for window '{}'", title);
 			return eastl::nullopt;

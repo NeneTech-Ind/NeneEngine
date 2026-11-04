@@ -15,6 +15,7 @@ namespace NeneEngine
 		bool deactivatedAfterEdit = false;
 	};
 
+	[[nodiscard]] float ScaledSize(float size);
 	bool PillButton(const char* label, const ImVec2& size = ImVec2(0.0f, 0.0f));
 	bool ComponentHeader(const char* icon, const char* label);
 	void DrawSelectionMarker(const ImVec4& color);

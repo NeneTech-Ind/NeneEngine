@@ -131,7 +131,8 @@ namespace NeneEngine
 		AddAppSystem(eastl::make_unique<ECS::CameraControllerSystem>(storedWindowContext.inputManager, cameraEntity));
 		AddAppSystem(eastl::make_unique<ECS::DebugDrawControlSystem>(storedWindowContext.inputManager));
 
-		HandleWindowResize(windowIndex, width, height);
+		const IWindow& window = *storedWindowContext.window;
+		HandleWindowResize(windowIndex, window.GetWidth(), window.GetHeight());
 		return true;
 	}
 

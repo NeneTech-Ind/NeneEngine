@@ -7,6 +7,7 @@
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
+#include "Editor/Theme/EditorWidgets.h"
 
 #include <cctype>
 #include <filesystem>
@@ -108,7 +109,7 @@ namespace NeneEngine
 
 		const ImGuiViewport* viewport = ImGui::GetMainViewport();
 		ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-		ImGui::SetNextWindowSize(ImVec2(kWindowWidth, kWindowHeight), ImGuiCond_Appearing);
+		ImGui::SetNextWindowSize(ImVec2(ScaledSize(kWindowWidth), ScaledSize(kWindowHeight)), ImGuiCond_Appearing);
 		constexpr ImGuiWindowFlags kFlags =
 		    ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
 		if (ImGui::Begin(kWindowTitle, &m_isOpen, kFlags))

@@ -7,6 +7,7 @@
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
+#include "Editor/Theme/EditorWidgets.h"
 
 #include <ImGuizmo.h>
 #include <algorithm>
@@ -175,10 +176,11 @@ namespace NeneEngine
 		const ImVec2 groupMin = ImGui::GetItemRectMin();
 		const ImVec2 groupMax = ImGui::GetItemRectMax();
 		drawList->ChannelsSetCurrent(0);
-		drawList->AddRectFilled(ImVec2(groupMin.x - kToolbarBackdropPadding, groupMin.y - kToolbarBackdropPadding),
-		                        ImVec2(groupMax.x + kToolbarBackdropPadding, groupMax.y + kToolbarBackdropPadding),
+		const float padding = ScaledSize(kToolbarBackdropPadding);
+		drawList->AddRectFilled(ImVec2(groupMin.x - padding, groupMin.y - padding),
+		                        ImVec2(groupMax.x + padding, groupMax.y + padding),
 		                        ImGui::GetColorU32(ImGuiCol_PopupBg, kToolbarBackdropAlpha),
-		                        style.FrameRounding + kToolbarBackdropPadding);
+		                        style.FrameRounding + padding);
 		drawList->ChannelsMerge();
 	}
 

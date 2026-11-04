@@ -34,11 +34,13 @@ namespace NeneEngine
 		void Render() override;
 		bool HandleWindowMessage(HWND hwnd, uint32_t message, uintptr_t wParam, intptr_t lParam,
 		                         intptr_t& result) override;
+		[[nodiscard]] float GetDpiScale() const override;
 		ImGuiTexture RegisterTexture(const std::filesystem::path& path) override;
 		void ReleaseTexture(const ImGuiTexture& texture) override;
 
 	  private:
 		DiligentDX12Adapter& m_adapter;
+		HWND m_hwnd = nullptr;
 		std::string m_iniFilePath;
 		eastl::unique_ptr<Diligent::ImGuiImplWin32> m_impl;
 		eastl::unordered_map<uint64_t, Diligent::RefCntAutoPtr<Diligent::ITexture>> m_textures;
