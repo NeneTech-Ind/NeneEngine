@@ -1,4 +1,7 @@
+// EditorAssetActions.cpp
+
 #include "Editor/EditorAssetActions.h"
+
 #include "Core/NeneLogger.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/TagComponent.h"
@@ -7,6 +10,7 @@
 #include "Editor/EditorHistory.h"
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Scene/Instantiation/ModelInstanceConfig.h"
+
 #include <vector>
 
 namespace NeneEngine

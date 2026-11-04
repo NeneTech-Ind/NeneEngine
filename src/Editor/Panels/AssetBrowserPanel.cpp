@@ -1,9 +1,13 @@
+// AssetBrowserPanel.cpp
+
 #include "Editor/Panels/AssetBrowserPanel.h"
+
 #include "Editor/AssetCatalog.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IRenderAdapter.h"
+
 #include <algorithm>
 
 namespace NeneEngine

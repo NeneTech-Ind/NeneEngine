@@ -40,12 +40,11 @@ namespace NeneEngine
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
-		constexpr const char* kProductName = "NeneEngine";
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
-		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png",
-		                                        "mascot_happy_256.png", "mascot_scared_256.png"};
+		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png", "mascot_happy_256.png",
+		                                        "mascot_scared_256.png"};
 		static_assert(std::size(kMascotFiles) == static_cast<size_t>(EditorMascotPose::Count));
 
 		constexpr const char* kStatusBarName = "##EditorStatusBar";
@@ -159,8 +158,8 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<MaterialEditorPanel>()});
 
 		for (auto& entry : m_panels)
-			entry.windowTitle = eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetName() + "###" +
-			                    entry.panel->GetName();
+			entry.windowTitle =
+			    eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetName() + "###" + entry.panel->GetName();
 
 		NENE_LOG_INFO("Editor initialized with {} panels", m_panels.size());
 	}
@@ -631,8 +630,8 @@ namespace NeneEngine
 			const ImVec4& borderColor = isFocused ? colors.accent : colors.border;
 			const float inset = borderSize * 0.5f;
 			drawList->AddRect(ImVec2(rect.Min.x + inset, rect.Min.y + inset),
-			                  ImVec2(rect.Max.x - inset, rect.Max.y - inset),
-			                  ImGui::GetColorU32(borderColor), radius, 0, borderSize);
+			                  ImVec2(rect.Max.x - inset, rect.Max.y - inset), ImGui::GetColorU32(borderColor), radius,
+			                  0, borderSize);
 		}
 		drawList->PopClipRect();
 	}

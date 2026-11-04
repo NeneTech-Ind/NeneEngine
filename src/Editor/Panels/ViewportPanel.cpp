@@ -250,10 +250,9 @@ namespace NeneEngine
 		const ImVec2 groupMax = ImGui::GetItemRectMax();
 		drawList->ChannelsSetCurrent(0);
 		const float padding = ScaledSize(kToolbarBackdropPadding);
-		drawList->AddRectFilled(ImVec2(groupMin.x - padding, groupMin.y - padding),
-		                        ImVec2(groupMax.x + padding, groupMax.y + padding),
-		                        ImGui::GetColorU32(ImGuiCol_PopupBg, kToolbarBackdropAlpha),
-		                        style.FrameRounding + padding);
+		drawList->AddRectFilled(
+		    ImVec2(groupMin.x - padding, groupMin.y - padding), ImVec2(groupMax.x + padding, groupMax.y + padding),
+		    ImGui::GetColorU32(ImGuiCol_PopupBg, kToolbarBackdropAlpha), style.FrameRounding + padding);
 		drawList->ChannelsMerge();
 	}
 

@@ -1,6 +1,10 @@
+// AssetBrowserPanel.h
+
 #pragma once
+
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorIcons.h"
+
 #include <EASTL/vector.h>
 #include <cstddef>
 #include <string>
@@ -10,9 +14,9 @@ namespace NeneEngine
 	class AssetBrowserPanel final : public IEditorPanel
 	{
 	  public:
-		const char* GetName() const override { return "Asset Browser"; }
+		[[nodiscard]] const char* GetName() const override { return "Asset Browser"; }
 		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_FOLDER; }
-		EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Bottom; }
+		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Bottom; }
 		void Draw(EditorContext& context) override;
 
 	  private:

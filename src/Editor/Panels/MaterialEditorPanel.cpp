@@ -1,10 +1,14 @@
+// MaterialEditorPanel.cpp
+
 #include "Editor/Panels/MaterialEditorPanel.h"
+
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IRenderAdapter.h"
+
 #include <algorithm>
 #include <glm/gtc/type_ptr.hpp>
 

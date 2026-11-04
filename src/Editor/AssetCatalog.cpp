@@ -1,6 +1,10 @@
+// AssetCatalog.cpp
+
 #include "Editor/AssetCatalog.h"
+
 #include "Core/PathResolver.h"
 #include "Graphics/Runtime/SceneAssetResolver.h"
+
 #include <algorithm>
 #include <cctype>
 

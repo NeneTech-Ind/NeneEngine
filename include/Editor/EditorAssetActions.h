@@ -1,4 +1,7 @@
+// EditorAssetActions.h
+
 #pragma once
+
 #include <glm/vec3.hpp>
 #include <string>
 

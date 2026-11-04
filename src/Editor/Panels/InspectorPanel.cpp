@@ -96,11 +96,9 @@ namespace NeneEngine
 			if (edits.colors != nullptr)
 				return DrawAxisField(label, glm::value_ptr(value), speed, min, max, flags, edits);
 
-			return DrawValueField(label, edits,
-			                      [&](const char* widgetId) {
-				                      return ImGui::DragFloat3(widgetId, glm::value_ptr(value), speed, min, max, "%.3f",
-				                                               flags);
-			                      });
+			return DrawValueField(
+			    label, edits, [&](const char* widgetId)
+			    { return ImGui::DragFloat3(widgetId, glm::value_ptr(value), speed, min, max, "%.3f", flags); });
 		}
 
 		bool DragFloat(const char* label, float& value, float speed, FieldEdits& edits, float min = 0.0f,
@@ -170,6 +168,15 @@ namespace NeneEngine
 
 			ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 			ImGui::TextUnformatted("Tint");
+		}
+
+		void DrawReadOnlyValue(ImFont* font, const char* label, const char* value)
+		{
+			if (font != nullptr) ImGui::PushFont(font, 0.0f);
+			ImGui::TextUnformatted(value);
+			if (font != nullptr) ImGui::PopFont();
+			ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+			ImGui::TextUnformatted(label);
 		}
 
 		std::string GetEntityLabel(const ECS::World& world, ECS::Entity entity)
@@ -249,7 +256,7 @@ namespace NeneEngine
 		ImGui::AlignTextToFramePadding();
 		ImGui::Text("Entity %u", static_cast<uint32_t>(entt::to_integral(context.selectedEntity)));
 
-		if (context.mode == EditorMode::Play && context.themeColors != nullptr) DrawReadOnlyPill(*context.themeColors);
+		if (context.mode == EditorMode::Play) DrawReadOnlyPill(*context.themeColors);
 
 		if (const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(context.selectedEntity))
 		{
@@ -274,7 +281,7 @@ namespace NeneEngine
 		                                       [this, entity](ECS::TransformComponent& transform, FieldEdits& edits)
 		                                       { DrawTransformFields(entity, transform, edits); });
 
-		DrawComponent<ECS::MeshRendererComponent>(context, NENE_ICON_PRIMITIVE, "Mesh Renderer",
+		DrawComponent<ECS::MeshRendererComponent>(context, NENE_ICON_MESH, "Mesh Renderer",
 		                                          [](ECS::MeshRendererComponent& meshRenderer, FieldEdits& edits)
 		                                          {
 			                                          EnumCombo("Primitive", meshRenderer.primitiveType,
@@ -309,8 +316,9 @@ namespace NeneEngine
 		    contactState != nullptr && ComponentHeader(NENE_ICON_SNAP, "Contact State"))
 		{
 			ComponentCardScope card;
-			ImGui::Text("Contacts: %u", contactState->contactCount);
-			ImGui::Text("Grounded: %s", contactState->isGrounded ? "yes" : "no");
+			const std::string contactCount = std::to_string(contactState->contactCount);
+			DrawReadOnlyValue(context.monospaceFont, "Contacts", contactCount.c_str());
+			DrawReadOnlyValue(context.monospaceFont, "Grounded", contactState->isGrounded ? "yes" : "no");
 		}
 
 		DrawComponent<ECS::MovementComponent>(context, NENE_ICON_MOVEMENT, "Movement",
@@ -350,7 +358,7 @@ namespace NeneEngine
 			    DragFloat("FOV", camera.fovDegrees, 0.1f, edits, 1.0f, 179.0f);
 			    DragFloat("Near", camera.nearPlane, 0.01f, edits, 0.001f, camera.farPlane);
 			    DragFloat("Far", camera.farPlane, 1.0f, edits, camera.nearPlane, 100000.0f);
-			    ImGui::TextDisabled("Primary: %s", camera.isPrimary ? "yes" : "no");
+			    DrawReadOnlyValue(edits.valueFont, "Primary", camera.isPrimary ? "yes" : "no");
 		    });
 
 		DrawComponent<ECS::CameraControllerComponent>(

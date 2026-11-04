@@ -26,6 +26,8 @@ namespace NeneEngine
 		class World;
 	}
 
+	inline constexpr const char* kProductName = "NeneEngine";
+
 	enum class EditorMascotPose
 	{
 		Sleep,
