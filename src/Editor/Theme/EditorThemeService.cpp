@@ -17,7 +17,7 @@ namespace NeneEngine
 		constexpr float kSelectedAlpha = 0.25f;
 		constexpr float kFrameHoveredAlpha = 0.18f;
 		constexpr float kFrameActiveAlpha = 0.28f;
-		constexpr float kIconGlyphOffsetRatio = 0.125f;
+		constexpr float kIconGlyphOffsetRatio = 0.25f;
 
 		ImVec4 WithAlpha(const ImVec4& color, float alpha)
 		{
