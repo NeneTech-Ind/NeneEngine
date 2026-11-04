@@ -7,6 +7,12 @@
 
 namespace NeneEngine
 {
+	enum class EditorThemeVariant
+	{
+		Evening,
+		Day
+	};
+
 	struct EditorThemeColorsConfig
 	{
 		ImVec4 background{};
@@ -52,10 +58,13 @@ namespace NeneEngine
 
 	struct EditorThemeConfig
 	{
+		EditorThemeVariant variant = EditorThemeVariant::Evening;
 		EditorThemeColorsConfig colors{};
 		EditorThemeMetricsConfig metrics{};
 		EditorThemeFontsConfig fonts{};
 	};
 
-	[[nodiscard]] EditorThemeConfig GetDefaultEditorThemeConfig();
+	[[nodiscard]] EditorThemeColorsConfig GetEditorThemeColors(EditorThemeVariant variant);
+	[[nodiscard]] EditorThemeConfig
+	GetDefaultEditorThemeConfig(EditorThemeVariant variant = EditorThemeVariant::Evening);
 } // namespace NeneEngine

@@ -49,6 +49,8 @@ namespace NeneEngine
 		void HandleShortcuts();
 		void DrawMainMenuBar();
 		void DrawHistoryMenuItems();
+		void DrawThemeMenu();
+		void SetTheme(EditorThemeVariant variant);
 		void DrawPlayControls();
 		void SetMode(EditorMode mode);
 		void DrawDockSpace();

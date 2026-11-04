@@ -10,6 +10,7 @@
 #include "Editor/Panels/StatisticsPanel.h"
 #include "Editor/Panels/ViewportPanel.h"
 #include "Editor/Theme/EditorIcons.h"
+#include "Editor/Theme/EditorThemeLoader.h"
 #include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
@@ -73,7 +74,7 @@ namespace NeneEngine
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		m_themeService.Apply(GetDefaultEditorThemeConfig());
+		m_themeService.Apply(GetDefaultEditorThemeConfig(LoadEditorThemeVariant(GetDefaultEditorThemeConfigPath())));
 		m_themeService.LoadFonts();
 		m_context->monospaceFont = m_themeService.GetMonospaceFont();
 		m_context->themeColors = &m_themeService.GetColors();
@@ -182,6 +183,8 @@ namespace NeneEngine
 		if (ImGui::BeginMenu("View"))
 		{
 			for (auto& entry : m_panels) ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen);
+			ImGui::Separator();
+			DrawThemeMenu();
 			ImGui::EndMenu();
 		}
 
@@ -196,6 +199,25 @@ namespace NeneEngine
 			    ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), ImGui::GetColorU32(colors.accentPlay));
 		}
 		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::DrawThemeMenu()
+	{
+		if (!ImGui::BeginMenu("Theme")) return;
+
+		const EditorThemeVariant current = m_themeService.GetVariant();
+		if (ImGui::MenuItem("Evening", nullptr, current == EditorThemeVariant::Evening))
+			SetTheme(EditorThemeVariant::Evening);
+		if (ImGui::MenuItem("Day", nullptr, current == EditorThemeVariant::Day)) SetTheme(EditorThemeVariant::Day);
+		ImGui::EndMenu();
+	}
+
+	void EditorLayer::SetTheme(EditorThemeVariant variant)
+	{
+		if (m_themeService.GetVariant() == variant) return;
+
+		m_themeService.Apply(GetDefaultEditorThemeConfig(variant));
+		SaveEditorThemeVariant(GetDefaultEditorThemeConfigPath(), variant);
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()

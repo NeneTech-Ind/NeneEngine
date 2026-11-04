@@ -12,6 +12,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/ViewportPanel.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorIcons.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeConfig.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeLoader.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeService.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorWidgets.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorHistory.cpp"
@@ -22,6 +23,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Panels/StatisticsPanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Panels/ViewportPanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Theme/EditorThemeConfig.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Theme/EditorThemeLoader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Theme/EditorThemeService.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Theme/EditorWidgets.cpp"
 )

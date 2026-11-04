@@ -12,6 +12,7 @@
 
 # Local project configuration
 assets/config/engine.json
+assets/config/editor_theme.json
 CMakeUserPresets.json
 /CMakeUserPresets.json
 

@@ -12,6 +12,7 @@ namespace NeneEngine
 		void Apply(const EditorThemeConfig& config);
 		void LoadFonts();
 
+		[[nodiscard]] EditorThemeVariant GetVariant() const { return m_config.variant; }
 		[[nodiscard]] const EditorThemeColorsConfig& GetColors() const { return m_config.colors; }
 		[[nodiscard]] ImFont* GetMonospaceFont() const { return m_monospaceFont; }
 
