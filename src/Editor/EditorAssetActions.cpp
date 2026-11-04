@@ -62,7 +62,6 @@ namespace NeneEngine
 	bool CreateSceneAsset(EditorContext& context, const std::string& path, bool isTexture, const glm::vec3& position)
 	{
 		if (context.mode != EditorMode::Edit || context.renderer == nullptr) return false;
-		context.assetError.clear();
 		std::vector<CreatedEntity> created;
 		try
 		{
@@ -109,13 +108,14 @@ namespace NeneEngine
 			}
 			context.history.Execute(eastl::make_unique<CreateAssetCommand>(std::move(created)), context.world);
 			context.selectedEntity = root;
+			context.SetStatus(EditorStatusKind::Success, "Created: " + path.substr(path.find_last_of("/\\") + 1));
 			return true;
 		}
 		catch (const std::exception& e)
 		{
 			for (const auto& entry : created)
 				if (context.world.GetRegistry().valid(entry.entity)) context.world.DestroyEntity(entry.entity);
-			context.assetError = e.what();
+			context.SetStatus(EditorStatusKind::Danger, e.what());
 			NENE_LOG_ERROR("Asset creation failed: {}", e.what());
 			return false;
 		}

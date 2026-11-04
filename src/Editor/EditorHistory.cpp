@@ -4,6 +4,8 @@
 
 #include "Core/NeneLogger.h"
 
+#include <limits>
+
 namespace NeneEngine
 {
 
@@ -23,7 +25,9 @@ namespace NeneEngine
 	{
 		if (!command) return;
 
+		if (m_savedPosition > m_position) m_savedPosition = (std::numeric_limits<size_t>::max)();
 		m_redoStack.clear();
+		++m_position;
 		PushUndo(std::move(command));
 	}
 
@@ -33,6 +37,7 @@ namespace NeneEngine
 
 		eastl::unique_ptr<IEditorCommand> command = std::move(m_undoStack.back());
 		m_undoStack.pop_back();
+		--m_position;
 
 		command->Undo(world);
 		NENE_LOG_DEBUG("Editor undo: {}", command->GetName());
@@ -46,6 +51,7 @@ namespace NeneEngine
 
 		eastl::unique_ptr<IEditorCommand> command = std::move(m_redoStack.back());
 		m_redoStack.pop_back();
+		++m_position;
 
 		command->Execute(world);
 		NENE_LOG_DEBUG("Editor redo: {}", command->GetName());
@@ -57,6 +63,8 @@ namespace NeneEngine
 	{
 		m_undoStack.clear();
 		m_redoStack.clear();
+		m_position = 0;
+		m_savedPosition = 0;
 	}
 
 	const char* EditorHistory::GetUndoName() const

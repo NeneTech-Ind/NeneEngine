@@ -45,7 +45,9 @@ namespace NeneEngine
 		bool Undo(ECS::World& world);
 		bool Redo(ECS::World& world);
 		void Clear();
+		void MarkSaved() { m_savedPosition = m_position; }
 
+		[[nodiscard]] bool IsDirty() const { return m_position != m_savedPosition; }
 		[[nodiscard]] bool CanUndo() const { return !m_undoStack.empty(); }
 		[[nodiscard]] bool CanRedo() const { return !m_redoStack.empty(); }
 		[[nodiscard]] const char* GetUndoName() const;
@@ -59,6 +61,8 @@ namespace NeneEngine
 		size_t m_capacity;
 		CommandStack m_undoStack;
 		CommandStack m_redoStack;
+		size_t m_position = 0;
+		size_t m_savedPosition = 0;
 	};
 
 } // namespace NeneEngine

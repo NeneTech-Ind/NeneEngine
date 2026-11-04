@@ -19,20 +19,6 @@ namespace NeneEngine
 		constexpr float kEmptyStateMascotMinSize = 32.0f;
 		constexpr float kEmptyStateMascotWidthRatio = 0.6f;
 		constexpr const char* kReadOnlyLabel = NENE_ICON_LOCK " Read-only";
-
-		const ImVec4& GetStatusColor(const EditorThemeColorsConfig& colors, EditorStatusKind kind)
-		{
-			switch (kind)
-			{
-			case EditorStatusKind::Success:
-				return colors.success;
-			case EditorStatusKind::Danger:
-				return colors.danger;
-			case EditorStatusKind::Muted:
-				break;
-			}
-			return colors.textMuted;
-		}
 	} // namespace
 
 	float ScaledSize(float size)
@@ -88,6 +74,20 @@ namespace NeneEngine
 		const float offset = (std::max)(0.0f, ImGui::GetContentRegionAvail().x - CalcStatusPillSize(kReadOnlyLabel).x);
 		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
 		StatusPill(kReadOnlyLabel, colors.accentPlay, colors.background);
+	}
+
+	const ImVec4& GetStatusColor(const EditorThemeColorsConfig& colors, EditorStatusKind kind)
+	{
+		switch (kind)
+		{
+		case EditorStatusKind::Success:
+			return colors.success;
+		case EditorStatusKind::Danger:
+			return colors.danger;
+		case EditorStatusKind::Muted:
+			break;
+		}
+		return colors.textMuted;
 	}
 
 	void StatusText(const EditorThemeColorsConfig& colors, EditorStatusKind kind, const char* text)

@@ -11,7 +11,6 @@ namespace NeneEngine
 		if (ImGui::Button("Refresh")) context.assets.Refresh();
 		ImGui::TextDisabled("Drag a model or texture into Viewport to create an object");
 		if (!context.assets.Error().empty()) ImGui::TextWrapped("%s", context.assets.Error().c_str());
-		if (!context.assetError.empty()) ImGui::TextWrapped("%s", context.assetError.c_str());
 		if (ImGui::BeginChild("AssetList", ImVec2(ImGui::GetContentRegionAvail().x * 0.7f, 0), ImGuiChildFlags_Borders))
 		{
 			for (const auto& entry : context.assets.Entries())
