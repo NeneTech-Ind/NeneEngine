@@ -37,9 +37,7 @@ namespace NeneEngine
 		std::string GetDisplayName(const entt::registry& registry, ECS::Entity entity)
 		{
 			const auto* tag = registry.try_get<ECS::TagComponent>(entity);
-			std::string name = tag != nullptr && !tag->name.empty() ? tag->name : "Entity";
-			if (registry.all_of<ECS::CameraComponent>(entity)) name += " [camera]";
-			return name;
+			return tag != nullptr && !tag->name.empty() ? tag->name : "Entity";
 		}
 
 		const char* GetEntityIcon(const entt::registry& registry, ECS::Entity entity)
