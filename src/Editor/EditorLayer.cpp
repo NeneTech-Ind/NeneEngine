@@ -151,9 +151,9 @@ namespace NeneEngine
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
+		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
-		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
 
 		for (auto& entry : m_panels)
 			entry.windowTitle =
@@ -586,6 +586,13 @@ namespace NeneEngine
 		}
 
 		ImGui::DockBuilderFinish(dockSpaceId);
+
+		const auto firstBottomPanel =
+		    std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
+		                 { return entry.panel->GetDefaultDockSlot() == EditorDockSlot::Bottom; });
+		if (ImGuiDockNode* bottomNode = ImGui::DockBuilderGetNode(bottomId);
+		    bottomNode != nullptr && firstBottomPanel != m_panels.end())
+			bottomNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(firstBottomPanel->windowTitle.c_str()));
 	}
 
 	void EditorLayer::DrawPanels()
