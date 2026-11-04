@@ -251,11 +251,11 @@ namespace NeneEngine
 		if (ImGui::BeginMenu("File"))
 		{
 			const bool canEdit = m_context->mode == EditorMode::Edit;
-			if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
-			if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
-			if (ImGui::MenuItem("Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
+			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
+			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
+			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
 			ImGui::Separator();
-			if (ImGui::MenuItem("Exit") && m_requestShutdown) m_requestShutdown();
+			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit") && m_requestShutdown) m_requestShutdown();
 			ImGui::EndMenu();
 		}
 
@@ -270,7 +270,7 @@ namespace NeneEngine
 			for (auto& entry : m_panels) ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen);
 			ImGui::Separator();
 			DrawThemeMenu();
-			if (ImGui::MenuItem("Reset Layout"))
+			if (ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
 			{
 				const auto dockSpaceId = ImHashStr(kDockSpaceName);
 				ImGui::DockBuilderRemoveNode(dockSpaceId);
@@ -294,9 +294,10 @@ namespace NeneEngine
 		if (!ImGui::BeginMenu("Theme")) return;
 
 		const EditorThemeVariant current = m_themeService.GetVariant();
-		if (ImGui::MenuItem("Evening", nullptr, current == EditorThemeVariant::Evening))
+		if (ImGui::MenuItem(NENE_ICON_MOON " Evening", nullptr, current == EditorThemeVariant::Evening))
 			SetTheme(EditorThemeVariant::Evening);
-		if (ImGui::MenuItem("Day", nullptr, current == EditorThemeVariant::Day)) SetTheme(EditorThemeVariant::Day);
+		if (ImGui::MenuItem(NENE_ICON_SUN " Day", nullptr, current == EditorThemeVariant::Day))
+			SetTheme(EditorThemeVariant::Day);
 		ImGui::EndMenu();
 	}
 
@@ -416,12 +417,14 @@ namespace NeneEngine
 		const bool isEditMode = m_context->mode == EditorMode::Edit;
 
 		const char* undoName = m_history.GetUndoName();
-		const eastl::string undoLabel = undoName != nullptr ? eastl::string("Undo ") + undoName : "Undo";
+		const eastl::string undoLabel =
+		    undoName != nullptr ? eastl::string(NENE_ICON_UNDO " Undo ") + undoName : NENE_ICON_UNDO " Undo";
 		if (ImGui::MenuItem(undoLabel.c_str(), "Ctrl+Z", false, isEditMode && m_history.CanUndo()))
 			m_history.Undo(m_context->world);
 
 		const char* redoName = m_history.GetRedoName();
-		const eastl::string redoLabel = redoName != nullptr ? eastl::string("Redo ") + redoName : "Redo";
+		const eastl::string redoLabel =
+		    redoName != nullptr ? eastl::string(NENE_ICON_REDO " Redo ") + redoName : NENE_ICON_REDO " Redo";
 		if (ImGui::MenuItem(redoLabel.c_str(), "Ctrl+Y", false, isEditMode && m_history.CanRedo()))
 			m_history.Redo(m_context->world);
 	}
@@ -453,7 +456,8 @@ namespace NeneEngine
 		if (isPlaying)
 		{
 			ImGui::SameLine();
-			ImGui::TextColored(m_themeService.GetColors().accentPlay, "PLAYING");
+			const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+			StatusPill(NENE_ICON_PLAY " Playing", colors.accentPlay, colors.background);
 		}
 	}
 
