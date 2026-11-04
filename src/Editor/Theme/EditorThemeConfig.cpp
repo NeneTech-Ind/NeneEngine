@@ -27,7 +27,7 @@ namespace NeneEngine
 			colors.border = ToImVec4(0xEBCAD5);
 			colors.text = ToImVec4(0x3A2E39);
 			colors.textMuted = ToImVec4(0x74606F);
-			colors.accent = ToImVec4(0xB8295A);
+			colors.accent = ToImVec4(0x6B3FC4);
 			colors.accentPlay = ToImVec4(0xA34E0C);
 			colors.success = ToImVec4(0x17795D);
 			colors.danger = ToImVec4(0xC42F43);
@@ -43,7 +43,7 @@ namespace NeneEngine
 		colors.border = ToImVec4(0x3D3445);
 		colors.text = ToImVec4(0xF4EDF2);
 		colors.textMuted = ToImVec4(0xA99BAE);
-		colors.accent = ToImVec4(0xFF8FB1);
+		colors.accent = ToImVec4(0xB79CFF);
 		colors.accentPlay = ToImVec4(0xFFB37A);
 		colors.success = ToImVec4(0x7FD8BE);
 		colors.danger = ToImVec4(0xFF6B7A);
