@@ -189,7 +189,7 @@ namespace NeneEngine
 		auto& windowContext = m_windows[windowIndex];
 		if (windowContext.renderer) windowContext.renderer->Resize(width, height);
 
-		if (m_world != nullptr)
+		if (m_world != nullptr && !(windowContext.isMain && windowContext.imguiBackend))
 		{
 			if (auto* camera = m_world->GetComponent<ECS::CameraComponent>(windowContext.cameraEntity))
 				camera->aspectRatio = static_cast<float>(width) / static_cast<float>(height);
@@ -307,6 +307,12 @@ namespace NeneEngine
 	{
 		AppWindowContext* mainWindow = FindMainWindow();
 		return mainWindow != nullptr ? mainWindow->imguiBackend.get() : nullptr;
+	}
+
+	IRenderAdapter* AppWindowRuntimeService::GetMainRenderer()
+	{
+		AppWindowContext* mainWindow = FindMainWindow();
+		return mainWindow != nullptr ? mainWindow->renderer.get() : nullptr;
 	}
 
 	InputDevice* AppWindowRuntimeService::GetMainWindowInput()

@@ -1,4 +1,12 @@
 target_sources(NeneEngine PRIVATE
+	"${CMAKE_CURRENT_SOURCE_DIR}/Panels/MaterialEditorPanel.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/MaterialEditorPanel.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/AssetCatalog.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/EditorAssetActions.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/Panels/AssetBrowserPanel.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/AssetCatalog.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorAssetActions.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/AssetBrowserPanel.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Commands/ComponentChangeCommand.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Commands/IEditorCommand.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorAboutWindow.h"

@@ -26,6 +26,12 @@ namespace NeneEngine
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Right; }
 
 		void Draw(EditorContext& context) override;
+		void OnSceneLoaded() override
+		{
+			m_commitPendingEdit = nullptr;
+			m_pendingEditLabel = nullptr;
+			m_eulerEntity = ECS::NullEntity;
+		}
 
 		struct FieldEdits
 		{

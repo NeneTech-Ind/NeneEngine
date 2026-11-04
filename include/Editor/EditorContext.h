@@ -3,7 +3,9 @@
 #pragma once
 
 #include "ECS/Entity.h"
+#include "Editor/AssetCatalog.h"
 #include "Graphics/Backend/IImGuiBackend.h"
+#include "Graphics/Runtime/SceneAssetResolver.h"
 
 #include <EASTL/array.h>
 #include <cstddef>
@@ -13,6 +15,7 @@ struct ImFont;
 namespace NeneEngine
 {
 	class EditorHistory;
+	class IRenderAdapter;
 	struct EditorThemeColorsConfig;
 
 	namespace ECS
@@ -44,6 +47,10 @@ namespace NeneEngine
 		EditorMode mode = EditorMode::Edit;
 		bool isViewportHovered = false;
 		bool isViewportFocused = false;
+		IRenderAdapter* renderer = nullptr;
+		AssetCatalog assets;
+		SceneAssetResolver assetResolver;
+		std::string assetError;
 		ImFont* monospaceFont = nullptr;
 		const EditorThemeColorsConfig* themeColors = nullptr;
 		eastl::array<ImGuiTexture, static_cast<size_t>(EditorMascotPose::Count)> mascots{};

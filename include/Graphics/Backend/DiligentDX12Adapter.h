@@ -51,6 +51,7 @@ namespace NeneEngine
 		{
 			Diligent::RefCntAutoPtr<Diligent::ITexture> texture;
 			Diligent::RefCntAutoPtr<Diligent::ITextureView> shaderResourceView;
+			Diligent::RefCntAutoPtr<Diligent::ITextureView> imguiView;
 			TextureFilterMode filterMode = TextureFilterMode::Linear;
 			TextureAddressMode addressMode = TextureAddressMode::Wrap;
 		};
@@ -85,6 +86,7 @@ namespace NeneEngine
 		uint32_t nextMeshId = 1;
 		uint32_t nextTextureId = 1;
 		uint32_t nextShaderId = 1;
+		TextureId whiteTextureId{};
 
 	  private:
 		bool CreatePrimitivePipeline(PrimitiveType primitiveType, const char* name, const char* vertexShaderBody);
@@ -105,6 +107,12 @@ namespace NeneEngine
 		GPUMesh UploadMesh(const MeshData& meshData) override;
 		GPUTexture CreateTexture2D(const TextureResource& texture) override;
 		GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram) override;
+		RenderTarget CreateRenderTarget(uint32_t width, uint32_t height) override;
+		void DestroyRenderTarget(RenderTargetId target) override;
+		void SetRenderTarget(RenderTargetId target) override;
+		[[nodiscard]] RenderTargetId GetRenderTarget() const override { return m_activeTarget; }
+		[[nodiscard]] uintptr_t GetRenderTargetTextureHandle(RenderTargetId target) const override;
+		[[nodiscard]] uintptr_t GetTextureHandle(TextureId texture) const override;
 		[[nodiscard]] uintptr_t GetResourceDomainKey() const override;
 		void BeginFrame() override;
 		void SubmitRenderItem(const RenderItem& item) override;
@@ -132,6 +140,16 @@ namespace NeneEngine
 		                                                                         TextureId textureId);
 
 		eastl::shared_ptr<DiligentDX12SharedDevice> m_shared;
+		struct OffscreenTarget
+		{
+			Diligent::RefCntAutoPtr<Diligent::ITexture> color;
+			Diligent::RefCntAutoPtr<Diligent::ITexture> depth;
+			Diligent::RefCntAutoPtr<Diligent::ITextureView> renderTargetView;
+			Diligent::RefCntAutoPtr<Diligent::ITextureView> imguiView;
+		};
+		eastl::unordered_map<uint32_t, OffscreenTarget> m_renderTargets;
+		RenderTargetId m_activeTarget{};
+		uint32_t m_nextTargetId = 1;
 		Diligent::RefCntAutoPtr<Diligent::ISwapChain> m_swapChain;
 		eastl::vector<RenderItem> m_renderQueue;
 		eastl::unordered_set<uint64_t> m_reportedTextureFallbacks;

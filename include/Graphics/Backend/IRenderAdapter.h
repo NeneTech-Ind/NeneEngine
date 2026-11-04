@@ -26,6 +26,14 @@ namespace NeneEngine
 		virtual GPUMesh UploadMesh(const MeshData& meshData) = 0;
 		virtual GPUTexture CreateTexture2D(const TextureResource& texture) = 0;
 		virtual GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram) = 0;
+		virtual RenderTarget CreateRenderTarget(uint32_t width, uint32_t height) = 0;
+		virtual void DestroyRenderTarget(RenderTargetId target) = 0;
+		// An invalid id selects the swap chain. Targets are local to this adapter.
+		virtual void SetRenderTarget(RenderTargetId target) = 0;
+		[[nodiscard]] virtual RenderTargetId GetRenderTarget() const = 0;
+		// Opaque handles understood by the matching ImGui backend; never serialize these.
+		[[nodiscard]] virtual uintptr_t GetRenderTargetTextureHandle(RenderTargetId target) const = 0;
+		[[nodiscard]] virtual uintptr_t GetTextureHandle(TextureId texture) const = 0;
 
 		[[nodiscard]] virtual uintptr_t GetResourceDomainKey() const { return reinterpret_cast<uintptr_t>(this); }
 

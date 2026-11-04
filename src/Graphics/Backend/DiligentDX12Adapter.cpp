@@ -2,6 +2,7 @@
 
 #include "Graphics/Backend/DiligentDX12Adapter.h"
 
+#include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsAccessories/interface/GraphicsAccessories.hpp"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Shader.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngineD3D12/interface/EngineFactoryD3D12.h"
 #include "../external/DiligentEngine/DiligentTools/TextureLoader/interface/TextureLoader.h"
@@ -32,6 +33,47 @@ namespace NeneEngine
 			glm::mat4 modelViewProjectionMatrix = glm::mat4(1.0f);
 			glm::vec4 tint = {1.0f, 1.0f, 1.0f, 1.0f};
 		};
+
+		TEXTURE_FORMAT ColorStorageFormat(TEXTURE_FORMAT format)
+		{
+			// Typeless storage allows a linear-sampling scene SRV and an encoded-color UI SRV.
+			switch (format)
+			{
+			case TEX_FORMAT_RGBA8_UNORM_SRGB:
+				return TEX_FORMAT_RGBA8_TYPELESS;
+			case TEX_FORMAT_BGRA8_UNORM_SRGB:
+				return TEX_FORMAT_BGRA8_TYPELESS;
+			case TEX_FORMAT_BGRX8_UNORM_SRGB:
+				return TEX_FORMAT_BGRX8_TYPELESS;
+			case TEX_FORMAT_BC1_UNORM_SRGB:
+				return TEX_FORMAT_BC1_TYPELESS;
+			case TEX_FORMAT_BC2_UNORM_SRGB:
+				return TEX_FORMAT_BC2_TYPELESS;
+			case TEX_FORMAT_BC3_UNORM_SRGB:
+				return TEX_FORMAT_BC3_TYPELESS;
+			case TEX_FORMAT_BC7_UNORM_SRGB:
+				return TEX_FORMAT_BC7_TYPELESS;
+			default:
+				return format;
+			}
+		}
+
+		RefCntAutoPtr<ITextureView> CreateColorView(ITexture& texture, TEXTURE_VIEW_TYPE type, TEXTURE_FORMAT format)
+		{
+			TextureViewDesc desc{};
+			desc.ViewType = type;
+			desc.Format = format;
+			RefCntAutoPtr<ITextureView> view;
+			texture.CreateView(desc, &view);
+			return view;
+		}
+
+		TEXTURE_FORMAT ImGuiSamplingFormat(TEXTURE_FORMAT textureFormat, TEXTURE_FORMAT framebufferFormat)
+		{
+			// Diligent's ImGui AUTO mode already decodes sRGB in its pixel shader.
+			// Sample encoded bytes here so the same conversion is not also done by the SRV.
+			return IsSRGBFormat(framebufferFormat) ? SRGBFormatToUnorm(textureFormat) : textureFormat;
+		}
 
 		constexpr std::string_view kDrawConstantsHlsl = R"raw(
             cbuffer Constants
@@ -514,6 +556,8 @@ namespace NeneEngine
 		if (m_shared && m_shared->immediateContext) m_shared->immediateContext->Flush();
 
 		m_renderQueue.clear();
+		m_activeTarget = {};
+		m_renderTargets.clear();
 		m_swapChain.Release();
 	}
 
@@ -640,7 +684,11 @@ namespace NeneEngine
 		}
 
 		DiligentDX12SharedDevice::UploadedTexture uploadedTexture{};
-		textureLoader->CreateTexture(m_shared->device, &uploadedTexture.texture);
+		const auto sourceFormat = textureLoader->GetTextureDesc().Format;
+		auto storageDesc = textureLoader->GetTextureDesc();
+		storageDesc.Format = ColorStorageFormat(sourceFormat);
+		const auto data = textureLoader->GetTextureData();
+		m_shared->device->CreateTexture(storageDesc, &data, &uploadedTexture.texture);
 		if (!uploadedTexture.texture)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create GPU texture for '{}'", texture.path);
@@ -649,8 +697,11 @@ namespace NeneEngine
 
 		uploadedTexture.filterMode = texture.filterMode;
 		uploadedTexture.addressMode = texture.addressMode;
-		uploadedTexture.shaderResourceView = uploadedTexture.texture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-		if (!uploadedTexture.shaderResourceView)
+		uploadedTexture.shaderResourceView =
+		    CreateColorView(*uploadedTexture.texture, TEXTURE_VIEW_SHADER_RESOURCE, sourceFormat);
+		uploadedTexture.imguiView = CreateColorView(*uploadedTexture.texture, TEXTURE_VIEW_SHADER_RESOURCE,
+		                                            ImGuiSamplingFormat(sourceFormat, m_shared->colorBufferFormat));
+		if (!uploadedTexture.shaderResourceView || !uploadedTexture.imguiView)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: texture '{}' has no shader resource view", texture.path);
 			return {};
@@ -677,6 +728,31 @@ namespace NeneEngine
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: CreateShaderProgram called before renderer initialization");
 			return {};
+		}
+
+		if (!m_shared->whiteTextureId.IsValid())
+		{
+			TextureDesc desc{};
+			desc.Name = "Material white texture";
+			desc.Type = RESOURCE_DIM_TEX_2D;
+			desc.Width = desc.Height = 1;
+			desc.Format = TEX_FORMAT_RGBA8_UNORM;
+			desc.BindFlags = BIND_SHADER_RESOURCE;
+			desc.Usage = USAGE_IMMUTABLE;
+			const uint32_t white = 0xffffffffu;
+			TextureSubResData subresource{};
+			subresource.pData = &white;
+			subresource.Stride = sizeof(white);
+			TextureData data{};
+			data.pSubResources = &subresource;
+			data.NumSubresources = 1;
+			DiligentDX12SharedDevice::UploadedTexture texture;
+			m_shared->device->CreateTexture(desc, &data, &texture.texture);
+			if (!texture.texture) return {};
+			texture.shaderResourceView = texture.texture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+			texture.imguiView = texture.shaderResourceView;
+			m_shared->whiteTextureId = TextureId{m_shared->nextTextureId++};
+			m_shared->uploadedTextures.emplace(m_shared->whiteTextureId.value, std::move(texture));
 		}
 
 		const ShaderPair shaders =
@@ -727,12 +803,70 @@ namespace NeneEngine
 		return GPUShaderProgram{shaderId};
 	}
 
+	RenderTarget DiligentDX12Adapter::CreateRenderTarget(uint32_t width, uint32_t height)
+	{
+		if (!IsDeviceReady("CreateRenderTarget") || width == 0 || height == 0) return {};
+		TextureDesc desc{};
+		desc.Name = "Editor render target";
+		desc.Type = RESOURCE_DIM_TEX_2D;
+		desc.Width = width;
+		desc.Height = height;
+		desc.Format = ColorStorageFormat(m_shared->colorBufferFormat);
+		desc.ClearValue.Format = m_shared->colorBufferFormat;
+		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
+		OffscreenTarget target;
+		m_shared->device->CreateTexture(desc, nullptr, &target.color);
+		if (!target.color) return {};
+		target.renderTargetView =
+		    CreateColorView(*target.color, TEXTURE_VIEW_RENDER_TARGET, m_shared->colorBufferFormat);
+		target.imguiView =
+		    CreateColorView(*target.color, TEXTURE_VIEW_SHADER_RESOURCE,
+		                    ImGuiSamplingFormat(m_shared->colorBufferFormat, m_shared->colorBufferFormat));
+		desc.Name = "Editor render target depth";
+		desc.Format = m_shared->depthBufferFormat;
+		desc.ClearValue.Format = m_shared->depthBufferFormat;
+		desc.BindFlags = BIND_DEPTH_STENCIL;
+		m_shared->device->CreateTexture(desc, nullptr, &target.depth);
+		if (!target.renderTargetView || !target.imguiView || !target.depth) return {};
+		const RenderTargetId id{m_nextTargetId++};
+		m_renderTargets.emplace(id.value, std::move(target));
+		return {id, width, height};
+	}
+
+	void DiligentDX12Adapter::DestroyRenderTarget(RenderTargetId target)
+	{
+		if (m_activeTarget == target) m_activeTarget = {};
+		m_renderTargets.erase(target.value);
+	}
+
+	void DiligentDX12Adapter::SetRenderTarget(RenderTargetId target)
+	{
+		m_activeTarget = m_renderTargets.find(target.value) != m_renderTargets.end() ? target : RenderTargetId{};
+	}
+
+	uintptr_t DiligentDX12Adapter::GetRenderTargetTextureHandle(RenderTargetId target) const
+	{
+		const auto it = m_renderTargets.find(target.value);
+		return it == m_renderTargets.end() ? 0 : reinterpret_cast<uintptr_t>(it->second.imguiView.RawPtr());
+	}
+
+	uintptr_t DiligentDX12Adapter::GetTextureHandle(TextureId texture) const
+	{
+		const auto it = m_shared->uploadedTextures.find(texture.value);
+		return it == m_shared->uploadedTextures.end() ? 0 : reinterpret_cast<uintptr_t>(it->second.imguiView.RawPtr());
+	}
+
 	void DiligentDX12Adapter::BeginFrame()
 	{
 		if (!m_swapChain || !m_shared->immediateContext) return;
 
 		ITextureView* renderTargetView = m_swapChain->GetCurrentBackBufferRTV();
 		ITextureView* depthStencilView = m_swapChain->GetDepthBufferDSV();
+		if (const auto it = m_renderTargets.find(m_activeTarget.value); it != m_renderTargets.end())
+		{
+			renderTargetView = it->second.renderTargetView;
+			depthStencilView = it->second.depth->GetDefaultView(TEXTURE_VIEW_DEPTH_STENCIL);
+		}
 		if (renderTargetView == nullptr)
 		{
 			NENE_LOG_WARN("DiligentDX12Adapter: current back buffer RTV is missing");
@@ -764,12 +898,17 @@ namespace NeneEngine
 		if (!m_shared->immediateContext || !m_swapChain) return;
 
 		const auto& swapChainDesc = m_swapChain->GetDesc();
+		const auto targetIt = m_renderTargets.find(m_activeTarget.value);
+		const uint32_t width =
+		    targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Width : swapChainDesc.Width;
+		const uint32_t height =
+		    targetIt != m_renderTargets.end() ? targetIt->second.color->GetDesc().Height : swapChainDesc.Height;
 		Viewport viewport{};
-		viewport.Width = static_cast<float>(swapChainDesc.Width);
-		viewport.Height = static_cast<float>(swapChainDesc.Height);
+		viewport.Width = static_cast<float>(width);
+		viewport.Height = static_cast<float>(height);
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
-		m_shared->immediateContext->SetViewports(1, &viewport, swapChainDesc.Width, swapChainDesc.Height);
+		m_shared->immediateContext->SetViewports(1, &viewport, width, height);
 
 		for (const auto& item : m_renderQueue)
 		{
@@ -777,6 +916,20 @@ namespace NeneEngine
 				DrawMesh(item, *mesh);
 			else
 				DrawPrimitive(item);
+		}
+
+		if (targetIt != m_renderTargets.end())
+		{
+			// Unbind before sampling the scene in ImGui, then restore the full-window UI target.
+			ITextureView* backBuffer = m_swapChain->GetCurrentBackBufferRTV();
+			m_shared->immediateContext->SetRenderTargets(1, &backBuffer, m_swapChain->GetDepthBufferDSV(),
+			                                             RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+			StateTransitionDesc barrier(targetIt->second.color, RESOURCE_STATE_UNKNOWN, RESOURCE_STATE_SHADER_RESOURCE,
+			                            STATE_TRANSITION_FLAG_UPDATE_STATE);
+			m_shared->immediateContext->TransitionResourceState(barrier);
+			const float background[] = {0.08f, 0.08f, 0.08f, 1.0f};
+			m_shared->immediateContext->ClearRenderTarget(backBuffer, background,
+			                                              RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 		}
 	}
 
@@ -788,8 +941,9 @@ namespace NeneEngine
 		if (UploadedShaderProgram* shaderProgram = FindUploaded(m_shared->uploadedShaderPrograms, item.shaderId.value);
 		    shaderProgram != nullptr)
 		{
-			const auto* texture = FindUploaded(m_shared->uploadedTextures, item.textureId.value);
-			IShaderResourceBinding* textureBinding = GetShaderResourceBinding(*shaderProgram, item.textureId);
+			const TextureId textureId = item.textureId.IsValid() ? item.textureId : m_shared->whiteTextureId;
+			const auto* texture = FindUploaded(m_shared->uploadedTextures, textureId.value);
+			IShaderResourceBinding* textureBinding = GetShaderResourceBinding(*shaderProgram, textureId);
 			if (texture != nullptr && textureBinding != nullptr)
 			{
 				pipelineState =

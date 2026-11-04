@@ -30,6 +30,7 @@ namespace NeneEngine
 
 		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput, ECS::Entity cameraEntity,
 		                RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged);
+		void SetRenderer(IRenderAdapter* renderer);
 		void Shutdown();
 
 		void Update();
@@ -49,6 +50,8 @@ namespace NeneEngine
 
 		void HandleShortcuts();
 		void DrawMainMenuBar();
+		void SaveScene(bool saveAs);
+		void LoadScene();
 		void DrawHistoryMenuItems();
 		void DrawThemeMenu();
 		void SetTheme(EditorThemeVariant variant);
@@ -72,6 +75,9 @@ namespace NeneEngine
 		EditorAboutWindow m_aboutWindow;
 		eastl::unique_ptr<EditorContext> m_context;
 		eastl::vector<PanelEntry> m_panels;
+		std::filesystem::path m_scenePath;
+		std::string m_fileStatus;
+		bool m_layoutInitialized = false;
 	};
 
 } // namespace NeneEngine

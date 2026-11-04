@@ -10,6 +10,7 @@
 #include "../external/DiligentEngine/DiligentTools/Imgui/interface/ImGuiImplWin32.hpp"
 #include "../external/DiligentEngine/DiligentTools/TextureLoader/interface/TextureLoader.h"
 
+#include <backends/imgui_impl_win32.h>
 #include <imgui.h>
 
 namespace NeneEngine
@@ -36,8 +37,17 @@ namespace NeneEngine
 	{
 		if (m_isFrameStarted) m_impl->EndFrame();
 
-		const SwapChainDesc& swapChainDesc = m_adapter.GetSwapChain()->GetDesc();
-		m_impl->NewFrame(swapChainDesc.Width, swapChainDesc.Height, SURFACE_TRANSFORM_IDENTITY);
+		// Win32's frame update can dispatch a pending WM_SIZE. Read the surface dimensions
+		// after it runs so the renderer and ImGui use the same client size for this frame.
+		ImGui_ImplWin32_NewFrame();
+		const auto displaySize = ImGui::GetIO().DisplaySize;
+		const auto& oldDesc = m_adapter.GetSwapChain()->GetDesc();
+		if (displaySize.x > 0 && displaySize.y > 0 &&
+		    (oldDesc.Width != static_cast<uint32_t>(displaySize.x) ||
+		     oldDesc.Height != static_cast<uint32_t>(displaySize.y)))
+			m_adapter.Resize(static_cast<uint32_t>(displaySize.x), static_cast<uint32_t>(displaySize.y));
+		const auto& swapChainDesc = m_adapter.GetSwapChain()->GetDesc();
+		m_impl->ImGuiImplDiligent::NewFrame(swapChainDesc.Width, swapChainDesc.Height, SURFACE_TRANSFORM_IDENTITY);
 		m_isFrameStarted = true;
 	}
 

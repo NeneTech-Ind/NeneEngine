@@ -4,6 +4,7 @@
 
 #include "ECS/Entity.h"
 #include "Graphics/Backend/IRenderAdapter.h"
+#include "Graphics/Runtime/SceneAssetResolver.h"
 
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
@@ -31,6 +32,7 @@ namespace NeneEngine::ECS
 		                          eastl::unordered_set<uint32_t>& recursionStack);
 
 		IRenderAdapter* m_renderer;
+		SceneAssetResolver m_assets;
 		Entity m_cameraEntity = NullEntity;
 	};
 

@@ -33,6 +33,7 @@ namespace NeneEngine
 		{
 			NENE_PROFILE_SCOPE("Frame");
 			windowRuntimeService.PumpWindowMessages();
+			if (!running.load() || windowRuntimeService.IsMainWindowClosed()) break;
 
 			if (windowRuntimeService.AreAllWindowsMinimized())
 			{

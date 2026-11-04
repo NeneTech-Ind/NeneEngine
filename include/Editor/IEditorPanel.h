@@ -27,6 +27,7 @@ namespace NeneEngine
 		[[nodiscard]] virtual ImGuiWindowFlags GetWindowFlags() const { return ImGuiWindowFlags_None; }
 
 		virtual void Draw(EditorContext& context) = 0;
+		virtual void OnSceneLoaded() {}
 	};
 
 } // namespace NeneEngine

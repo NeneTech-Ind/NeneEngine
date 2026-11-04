@@ -159,7 +159,15 @@ namespace NeneEngine::ECS
 			item.primitiveType = meshRenderer.primitiveType;
 			item.tint = meshRenderer.tint;
 
-			if (const auto* renderRuntime = GetMeshRenderRuntimeBinding(world, entity, m_renderer);
+			if (!meshRenderer.meshPath.empty() || !meshRenderer.texturePath.empty() || !meshRenderer.shaderPath.empty())
+			{
+				const auto binding = m_assets.Resolve(meshRenderer, *m_renderer);
+				if (!binding.meshId.IsValid() && !meshRenderer.meshPath.empty()) continue;
+				item.meshId = binding.meshId;
+				item.shaderId = binding.shaderId;
+				item.textureId = binding.textureId;
+			}
+			else if (const auto* renderRuntime = GetMeshRenderRuntimeBinding(world, entity, m_renderer);
 			    renderRuntime != nullptr)
 			{
 				item.meshId = renderRuntime->meshId;
