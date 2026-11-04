@@ -99,6 +99,7 @@ namespace NeneEngine
 
 		constexpr float kToolbarBackdropPadding = 4.0f;
 		constexpr float kToolbarBackdropAlpha = 0.85f;
+		constexpr float kToolbarOffset = 8.0f;
 
 		bool ToolbarToggle(const char* label, bool isActive)
 		{
@@ -117,10 +118,14 @@ namespace NeneEngine
 	void ViewportPanel::Draw(EditorContext& context)
 	{
 		context.isViewportFocused = ImGui::IsWindowFocused();
-		DrawToolbar();
 		m_imagePosition = ImGui::GetCursorScreenPos();
 		m_imageSize = ImGui::GetContentRegionAvail();
-		if (context.renderer == nullptr || m_imageSize.x < 1.0f || m_imageSize.y < 1.0f) return;
+		if (m_imageSize.x < 1.0f || m_imageSize.y < 1.0f) return;
+		if (context.renderer == nullptr)
+		{
+			DrawEmptyState(context.GetMascot(EditorMascotPose::Sleep), "Viewport is unavailable");
+			return;
+		}
 		m_renderer = context.renderer;
 		const auto width = static_cast<uint32_t>(m_imageSize.x);
 		const auto height = static_cast<uint32_t>(m_imageSize.y);
@@ -133,7 +138,11 @@ namespace NeneEngine
 				m_target = replacement;
 			}
 		}
-		if (!m_target.IsValid()) return;
+		if (!m_target.IsValid())
+		{
+			DrawEmptyState(context.GetMascot(EditorMascotPose::Scared), "Could not create the render target");
+			return;
+		}
 		m_renderer->SetRenderTarget(m_target.id);
 		if (auto* camera = context.world.GetComponent<ECS::CameraComponent>(context.cameraEntity))
 			camera->aspectRatio = m_imageSize.x / m_imageSize.y;
@@ -171,6 +180,12 @@ namespace NeneEngine
 		    m_imagePosition, ImVec2(m_imagePosition.x + m_imageSize.x, m_imagePosition.y + m_imageSize.y), true);
 		DrawGizmo(context);
 		ImGui::GetWindowDrawList()->PopClipRect();
+
+		const float toolbarOffset = ScaledSize(kToolbarOffset);
+		ImGui::SetCursorScreenPos(ImVec2(m_imagePosition.x + toolbarOffset, m_imagePosition.y + toolbarOffset));
+		DrawToolbar(context);
+		m_isToolbarHovered = ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+		if (m_isToolbarHovered) context.isViewportHovered = false;
 	}
 
 	void ViewportPanel::HandleShortcuts(const EditorContext& context)
@@ -186,7 +201,7 @@ namespace NeneEngine
 			m_space = m_space == GizmoSpace::World ? GizmoSpace::Local : GizmoSpace::World;
 	}
 
-	void ViewportPanel::DrawToolbar()
+	void ViewportPanel::DrawToolbar(const EditorContext& context)
 	{
 		const ImGuiStyle& style = ImGui::GetStyle();
 		ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -194,6 +209,7 @@ namespace NeneEngine
 		drawList->ChannelsSetCurrent(1);
 
 		ImGui::BeginGroup();
+		ImGui::BeginDisabled(context.mode != EditorMode::Edit);
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, style.ItemSpacing.y));
 
@@ -227,6 +243,7 @@ namespace NeneEngine
 		ImGui::SetItemTooltip(m_useSnap ? "Snapping on" : "Snapping off");
 
 		ImGui::PopStyleColor();
+		ImGui::EndDisabled();
 		ImGui::EndGroup();
 
 		const ImVec2 groupMin = ImGui::GetItemRectMin();
@@ -289,6 +306,7 @@ namespace NeneEngine
 		if (m_operation == GizmoOperation::Scale) snapValue = kScaleSnap;
 		const float snap[3] = {snapValue, snapValue, snapValue};
 
+		ImGuizmo::Enable(!m_isToolbarHovered || ImGuizmo::IsUsing());
 		const bool isManipulated =
 		    ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), operation, space,
 		                         glm::value_ptr(worldMatrix), nullptr, m_useSnap ? snap : nullptr);
