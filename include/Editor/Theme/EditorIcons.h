@@ -27,4 +27,5 @@
 #define NENE_ICON_RIGIDBODY "\xee\x94\xb5"
 #define NENE_ICON_MOVEMENT "\xee\x86\xb0"
 #define NENE_ICON_CONTROLLER "\xee\x83\xa2"
-#define NENE_ICON_TAG "\xee\x86\x83"
+#define NENE_ICON_TAG "\xee\x86\x83"
+#define NENE_ICON_LOCK "\xee\x84\x8f"

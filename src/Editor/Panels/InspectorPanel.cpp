@@ -18,8 +18,10 @@
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
 #include "Editor/Theme/EditorIcons.h"
+#include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 
+#include <algorithm>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -31,6 +33,7 @@ namespace NeneEngine
 	{
 		using FieldEdits = InspectorPanel::FieldEdits;
 
+		constexpr const char* kReadOnlyLabel = NENE_ICON_LOCK " Read-only";
 		constexpr float kPositionDragSpeed = 0.05f;
 		constexpr float kRotationDragSpeed = 0.5f;
 		constexpr float kScaleDragSpeed = 0.01f;
@@ -215,12 +218,16 @@ namespace NeneEngine
 	void InspectorPanel::DrawEntityHeader(EditorContext& context)
 	{
 		const ECS::World& world = context.world;
+		ImGui::AlignTextToFramePadding();
 		ImGui::Text("Entity %u", static_cast<uint32_t>(entt::to_integral(context.selectedEntity)));
 
-		if (context.mode == EditorMode::Play)
+		if (context.mode == EditorMode::Play && context.themeColors != nullptr)
 		{
 			ImGui::SameLine();
-			ImGui::TextDisabled("(play mode: read-only)");
+			const float pillWidth = CalcStatusPillSize(kReadOnlyLabel).x;
+			const float offset = (std::max)(0.0f, ImGui::GetContentRegionAvail().x - pillWidth);
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
+			StatusPill(kReadOnlyLabel, context.themeColors->accentPlay, context.themeColors->background);
 		}
 
 		if (const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(context.selectedEntity))

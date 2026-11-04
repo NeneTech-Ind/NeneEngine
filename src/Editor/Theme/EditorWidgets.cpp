@@ -46,6 +46,24 @@ namespace NeneEngine
 		                                          ImGui::GetColorU32(color));
 	}
 
+	ImVec2 CalcStatusPillSize(const char* label)
+	{
+		return ImVec2(ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 2.0f, ImGui::GetFrameHeight());
+	}
+
+	void StatusPill(const char* label, const ImVec4& background, const ImVec4& textColor)
+	{
+		const ImGuiStyle& style = ImGui::GetStyle();
+		const ImVec2 size = CalcStatusPillSize(label);
+		const ImVec2 min = ImGui::GetCursorScreenPos();
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		drawList->AddRectFilled(min, ImVec2(min.x + size.x, min.y + size.y), ImGui::GetColorU32(background),
+		                        size.y * 0.5f);
+		drawList->AddText(ImVec2(min.x + style.FramePadding.x, min.y + style.FramePadding.y),
+		                  ImGui::GetColorU32(textColor), label);
+		ImGui::Dummy(size);
+	}
+
 	void DrawEmptyState(const ImGuiTexture& mascot, const char* hint)
 	{
 		const ImGuiStyle& style = ImGui::GetStyle();
