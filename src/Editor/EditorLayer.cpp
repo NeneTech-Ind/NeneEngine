@@ -632,7 +632,7 @@ namespace NeneEngine
 		if (borderSize > 0.0f)
 		{
 			const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-			const ImVec4& borderColor = isFocused ? colors.accent : colors.border;
+			const ImVec4& borderColor = isFocused ? colors.accentPlay : colors.border;
 			const float inset = borderSize * 0.5f;
 			drawList->AddRect(ImVec2(rect.Min.x + inset, rect.Min.y + inset),
 			                  ImVec2(rect.Max.x - inset, rect.Max.y - inset), ImGui::GetColorU32(borderColor), radius,
