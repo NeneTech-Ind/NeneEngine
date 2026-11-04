@@ -5,6 +5,7 @@
 #include "ECS/Entity.h"
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorIcons.h"
+#include "Editor/Theme/EditorThemeConfig.h"
 
 #include <EASTL/functional.h>
 #include <glm/glm.hpp>
@@ -32,13 +33,14 @@ namespace NeneEngine
 			bool deactivatedAfterEdit = false;
 			bool changedInstantly = false;
 			ImFont* valueFont = nullptr;
+			const EditorThemeColorsConfig* colors = nullptr;
 		};
 
 	  private:
 		using PendingEditCommit = eastl::function<void(EditorContext&)>;
 
 		template <typename Component, typename DrawFields>
-		void DrawComponent(EditorContext& context, const char* label, DrawFields&& drawFields);
+		void DrawComponent(EditorContext& context, const char* icon, const char* label, DrawFields&& drawFields);
 
 		void DrawEntityHeader(EditorContext& context);
 		void DrawComponents(EditorContext& context);

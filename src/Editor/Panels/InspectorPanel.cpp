@@ -17,6 +17,8 @@
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
+#include "Editor/Theme/EditorIcons.h"
+#include "Editor/Theme/EditorWidgets.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -67,15 +69,33 @@ namespace NeneEngine
 			return changed;
 		}
 
+		bool DrawAxisField(const char* label, float* values, float speed, float min, float max, ImGuiSliderFlags flags,
+		                   FieldEdits& edits)
+		{
+			const ImVec4 axisColors[3] = {edits.colors->axisX, edits.colors->axisY, edits.colors->axisZ};
+			const std::string widgetId = std::string("##") + label;
+			if (edits.valueFont != nullptr) ImGui::PushFont(edits.valueFont, 0.0f);
+			const AxisDragResult result = DragFloat3Axes(widgetId.c_str(), values, speed, min, max, flags, axisColors);
+			if (edits.valueFont != nullptr) ImGui::PopFont();
+			edits.activated |= result.activated;
+			edits.deactivatedAfterEdit |= result.deactivatedAfterEdit;
+
+			ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+			ImGui::TextUnformatted(label);
+			return result.changed;
+		}
+
 		bool DragVec3(const char* label, glm::vec3& value, float speed, FieldEdits& edits, float min = 0.0f,
 		              float max = 0.0f)
 		{
+			const ImGuiSliderFlags flags = min < max ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None;
+			if (edits.colors != nullptr)
+				return DrawAxisField(label, glm::value_ptr(value), speed, min, max, flags, edits);
+
 			return DrawValueField(label, edits,
-			                      [&](const char* widgetId)
-			                      {
+			                      [&](const char* widgetId) {
 				                      return ImGui::DragFloat3(widgetId, glm::value_ptr(value), speed, min, max, "%.3f",
-				                                               min < max ? ImGuiSliderFlags_AlwaysClamp
-				                                                         : ImGuiSliderFlags_None);
+				                                               flags);
 			                      });
 		}
 
@@ -113,8 +133,11 @@ namespace NeneEngine
 		{
 			glm::vec3 copy = value;
 			ImGui::BeginDisabled();
-			DrawValueField(label, edits,
-			               [&](const char* widgetId) { return ImGui::DragFloat3(widgetId, glm::value_ptr(copy)); });
+			if (edits.colors != nullptr)
+				DrawAxisField(label, glm::value_ptr(copy), 1.0f, 0.0f, 0.0f, ImGuiSliderFlags_None, edits);
+			else
+				DrawValueField(label, edits,
+				               [&](const char* widgetId) { return ImGui::DragFloat3(widgetId, glm::value_ptr(copy)); });
 			ImGui::EndDisabled();
 		}
 
@@ -127,21 +150,26 @@ namespace NeneEngine
 	} // namespace
 
 	template <typename Component, typename DrawFields>
-	void InspectorPanel::DrawComponent(EditorContext& context, const char* label, DrawFields&& drawFields)
+	void InspectorPanel::DrawComponent(EditorContext& context, const char* icon, const char* label,
+	                                   DrawFields&& drawFields)
 	{
 		const ECS::Entity entity = context.selectedEntity;
 		Component* component = context.world.GetComponent<Component>(entity);
-		if (component == nullptr || !ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen)) return;
+		if (component == nullptr || !ComponentHeader(icon, label)) return;
 
 		const bool isEditMode = context.mode == EditorMode::Edit;
 		const Component before = *component;
 		FieldEdits edits;
 		edits.valueFont = context.monospaceFont;
-		ImGui::PushID(label);
-		ImGui::BeginDisabled(!isEditMode);
-		drawFields(*component, edits);
-		ImGui::EndDisabled();
-		ImGui::PopID();
+		edits.colors = context.themeColors;
+		{
+			ComponentCardScope card;
+			ImGui::PushID(label);
+			ImGui::BeginDisabled(!isEditMode);
+			drawFields(*component, edits);
+			ImGui::EndDisabled();
+			ImGui::PopID();
+		}
 
 		if (!isEditMode) return;
 
@@ -207,18 +235,18 @@ namespace NeneEngine
 	{
 		const ECS::Entity entity = context.selectedEntity;
 
-		DrawComponent<ECS::TagComponent>(context, "Tag",
+		DrawComponent<ECS::TagComponent>(context, NENE_ICON_TAG, "Tag",
 		                                 [](ECS::TagComponent& tag, FieldEdits& edits)
 		                                 {
 			                                 ImGui::InputText("Name", &tag.name);
 			                                 TrackItem(edits);
 		                                 });
 
-		DrawComponent<ECS::TransformComponent>(context, "Transform",
+		DrawComponent<ECS::TransformComponent>(context, NENE_ICON_TRANSFORM, "Transform",
 		                                       [this, entity](ECS::TransformComponent& transform, FieldEdits& edits)
 		                                       { DrawTransformFields(entity, transform, edits); });
 
-		DrawComponent<ECS::MeshRendererComponent>(context, "Mesh Renderer",
+		DrawComponent<ECS::MeshRendererComponent>(context, NENE_ICON_PRIMITIVE, "Mesh Renderer",
 		                                          [](ECS::MeshRendererComponent& meshRenderer, FieldEdits& edits)
 		                                          {
 			                                          EnumCombo("Primitive", meshRenderer.primitiveType,
@@ -229,7 +257,7 @@ namespace NeneEngine
 		                                          });
 
 		DrawComponent<ECS::ColliderComponent>(
-		    context, "Collider",
+		    context, NENE_ICON_COLLIDER, "Collider",
 		    [](ECS::ColliderComponent& collider, FieldEdits& edits)
 		    {
 			    EnumCombo("Type", collider.type, kColliderTypeNames, edits);
@@ -240,7 +268,7 @@ namespace NeneEngine
 			    DragVec3("Offset", collider.offset, 0.01f, edits);
 		    });
 
-		DrawComponent<ECS::RigidbodyComponent>(context, "Rigidbody",
+		DrawComponent<ECS::RigidbodyComponent>(context, NENE_ICON_RIGIDBODY, "Rigidbody",
 		                                       [](ECS::RigidbodyComponent& rigidbody, FieldEdits& edits)
 		                                       {
 			                                       DragFloat("Mass", rigidbody.mass, 0.01f, edits, kMinMass, 10000.0f);
@@ -251,13 +279,14 @@ namespace NeneEngine
 		                                       });
 
 		if (const auto* contactState = context.world.GetComponent<ECS::ContactStateComponent>(entity);
-		    contactState != nullptr && ImGui::CollapsingHeader("Contact State"))
+		    contactState != nullptr && ComponentHeader(NENE_ICON_SNAP, "Contact State"))
 		{
+			ComponentCardScope card;
 			ImGui::Text("Contacts: %u", contactState->contactCount);
 			ImGui::Text("Grounded: %s", contactState->isGrounded ? "yes" : "no");
 		}
 
-		DrawComponent<ECS::MovementComponent>(context, "Movement",
+		DrawComponent<ECS::MovementComponent>(context, NENE_ICON_MOVEMENT, "Movement",
 		                                      [](ECS::MovementComponent& movement, FieldEdits& edits)
 		                                      {
 			                                      DragVec3("Velocity", movement.velocity, 0.05f, edits);
@@ -271,7 +300,7 @@ namespace NeneEngine
 		                                      });
 
 		DrawComponent<ECS::PlayerControllerComponent>(
-		    context, "Player Controller",
+		    context, NENE_ICON_CONTROLLER, "Player Controller",
 		    [](ECS::PlayerControllerComponent& controller, FieldEdits& edits)
 		    {
 			    DragFloat("Move Speed", controller.moveSpeed, 0.05f, edits, 0.0f, 100.0f);
@@ -279,7 +308,7 @@ namespace NeneEngine
 		    });
 
 		DrawComponent<ECS::PrimitiveControlComponent>(
-		    context, "Primitive Control",
+		    context, NENE_ICON_CONTROLLER, "Primitive Control",
 		    [](ECS::PrimitiveControlComponent& control, FieldEdits& edits)
 		    {
 			    DragFloat("Move Speed", control.moveSpeed, 0.05f, edits, 0.0f, 100.0f);
@@ -288,7 +317,7 @@ namespace NeneEngine
 		    });
 
 		DrawComponent<ECS::CameraComponent>(
-		    context, "Camera",
+		    context, NENE_ICON_CAMERA, "Camera",
 		    [](ECS::CameraComponent& camera, FieldEdits& edits)
 		    {
 			    DragFloat("FOV", camera.fovDegrees, 0.1f, edits, 1.0f, 179.0f);
@@ -298,7 +327,7 @@ namespace NeneEngine
 		    });
 
 		DrawComponent<ECS::CameraControllerComponent>(
-		    context, "Camera Controller",
+		    context, NENE_ICON_CONTROLLER, "Camera Controller",
 		    [](ECS::CameraControllerComponent& controller, FieldEdits& edits)
 		    {
 			    DragFloat("Move Speed", controller.moveSpeed, 0.05f, edits, 0.0f, 100.0f);

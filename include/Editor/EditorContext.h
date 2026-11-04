@@ -9,6 +9,7 @@ struct ImFont;
 namespace NeneEngine
 {
 	class EditorHistory;
+	struct EditorThemeColorsConfig;
 
 	namespace ECS
 	{
@@ -31,6 +32,7 @@ namespace NeneEngine
 		bool isViewportHovered = false;
 		bool isViewportFocused = false;
 		ImFont* monospaceFont = nullptr;
+		const EditorThemeColorsConfig* themeColors = nullptr;
 	};
 
 } // namespace NeneEngine

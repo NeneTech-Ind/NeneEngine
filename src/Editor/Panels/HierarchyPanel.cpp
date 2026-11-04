@@ -10,6 +10,8 @@
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorIcons.h"
+#include "Editor/Theme/EditorThemeConfig.h"
+#include "Editor/Theme/EditorWidgets.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
@@ -154,6 +156,8 @@ namespace NeneEngine
 
 		const std::string label = GetRowLabel(registry, entity);
 		const bool isOpen = ImGui::TreeNodeEx(ToTreeId(entity), flags, "%s", label.c_str());
+		if (entity == context.selectedEntity && context.themeColors != nullptr)
+			DrawSelectionMarker(context.themeColors->accent);
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) context.selectedEntity = entity;
 
 		if (!hasChildren || !isOpen) return;
@@ -191,8 +195,9 @@ namespace NeneEngine
 				const ECS::Entity entity = m_matches[static_cast<size_t>(row)];
 				ImGui::PushID(ToTreeId(entity));
 				const std::string label = GetRowLabel(registry, entity);
-				if (ImGui::Selectable(label.c_str(), entity == context.selectedEntity))
-					context.selectedEntity = entity;
+				const bool isSelected = entity == context.selectedEntity;
+				if (ImGui::Selectable(label.c_str(), isSelected)) context.selectedEntity = entity;
+				if (isSelected && context.themeColors != nullptr) DrawSelectionMarker(context.themeColors->accent);
 				ImGui::PopID();
 			}
 		}

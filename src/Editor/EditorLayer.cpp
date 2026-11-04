@@ -9,6 +9,7 @@
 #include "Editor/Panels/StatisticsPanel.h"
 #include "Editor/Panels/ViewportPanel.h"
 #include "Editor/Theme/EditorIcons.h"
+#include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
 
@@ -26,7 +27,10 @@ namespace NeneEngine
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
-		constexpr float kPlayModeMenuBarTint = 0.3f;
+		constexpr float kPlayModeStripHeight = 2.0f;
+		constexpr const char* kProductName = "SuperNeneEngine";
+		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
+		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
 
 		ImVec4 Mix(const ImVec4& from, const ImVec4& to, float amount)
@@ -67,6 +71,7 @@ namespace NeneEngine
 		m_themeService.Apply(GetDefaultEditorThemeConfig());
 		m_themeService.LoadFonts();
 		m_context->monospaceFont = m_themeService.GetMonospaceFont();
+		m_context->themeColors = &m_themeService.GetColors();
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
@@ -120,16 +125,12 @@ namespace NeneEngine
 	{
 		const bool isPlaying = m_context->mode == EditorMode::Play;
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
-		if (isPlaying)
-			ImGui::PushStyleColor(ImGuiCol_MenuBarBg,
-			                      Mix(colors.backgroundRaised, colors.accentPlay, kPlayModeMenuBarTint));
-		const bool isMenuBarOpen = ImGui::BeginMainMenuBar();
-		if (isPlaying) ImGui::PopStyleColor();
-		if (!isMenuBarOpen) return;
+		if (!ImGui::BeginMainMenuBar()) return;
 
 		ImGui::PushStyleColor(ImGuiCol_Text, colors.accent);
 		ImGui::TextUnformatted(NENE_ICON_LOGO);
 		ImGui::PopStyleColor();
+		ImGui::TextUnformatted(kProductName);
 
 		if (ImGui::BeginMenu("File"))
 		{
@@ -150,6 +151,15 @@ namespace NeneEngine
 		}
 
 		DrawPlayControls();
+
+		if (isPlaying)
+		{
+			const ImVec2 barPos = ImGui::GetWindowPos();
+			const ImVec2 barSize = ImGui::GetWindowSize();
+			ImGui::GetWindowDrawList()->AddRectFilled(
+			    ImVec2(barPos.x, barPos.y + barSize.y - kPlayModeStripHeight),
+			    ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), ImGui::GetColorU32(colors.accentPlay));
+		}
 		ImGui::EndMainMenuBar();
 	}
 
@@ -172,8 +182,9 @@ namespace NeneEngine
 	{
 		const bool isPlaying = m_context->mode == EditorMode::Play;
 		const ImGuiStyle& style = ImGui::GetStyle();
-		const float buttonWidth =
-		    (std::max)(ImGui::CalcTextSize("Play").x, ImGui::CalcTextSize("Stop").x) + style.FramePadding.x * 2.0f;
+		const float buttonWidth = (std::max)(ImGui::CalcTextSize(kPlayLabel, nullptr, true).x,
+		                                     ImGui::CalcTextSize(kStopLabel, nullptr, true).x) +
+		                          style.FramePadding.x * 2.0f + ImGui::GetFrameHeight();
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth) * 0.5f);
 
 		if (isPlaying)
@@ -185,11 +196,17 @@ namespace NeneEngine
 			ImGui::PushStyleColor(ImGuiCol_Text, colors.background);
 		}
 
-		if (ImGui::Button(isPlaying ? "Stop" : "Play", ImVec2(buttonWidth, 0.0f)))
+		if (PillButton(isPlaying ? kStopLabel : kPlayLabel, ImVec2(buttonWidth, 0.0f)))
 			SetMode(isPlaying ? EditorMode::Edit : EditorMode::Play);
 		if (isPlaying) ImGui::PopStyleColor(4);
 
 		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+
+		if (isPlaying)
+		{
+			ImGui::SameLine();
+			ImGui::TextColored(m_themeService.GetColors().accentPlay, "PLAYING");
+		}
 	}
 
 	void EditorLayer::SetMode(EditorMode mode)
