@@ -2,6 +2,8 @@
 
 #include "Graphics/Loaders/ShaderLoader.h"
 
+#include "Core/Profiler.h"
+
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -33,6 +35,9 @@ namespace NeneEngine
 
 	ShaderProgramResource LoadShaderProgramResourceFromFile(const std::string& path)
 	{
+		NENE_PROFILE_SCOPE("Shader Source Load");
+		NENE_PROFILE_ZONE_TEXT(path.data(), path.size());
+
 		const std::filesystem::path programPath{path};
 		if (!std::filesystem::exists(programPath))
 			throw std::runtime_error("Shader program file does not exist: " + path);

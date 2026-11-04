@@ -8,6 +8,7 @@
 #include "../external/DiligentEngine/DiligentTools/TextureLoader/interface/TextureLoader.h"
 
 #include "Core/NeneLogger.h"
+#include "Core/Profiler.h"
 
 #include <memory>
 #include <string>
@@ -641,6 +642,8 @@ namespace NeneEngine
 
 	GPUMesh DiligentDX12Adapter::UploadMesh(const MeshData& meshData)
 	{
+		NENE_PROFILE_SCOPE("Mesh Upload");
+
 		if (meshData.vertices.empty() || meshData.indices.empty())
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: UploadMesh received empty mesh data");
@@ -670,13 +673,19 @@ namespace NeneEngine
 
 	GPUTexture DiligentDX12Adapter::CreateTexture2D(const TextureResource& texture)
 	{
+		NENE_PROFILE_SCOPE("Texture Create");
+		NENE_PROFILE_ZONE_TEXT(texture.path.data(), texture.path.size());
+
 		if (!IsDeviceReady("CreateTexture2D")) return {};
 
 		TextureLoadInfo loadInfo{};
 		loadInfo.IsSRGB = texture.isSrgb;
 
 		RefCntAutoPtr<ITextureLoader> textureLoader;
-		CreateTextureLoaderFromFile(texture.path.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &textureLoader);
+		{
+			NENE_PROFILE_SCOPE("Texture File Load");
+			CreateTextureLoaderFromFile(texture.path.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &textureLoader);
+		}
 		if (!textureLoader)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create texture loader for '{}'", texture.path);
@@ -688,7 +697,10 @@ namespace NeneEngine
 		auto storageDesc = textureLoader->GetTextureDesc();
 		storageDesc.Format = ColorStorageFormat(sourceFormat);
 		const auto data = textureLoader->GetTextureData();
-		m_shared->device->CreateTexture(storageDesc, &data, &uploadedTexture.texture);
+		{
+			NENE_PROFILE_SCOPE("Texture Upload");
+			m_shared->device->CreateTexture(storageDesc, &data, &uploadedTexture.texture);
+		}
 		if (!uploadedTexture.texture)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create GPU texture for '{}'", texture.path);
@@ -724,6 +736,10 @@ namespace NeneEngine
 
 	GPUShaderProgram DiligentDX12Adapter::CreateShaderProgram(const ShaderProgramResource& shaderProgram)
 	{
+		NENE_PROFILE_SCOPE("Shader Program Create");
+		NENE_PROFILE_ZONE_TEXT(shaderProgram.vertexPath.data(), shaderProgram.vertexPath.size());
+		NENE_PROFILE_ZONE_TEXT(shaderProgram.pixelPath.data(), shaderProgram.pixelPath.size());
+
 		if (!m_shared->device || !m_shared->pipelinesCreated)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: CreateShaderProgram called before renderer initialization");

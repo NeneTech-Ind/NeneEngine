@@ -5,6 +5,7 @@
 #include "Core/CachedResource.h"
 #include "Core/EASTLStdHash.h"
 #include "Core/NeneLogger.h"
+#include "Core/Profiler.h"
 
 #include <EASTL/any.h>
 #include <EASTL/functional.h>
@@ -35,6 +36,9 @@ namespace NeneEngine
 
 		template <typename T> ResourcePtr<T> Load(const std::string& path)
 		{
+			NENE_PROFILE_SCOPE("Resource Load");
+			NENE_PROFILE_ZONE_TEXT(path.data(), path.size());
+
 			std::scoped_lock lock(m_mutex);
 
 			auto& cache = GetOrCreateCache<T>();

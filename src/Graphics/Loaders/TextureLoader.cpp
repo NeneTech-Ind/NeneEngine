@@ -2,6 +2,8 @@
 
 #include "Graphics/Loaders/TextureLoader.h"
 
+#include "Core/Profiler.h"
+
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -37,6 +39,9 @@ namespace NeneEngine
 
 	TextureResource LoadTextureResourceFromFile(const std::string& path)
 	{
+		NENE_PROFILE_SCOPE("Texture Metadata Load");
+		NENE_PROFILE_ZONE_TEXT(path.data(), path.size());
+
 		if (!std::filesystem::exists(path)) throw std::runtime_error("Texture file does not exist: " + path);
 
 		const std::filesystem::path texturePath{path};

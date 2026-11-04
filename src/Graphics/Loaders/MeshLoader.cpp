@@ -2,6 +2,8 @@
 
 #include "Graphics/Loaders/MeshLoader.h"
 
+#include "Core/Profiler.h"
+
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -81,6 +83,9 @@ namespace NeneEngine
 
 	MeshData LoadMeshDataFromFile(const std::string& path)
 	{
+		NENE_PROFILE_SCOPE("Mesh Load");
+		NENE_PROFILE_ZONE_TEXT(path.data(), path.size());
+
 		if (!std::filesystem::exists(path)) throw std::runtime_error("Mesh file does not exist: " + path);
 
 		Assimp::Importer importer;
@@ -109,6 +114,9 @@ namespace NeneEngine
 
 	eastl::vector<MeshPart> LoadMeshPartsFromFile(const std::string& path)
 	{
+		NENE_PROFILE_SCOPE("Mesh Parts Load");
+		NENE_PROFILE_ZONE_TEXT(path.data(), path.size());
+
 		const std::filesystem::path modelPath{path};
 		if (!std::filesystem::exists(modelPath)) throw std::runtime_error("Mesh file does not exist: " + path);
 

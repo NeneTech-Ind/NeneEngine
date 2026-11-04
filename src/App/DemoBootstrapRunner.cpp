@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "Core/Profiler.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Scene/Instantiation/ModelSpawner.h"
 
@@ -9,6 +10,8 @@ namespace NeneEngine
 {
 	void RunDemoBootstrap(ECS::World& world, eastl::span<IRenderAdapter* const> renderers)
 	{
+		NENE_PROFILE_SCOPE("Demo Bootstrap");
+
 		if (renderers.empty())
 		{
 			NENE_LOG_INFO("Demo bootstrap skipped: no renderers are available");

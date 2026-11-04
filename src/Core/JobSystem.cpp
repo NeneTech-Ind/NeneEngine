@@ -133,6 +133,8 @@ namespace NeneEngine
 			m_impl->isRunning = false;
 		}
 
+		NENE_PROFILE_SCOPE("Job Shutdown");
+
 		m_impl->scheduler.WaitforAllAndShutdown();
 
 		std::scoped_lock lock(m_impl->mutex);
@@ -172,6 +174,8 @@ namespace NeneEngine
 
 	JobHandle JobSystem::Submit(eastl::shared_ptr<JobTaskSet> job)
 	{
+		NENE_PROFILE_SCOPE("Job Submit");
+
 		{
 			std::scoped_lock lock(m_impl->mutex);
 			if (!m_impl->isRunning)

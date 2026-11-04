@@ -5,6 +5,7 @@
 #include "App/AppInputBindings.h"
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "Core/Profiler.h"
 
 #include <filesystem>
 #include <stdexcept>
@@ -33,6 +34,9 @@ namespace NeneEngine
 
 	bool NeneEngineApp::Init(uint32_t width, uint32_t height)
 	{
+		NENE_PROFILE_THREAD_NAME("Main");
+		NENE_PROFILE_SCOPE("App Init");
+
 		try
 		{
 			if (!m_bootstrapService.Initialize(
