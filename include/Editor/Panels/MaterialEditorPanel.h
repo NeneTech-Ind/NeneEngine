@@ -11,7 +11,7 @@ namespace NeneEngine
 	{
 	  public:
 		const char* GetName() const override { return "Material Editor"; }
-		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_MESH; }
+		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_PALETTE; }
 		EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Right; }
 		void Draw(EditorContext& context) override;
 		void OnSceneLoaded() override { m_colorEntity = ECS::NullEntity; }

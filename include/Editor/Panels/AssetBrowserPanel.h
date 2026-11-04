@@ -9,7 +9,7 @@ namespace NeneEngine
 	{
 	  public:
 		const char* GetName() const override { return "Asset Browser"; }
-		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_SEARCH; }
+		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_FOLDER; }
 		EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Bottom; }
 		void Draw(EditorContext& context) override;
 
