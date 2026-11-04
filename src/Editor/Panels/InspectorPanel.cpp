@@ -20,9 +20,9 @@
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 
 #include <algorithm>
-#include <cstdio>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -44,7 +44,7 @@ namespace NeneEngine
 
 		constexpr const char* kPrimitiveTypeNames[] = {"Line", "Triangle", "Quad", "Cube"};
 		constexpr const char* kColliderTypeNames[] = {"Box", "Sphere"};
-		constexpr const char* kMaterialEditorWindow = "###Material Editor";
+		constexpr float kMaterialPreviewMaxWidth = 128.0f;
 
 		void TrackItem(FieldEdits& edits)
 		{
@@ -143,33 +143,6 @@ namespace NeneEngine
 			ImGui::EndDisabled();
 		}
 
-		int ToColorByte(float value)
-		{
-			return static_cast<int>(std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
-		}
-
-		void DrawReadOnlyTint(const glm::vec4& tint, const FieldEdits& edits)
-		{
-			const ImGuiStyle& style = ImGui::GetStyle();
-			ImGui::ColorButton("##Tint", ImVec4(tint.r, tint.g, tint.b, tint.a), ImGuiColorEditFlags_NoPicker);
-
-			char hex[16];
-			std::snprintf(hex, sizeof(hex), "#%02X%02X%02X%02X", ToColorByte(tint.r), ToColorByte(tint.g),
-			              ToColorByte(tint.b), ToColorByte(tint.a));
-			ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-			ImGui::AlignTextToFramePadding();
-			if (edits.valueFont != nullptr) ImGui::PushFont(edits.valueFont, 0.0f);
-			ImGui::TextUnformatted(hex);
-			if (edits.valueFont != nullptr) ImGui::PopFont();
-
-			ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-			if (ImGui::Button(NENE_ICON_PALETTE "##OpenMaterialEditor")) ImGui::SetWindowFocus(kMaterialEditorWindow);
-			ImGui::SetItemTooltip("Edit the tint in Material Editor");
-
-			ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-			ImGui::TextUnformatted("Tint");
-		}
-
 		void DrawReadOnlyValue(ImFont* font, const char* label, const char* value)
 		{
 			if (font != nullptr) ImGui::PushFont(font, 0.0f);
@@ -241,6 +214,8 @@ namespace NeneEngine
 		{
 			m_commitPendingEdit = nullptr;
 			m_pendingEditLabel = nullptr;
+			m_colorEntity = ECS::NullEntity;
+			m_materialError.clear();
 			DrawEmptyState(context.GetMascot(EditorMascotPose::Search), "Select an entity to inspect it");
 			return;
 		}
@@ -287,8 +262,9 @@ namespace NeneEngine
 			                                          EnumCombo("Primitive", meshRenderer.primitiveType,
 			                                                    kPrimitiveTypeNames, edits);
 			                                          Checkbox("Visible", meshRenderer.visible, edits);
-			                                          DrawReadOnlyTint(meshRenderer.tint, edits);
 		                                          });
+
+		DrawMaterial(context);
 
 		DrawComponent<ECS::ColliderComponent>(
 		    context, NENE_ICON_COLLIDER, "Collider",
@@ -369,6 +345,110 @@ namespace NeneEngine
 			    DragFloat("Sprint Multiplier", controller.sprintMultiplier, 0.05f, edits, 1.0f, 20.0f);
 			    DragFloat("Look Sensitivity", controller.lookSensitivity, 0.0001f, edits, 0.0001f, 0.1f);
 		    });
+	}
+
+	void InspectorPanel::SetMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material,
+	                                      const std::string& path, bool texture)
+	{
+		if (!path.empty())
+		{
+			const bool valid = texture ? context.assetResolver.Texture(path, *context.renderer).IsValid()
+			                           : context.assetResolver.Shader(path, *context.renderer).IsValid();
+			if (!valid)
+			{
+				m_materialError = texture ? "Could not load texture" : "Could not compile shader";
+				return;
+			}
+		}
+		const auto before = material;
+		(texture ? material.texturePath : material.shaderPath) = path;
+		if (texture && !path.empty() && material.shaderPath.empty())
+			material.shaderPath = "assets/shaders/textured_mesh.shader";
+		context.history.RecordComponentChange("Edit Material", context.selectedEntity, before, material);
+		m_materialError.clear();
+	}
+
+	void InspectorPanel::DrawMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, bool texture)
+	{
+		const auto& path = texture ? material.texturePath : material.shaderPath;
+		const auto kind = texture ? AssetKind::Texture : AssetKind::Shader;
+		const std::string label =
+		    path.empty() ? (texture ? "None" : "Default") : std::filesystem::path(path).filename().string();
+
+		if (context.monospaceFont != nullptr) ImGui::PushFont(context.monospaceFont, 0.0f);
+		if (ImGui::BeginCombo(texture ? "##Texture" : "##Shader", label.c_str()))
+		{
+			if (ImGui::Selectable(texture ? "None" : "Default", path.empty()))
+				SetMaterialAsset(context, material, "", texture);
+			for (const auto& entry : context.assets.Entries())
+				if (entry.kind == kind && ImGui::Selectable(entry.path.c_str(), entry.path == path))
+					SetMaterialAsset(context, material, entry.path, texture);
+			ImGui::EndCombo();
+		}
+		if (context.monospaceFont != nullptr) ImGui::PopFont();
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const auto* payload = ImGui::AcceptDragDropPayload(texture ? TextureAssetPayload : ShaderAssetPayload))
+				SetMaterialAsset(context, material, static_cast<const char*>(payload->Data), texture);
+			ImGui::EndDragDropTarget();
+		}
+		if (!path.empty()) ImGui::SetItemTooltip("%s", path.c_str());
+
+		ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+		ImGui::TextUnformatted(texture ? "Texture" : "Shader");
+	}
+
+	void InspectorPanel::DrawMaterialPreview(EditorContext& context, const ECS::MeshRendererComponent& material)
+	{
+		if (material.texturePath.empty()) return;
+
+		const auto texture = context.assetResolver.Texture(material.texturePath, *context.renderer);
+		if (!texture.IsValid()) return;
+
+		if (context.monospaceFont != nullptr) ImGui::PushFont(context.monospaceFont, 0.0f);
+		ImGui::Text("%u x %u", texture.width, texture.height);
+		if (context.monospaceFont != nullptr) ImGui::PopFont();
+
+		const float width = (std::min)(ImGui::GetContentRegionAvail().x, ScaledSize(kMaterialPreviewMaxWidth));
+		ImGui::Image(static_cast<ImTextureID>(context.renderer->GetTextureHandle(texture.textureId)),
+		             ImVec2(width, width * texture.height / texture.width));
+	}
+
+	void InspectorPanel::DrawMaterial(EditorContext& context)
+	{
+		auto* material = context.world.GetComponent<ECS::MeshRendererComponent>(context.selectedEntity);
+		if (material == nullptr || context.renderer == nullptr || !ComponentHeader(NENE_ICON_PALETTE, "Material"))
+			return;
+
+		const EditorThemeColorsConfig& colors = *context.themeColors;
+		ComponentCardScope card;
+		ImGui::PushID("Material");
+		ImGui::BeginDisabled(context.mode != EditorMode::Edit);
+		const auto before = *material;
+		ImGui::ColorEdit4("Tint", glm::value_ptr(material->tint));
+		if (ImGui::IsItemActivated())
+		{
+			m_colorBefore = before;
+			m_colorEntity = context.selectedEntity;
+		}
+		if (ImGui::IsItemDeactivatedAfterEdit() && m_colorEntity == context.selectedEntity)
+		{
+			context.history.RecordComponentChange("Change Tint", context.selectedEntity, m_colorBefore, *material);
+			m_colorEntity = ECS::NullEntity;
+		}
+		if (!material->meshPath.empty() ||
+		    (material->primitiveType != PrimitiveType::Line && material->primitiveType != PrimitiveType::DebugLine))
+		{
+			DrawMaterialAsset(context, *material, true);
+			DrawMaterialAsset(context, *material, false);
+		}
+		else
+			StatusText(colors, EditorStatusKind::Muted, "Line material uses the built-in shader");
+		ImGui::EndDisabled();
+		if (!m_materialError.empty()) StatusText(colors, EditorStatusKind::Danger, m_materialError.c_str());
+		DrawMaterialPreview(context, *material);
+		ImGui::PopID();
 	}
 
 	void InspectorPanel::DrawTransformFields(ECS::Entity entity, ECS::TransformComponent& transform, FieldEdits& edits)

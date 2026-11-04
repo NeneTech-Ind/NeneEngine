@@ -8,7 +8,6 @@
 #include "Editor/Panels/AssetBrowserPanel.h"
 #include "Editor/Panels/HierarchyPanel.h"
 #include "Editor/Panels/InspectorPanel.h"
-#include "Editor/Panels/MaterialEditorPanel.h"
 #include "Editor/Panels/StatisticsPanel.h"
 #include "Editor/Panels/ViewportPanel.h"
 #include "Editor/Theme/EditorIcons.h"
@@ -155,7 +154,6 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
-		m_panels.push_back({eastl::make_unique<MaterialEditorPanel>()});
 
 		for (auto& entry : m_panels)
 			entry.windowTitle =

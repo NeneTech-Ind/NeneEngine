@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Entity.h"
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorIcons.h"
@@ -10,6 +11,7 @@
 #include <EASTL/functional.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <string>
 
 namespace NeneEngine
 {
@@ -31,6 +33,8 @@ namespace NeneEngine
 			m_commitPendingEdit = nullptr;
 			m_pendingEditLabel = nullptr;
 			m_eulerEntity = ECS::NullEntity;
+			m_colorEntity = ECS::NullEntity;
+			m_materialError.clear();
 		}
 
 		struct FieldEdits
@@ -51,6 +55,11 @@ namespace NeneEngine
 		void DrawEntityHeader(EditorContext& context);
 		void DrawComponents(EditorContext& context);
 		void DrawTransformFields(ECS::Entity entity, ECS::TransformComponent& transform, FieldEdits& edits);
+		void DrawMaterial(EditorContext& context);
+		void DrawMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, bool texture);
+		void DrawMaterialPreview(EditorContext& context, const ECS::MeshRendererComponent& material);
+		void SetMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, const std::string& path,
+		                      bool texture);
 
 		PendingEditCommit m_commitPendingEdit;
 		const char* m_pendingEditLabel = nullptr;
@@ -58,6 +67,10 @@ namespace NeneEngine
 		ECS::Entity m_eulerEntity = ECS::NullEntity;
 		glm::quat m_eulerSource = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 		glm::vec3 m_eulerDegrees = {0.0f, 0.0f, 0.0f};
+
+		ECS::Entity m_colorEntity = ECS::NullEntity;
+		ECS::MeshRendererComponent m_colorBefore;
+		std::string m_materialError;
 	};
 
 } // namespace NeneEngine
