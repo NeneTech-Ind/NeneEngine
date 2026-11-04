@@ -55,8 +55,9 @@ namespace NeneEngine
 		void DrawPlayControls();
 		void SetMode(EditorMode mode);
 		void DrawDockSpace();
-		void BuildDefaultLayout(ImGuiID dockSpaceId);
+		void BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size);
 		void DrawPanels();
+		void DrawDockedPanelCorners() const;
 		void ApplyInputCapture();
 		void LoadMascots();
 		void ReleaseMascots();

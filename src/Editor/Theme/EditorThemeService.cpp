@@ -100,10 +100,10 @@ namespace NeneEngine
 		colors[ImGuiCol_FrameBgHovered] = WithAlpha(theme.accent, kFrameHoveredAlpha);
 		colors[ImGuiCol_FrameBgActive] = WithAlpha(theme.accent, kFrameActiveAlpha);
 
-		colors[ImGuiCol_TitleBg] = theme.backgroundSunken;
-		colors[ImGuiCol_TitleBgActive] = theme.backgroundSunken;
-		colors[ImGuiCol_TitleBgCollapsed] = theme.backgroundSunken;
-		colors[ImGuiCol_MenuBarBg] = theme.backgroundRaised;
+		colors[ImGuiCol_TitleBg] = theme.background;
+		colors[ImGuiCol_TitleBgActive] = theme.background;
+		colors[ImGuiCol_TitleBgCollapsed] = theme.background;
+		colors[ImGuiCol_MenuBarBg] = theme.backgroundSunken;
 
 		colors[ImGuiCol_ScrollbarBg] = theme.backgroundSunken;
 		colors[ImGuiCol_ScrollbarGrab] = theme.border;
@@ -132,12 +132,12 @@ namespace NeneEngine
 
 		colors[ImGuiCol_InputTextCursor] = theme.text;
 
-		colors[ImGuiCol_Tab] = theme.backgroundSunken;
+		colors[ImGuiCol_Tab] = theme.background;
 		colors[ImGuiCol_TabHovered] = WithAlpha(theme.accent, kHoveredAlpha);
-		colors[ImGuiCol_TabSelected] = theme.background;
+		colors[ImGuiCol_TabSelected] = theme.backgroundRaised;
 		colors[ImGuiCol_TabSelectedOverline] = theme.accent;
-		colors[ImGuiCol_TabDimmed] = theme.backgroundSunken;
-		colors[ImGuiCol_TabDimmedSelected] = theme.background;
+		colors[ImGuiCol_TabDimmed] = theme.background;
+		colors[ImGuiCol_TabDimmedSelected] = theme.backgroundRaised;
 		colors[ImGuiCol_TabDimmedSelectedOverline] = theme.border;
 
 		colors[ImGuiCol_DockingPreview] = WithAlpha(theme.accent, kActiveAlpha);
@@ -183,6 +183,7 @@ namespace NeneEngine
 		style.WindowBorderSize = metrics.windowBorderSize;
 		style.FrameBorderSize = metrics.frameBorderSize;
 		style.TabBarOverlineSize = metrics.tabBarOverlineSize;
+		style.DockingSeparatorSize = metrics.dockingSeparatorSize;
 	}
 
 } // namespace NeneEngine

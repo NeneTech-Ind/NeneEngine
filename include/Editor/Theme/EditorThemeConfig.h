@@ -44,7 +44,9 @@ namespace NeneEngine
 		float scrollbarRounding = 9.0f;
 		float windowBorderSize = 1.0f;
 		float frameBorderSize = 0.0f;
-		float tabBarOverlineSize = 2.0f;
+		float tabBarOverlineSize = 0.0f;
+		float dockingSeparatorSize = 6.0f;
+		float panelBorderSize = 1.0f;
 	};
 
 	struct EditorThemeFontsConfig

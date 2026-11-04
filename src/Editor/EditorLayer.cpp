@@ -27,6 +27,11 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr const char* kDockSpaceName = "EditorMainDockSpace";
+		constexpr const char* kDockHostName = "##EditorDockHost";
+		constexpr ImGuiWindowFlags kDockHostFlags =
+		    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+		    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
+		    ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
@@ -38,6 +43,22 @@ namespace NeneEngine
 		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png",
 		                                        "mascot_happy_256.png", "mascot_scared_256.png"};
 		static_assert(std::size(kMascotFiles) == static_cast<size_t>(EditorMascotPose::Count));
+
+		constexpr int kCornerMaskSegments = 8;
+
+		void FillCornerMask(ImDrawList* drawList, const ImVec2& corner, float directionX, float directionY,
+		                    float radius, ImU32 color)
+		{
+			const ImVec2 center(corner.x + directionX * radius, corner.y + directionY * radius);
+			drawList->PathLineTo(corner);
+			for (int segment = 0; segment <= kCornerMaskSegments; ++segment)
+			{
+				const float angle = IM_PI * 0.5f * static_cast<float>(segment) / kCornerMaskSegments;
+				drawList->PathLineTo(ImVec2(center.x - directionX * radius * ImCos(angle),
+				                            center.y - directionY * radius * ImSin(angle)));
+			}
+			drawList->PathFillConcave(color);
+		}
 
 		ImVec4 Mix(const ImVec4& from, const ImVec4& to, float amount)
 		{
@@ -312,18 +333,40 @@ namespace NeneEngine
 	void EditorLayer::DrawDockSpace()
 	{
 		const ImGuiID dockSpaceId = ImGui::GetID(kDockSpaceName);
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+		const float margin = m_themeService.GetMetrics().dockingSeparatorSize;
+		const ImVec2 dockSpaceSize((std::max)(1.0f, viewport->WorkSize.x - margin * 2.0f),
+		                           (std::max)(1.0f, viewport->WorkSize.y - margin * 2.0f));
 
-		if (ImGui::DockBuilderGetNode(dockSpaceId) == nullptr) BuildDefaultLayout(dockSpaceId);
+		if (ImGui::DockBuilderGetNode(dockSpaceId) == nullptr) BuildDefaultLayout(dockSpaceId, dockSpaceSize);
 
+		ImGui::SetNextWindowPos(viewport->WorkPos);
+		ImGui::SetNextWindowSize(viewport->WorkSize);
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(margin, margin));
+		ImGui::Begin(kDockHostName, nullptr, kDockHostFlags);
+		ImGui::PopStyleVar(3);
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(0, 0, 0, 0));
-		ImGui::DockSpaceOverViewport(dockSpaceId, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
-		ImGui::PopStyleColor();
+		ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(0, 0, 0, 0));
+		ImGui::DockSpace(dockSpaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+		ImGui::PopStyleColor(2);
+		ImGui::End();
+
+		const ImGuiDockNode* centralNode = ImGui::DockBuilderGetCentralNode(dockSpaceId);
+		if (centralNode == nullptr) return;
+
+		const ImVec2 workMax(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y + viewport->WorkSize.y);
+		ImGui::RenderRectFilledWithHole(ImGui::GetBackgroundDrawList(viewport), ImRect(viewport->WorkPos, workMax),
+		                                centralNode->Rect(),
+		                                ImGui::GetColorU32(m_themeService.GetColors().backgroundSunken), 0.0f);
 	}
 
-	void EditorLayer::BuildDefaultLayout(ImGuiID dockSpaceId)
+	void EditorLayer::BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size)
 	{
 		ImGui::DockBuilderAddNode(dockSpaceId, ImGuiDockNodeFlags_DockSpace);
-		ImGui::DockBuilderSetNodeSize(dockSpaceId, ImGui::GetMainViewport()->WorkSize);
+		ImGui::DockBuilderSetNodeSize(dockSpaceId, size);
 
 		ImGuiID centerId = dockSpaceId;
 		const ImGuiID leftId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, kLeftDockRatio, nullptr, &centerId);
@@ -363,9 +406,40 @@ namespace NeneEngine
 			if (!entry.isOpen) continue;
 
 			if (ImGui::Begin(entry.windowTitle.c_str(), &entry.isOpen, entry.panel->GetWindowFlags()))
+			{
 				entry.panel->Draw(*m_context);
+				DrawDockedPanelCorners();
+			}
 			ImGui::End();
 		}
+	}
+
+	void EditorLayer::DrawDockedPanelCorners() const
+	{
+		const ImGuiWindow* window = ImGui::GetCurrentWindow();
+		const float radius = m_themeService.GetMetrics().windowRounding;
+		if (!window->DockIsActive || window->DockNode == nullptr || radius <= 0.0f) return;
+
+		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+		const ImRect rect = window->DockNode->Rect();
+		const ImU32 color = ImGui::GetColorU32(colors.backgroundSunken);
+		ImDrawList* drawList = window->DrawList;
+		drawList->PushClipRect(rect.Min, rect.Max, false);
+		FillCornerMask(drawList, rect.Min, 1.0f, 1.0f, radius, color);
+		FillCornerMask(drawList, ImVec2(rect.Max.x, rect.Min.y), -1.0f, 1.0f, radius, color);
+		FillCornerMask(drawList, ImVec2(rect.Min.x, rect.Max.y), 1.0f, -1.0f, radius, color);
+		FillCornerMask(drawList, rect.Max, -1.0f, -1.0f, radius, color);
+
+		const float borderSize = m_themeService.GetMetrics().panelBorderSize;
+		if (borderSize > 0.0f)
+		{
+			const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+			const float inset = borderSize * 0.5f;
+			drawList->AddRect(ImVec2(rect.Min.x + inset, rect.Min.y + inset),
+			                  ImVec2(rect.Max.x - inset, rect.Max.y - inset),
+			                  ImGui::GetColorU32(isFocused ? colors.accent : colors.border), radius, 0, borderSize);
+		}
+		drawList->PopClipRect();
 	}
 
 	void EditorLayer::ApplyInputCapture()
