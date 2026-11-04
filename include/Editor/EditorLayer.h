@@ -55,6 +55,8 @@ namespace NeneEngine
 		void BuildDefaultLayout(ImGuiID dockSpaceId);
 		void DrawPanels();
 		void ApplyInputCapture();
+		void LoadMascots();
+		void ReleaseMascots();
 
 		IImGuiBackend* m_imguiBackend = nullptr;
 		InputDevice* m_uiInput = nullptr;

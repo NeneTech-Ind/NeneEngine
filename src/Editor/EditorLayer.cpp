@@ -3,6 +3,7 @@
 #include "Editor/EditorLayer.h"
 
 #include "Core/NeneLogger.h"
+#include "Core/PathResolver.h"
 #include "ECS/World.h"
 #include "Editor/Panels/HierarchyPanel.h"
 #include "Editor/Panels/InspectorPanel.h"
@@ -18,6 +19,7 @@
 #include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <iterator>
 
 namespace NeneEngine
 {
@@ -32,6 +34,9 @@ namespace NeneEngine
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
+		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png",
+		                                        "mascot_happy_256.png", "mascot_scared_256.png"};
+		static_assert(std::size(kMascotFiles) == static_cast<size_t>(EditorMascotPose::Count));
 
 		ImVec4 Mix(const ImVec4& from, const ImVec4& to, float amount)
 		{
@@ -72,6 +77,7 @@ namespace NeneEngine
 		m_themeService.LoadFonts();
 		m_context->monospaceFont = m_themeService.GetMonospaceFont();
 		m_context->themeColors = &m_themeService.GetColors();
+		LoadMascots();
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
@@ -93,6 +99,7 @@ namespace NeneEngine
 			m_uiInput->SetKeyboardCaptured(false);
 		}
 
+		ReleaseMascots();
 		m_panels.clear();
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
@@ -101,6 +108,34 @@ namespace NeneEngine
 		m_onModeChanged = nullptr;
 		m_uiInput = nullptr;
 		m_imguiBackend = nullptr;
+	}
+
+	void EditorLayer::LoadMascots()
+	{
+		for (size_t pose = 0; pose < std::size(kMascotFiles); ++pose)
+		{
+			const std::filesystem::path relativePath =
+			    std::filesystem::path{"assets"} / "editor" / "mascot" / kMascotFiles[pose];
+			const std::filesystem::path path = ResolveFromExecutionRoots(relativePath);
+			if (path.empty())
+			{
+				NENE_LOG_WARN("Editor mascot not found: {}", kMascotFiles[pose]);
+				continue;
+			}
+
+			m_context->mascots[pose] = m_imguiBackend->RegisterTexture(path);
+		}
+	}
+
+	void EditorLayer::ReleaseMascots()
+	{
+		if (m_context == nullptr || m_imguiBackend == nullptr) return;
+
+		for (ImGuiTexture& mascot : m_context->mascots)
+		{
+			if (mascot.IsValid()) m_imguiBackend->ReleaseTexture(mascot);
+			mascot = {};
+		}
 	}
 
 	void EditorLayer::Update()

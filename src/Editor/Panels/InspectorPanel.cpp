@@ -203,7 +203,7 @@ namespace NeneEngine
 		{
 			m_commitPendingEdit = nullptr;
 			m_pendingEditLabel = nullptr;
-			ImGui::TextDisabled("Select an entity to inspect it");
+			DrawEmptyState(context.GetMascot(EditorMascotPose::Search), "Select an entity to inspect it");
 			return;
 		}
 

@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Graphics/Backend/IImGuiBackend.h"
+
 #include <imgui.h>
 
 namespace NeneEngine
@@ -16,6 +18,7 @@ namespace NeneEngine
 	bool PillButton(const char* label, const ImVec2& size = ImVec2(0.0f, 0.0f));
 	bool ComponentHeader(const char* icon, const char* label);
 	void DrawSelectionMarker(const ImVec4& color);
+	void DrawEmptyState(const ImGuiTexture& mascot, const char* hint);
 	AxisDragResult DragFloat3Axes(const char* id, float* values, float speed, float min, float max,
 	                              ImGuiSliderFlags flags, const ImVec4 (&axisColors)[3]);
 

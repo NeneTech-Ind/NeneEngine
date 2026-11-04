@@ -84,7 +84,11 @@ namespace NeneEngine
 			return;
 		}
 
-		if (m_filter.IsActive())
+		if (entityCount == 0)
+		{
+			DrawEmptyState(context.GetMascot(EditorMascotPose::Happy), "The scene is empty");
+		}
+		else if (m_filter.IsActive())
 		{
 			DrawFilteredList(context);
 		}
@@ -182,7 +186,7 @@ namespace NeneEngine
 
 		if (m_matches.empty())
 		{
-			ImGui::TextDisabled("No matches");
+			DrawEmptyState(context.GetMascot(EditorMascotPose::Scared), "No matches");
 			return;
 		}
 

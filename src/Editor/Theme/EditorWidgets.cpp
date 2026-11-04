@@ -12,6 +12,9 @@ namespace NeneEngine
 		constexpr float kCardPadding = 6.0f;
 		constexpr float kSelectionMarkerWidth = 3.0f;
 		constexpr const char* kAxisNames[] = {"X", "Y", "Z"};
+		constexpr float kEmptyStateMascotSize = 128.0f;
+		constexpr float kEmptyStateMascotMinSize = 32.0f;
+		constexpr float kEmptyStateMascotWidthRatio = 0.6f;
 	} // namespace
 
 	bool PillButton(const char* label, const ImVec2& size)
@@ -36,6 +39,37 @@ namespace NeneEngine
 		ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(left, itemMin.y),
 		                                          ImVec2(left + kSelectionMarkerWidth, itemMax.y),
 		                                          ImGui::GetColorU32(color));
+	}
+
+	void DrawEmptyState(const ImGuiTexture& mascot, const char* hint)
+	{
+		const ImGuiStyle& style = ImGui::GetStyle();
+		const ImVec2 origin = ImGui::GetCursorPos();
+		const ImVec2 available = ImGui::GetContentRegionAvail();
+		const ImVec2 textSize = ImGui::CalcTextSize(hint);
+
+		ImVec2 imageSize(0.0f, 0.0f);
+		if (mascot.IsValid() && mascot.width > 0 && mascot.height > 0)
+		{
+			const float aspect = static_cast<float>(mascot.height) / static_cast<float>(mascot.width);
+			const float maxHeight = available.y - textSize.y - style.ItemSpacing.y;
+			const float width = (std::min)({kEmptyStateMascotSize, available.x * kEmptyStateMascotWidthRatio,
+			                                maxHeight / aspect});
+			if (width >= kEmptyStateMascotMinSize) imageSize = ImVec2(width, width * aspect);
+		}
+
+		const bool hasImage = imageSize.x > 0.0f;
+		const float contentHeight = textSize.y + (hasImage ? imageSize.y + style.ItemSpacing.y : 0.0f);
+		ImGui::SetCursorPosY(origin.y + (std::max)(0.0f, (available.y - contentHeight) * 0.5f));
+
+		if (hasImage)
+		{
+			ImGui::SetCursorPosX(origin.x + (available.x - imageSize.x) * 0.5f);
+			ImGui::Image(ImTextureRef(static_cast<ImTextureID>(mascot.id)), imageSize);
+		}
+
+		ImGui::SetCursorPosX(origin.x + (std::max)(0.0f, (available.x - textSize.x) * 0.5f));
+		ImGui::TextDisabled("%s", hint);
 	}
 
 	AxisDragResult DragFloat3Axes(const char* id, float* values, float speed, float min, float max,
