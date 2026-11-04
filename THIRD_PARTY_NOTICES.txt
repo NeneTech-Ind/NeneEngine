@@ -6,6 +6,7 @@ This project uses third-party open-source software.
 The list below reflects the dependencies that are currently integrated into the
 project through:
 - the vendored external/DiligentEngine subtree
+- the vendored external/imgui and external/imguizmo sources
 - the vcpkg.json manifest
 - the current CMake configuration in CMakeLists.txt and src/CMakeLists.txt
 
@@ -154,6 +155,24 @@ INCLUDED COMPONENTS
    assets/fonts/lucide_icons_license.txt
 
 
+17. Dear ImGui (docking branch)
+   Purpose:
+   Editor user interface
+   License:
+   MIT
+   Local license file:
+   external/imgui/LICENSE.txt
+
+
+18. ImGuizmo
+   Purpose:
+   Editor viewport transform gizmo
+   License:
+   BSD 2-Clause
+   Local license file:
+   external/imguizmo/LICENSE
+
+
 NOTES
 =====
 
@@ -184,8 +203,10 @@ NOTES
 THIRD-PARTY SOURCE LOCATIONS
 ============================
 
-- Vendored dependency:
+- Vendored dependencies:
   external/DiligentEngine
+  external/imgui
+  external/imguizmo
 
 - Manifest-managed dependencies:
   vcpkg.json
