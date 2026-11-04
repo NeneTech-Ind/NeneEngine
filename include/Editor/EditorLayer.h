@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Editor/EditorAboutWindow.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
 #include "Editor/EditorSceneSnapshot.h"
@@ -67,6 +68,7 @@ namespace NeneEngine
 		EditorHistory m_history;
 		EditorSceneSnapshot m_sceneSnapshot;
 		EditorThemeService m_themeService;
+		EditorAboutWindow m_aboutWindow;
 		eastl::unique_ptr<EditorContext> m_context;
 		eastl::vector<PanelEntry> m_panels;
 	};

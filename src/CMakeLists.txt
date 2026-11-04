@@ -55,6 +55,8 @@ find_package(glm            CONFIG REQUIRED)
 find_package(Stb            MODULE REQUIRED)
 find_package(Jolt           CONFIG REQUIRED)
 
+target_compile_definitions(NeneEngine PRIVATE NENEENGINE_VERSION="${PROJECT_VERSION}")
+
 option(NENEENGINE_ENABLE_TRACY "Enable Tracy CPU profiling" ON)
 if(NENEENGINE_ENABLE_TRACY)
     find_package(Tracy CONFIG REQUIRED)

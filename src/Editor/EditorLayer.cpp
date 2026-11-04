@@ -31,7 +31,7 @@ namespace NeneEngine
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
 		constexpr float kPlayModeStripHeight = 2.0f;
-		constexpr const char* kProductName = "SuperNeneEngine";
+		constexpr const char* kProductName = "NeneEngine";
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
@@ -79,6 +79,7 @@ namespace NeneEngine
 		m_context->monospaceFont = m_themeService.GetMonospaceFont();
 		m_context->themeColors = &m_themeService.GetColors();
 		LoadMascots();
+		m_aboutWindow.Initialize(*m_imguiBackend);
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
@@ -101,6 +102,7 @@ namespace NeneEngine
 		}
 
 		ReleaseMascots();
+		if (m_imguiBackend != nullptr) m_aboutWindow.Shutdown(*m_imguiBackend);
 		m_panels.clear();
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
@@ -153,6 +155,7 @@ namespace NeneEngine
 		DrawMainMenuBar();
 		DrawDockSpace();
 		DrawPanels();
+		m_aboutWindow.Draw(*m_context);
 
 		ApplyInputCapture();
 	}
@@ -185,6 +188,12 @@ namespace NeneEngine
 			for (auto& entry : m_panels) ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen);
 			ImGui::Separator();
 			DrawThemeMenu();
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Help"))
+		{
+			if (ImGui::MenuItem(NENE_ICON_LOGO " About NeneEngine")) m_aboutWindow.Open();
 			ImGui::EndMenu();
 		}
 

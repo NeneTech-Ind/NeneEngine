@@ -1,6 +1,7 @@
 target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Commands/ComponentChangeCommand.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Commands/IEditorCommand.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorAboutWindow.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorContext.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorHistory.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorLayer.h"
@@ -15,6 +16,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeLoader.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorThemeService.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Theme/EditorWidgets.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/EditorAboutWindow.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorHistory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorLayer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EditorSceneSnapshot.cpp"
