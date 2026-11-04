@@ -9,6 +9,7 @@
 #include "Editor/EditorHistory.h"
 
 #include <ImGuizmo.h>
+#include <algorithm>
 #include <cmath>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -65,6 +66,18 @@ namespace NeneEngine
 			}
 
 			rotation = glm::normalize(glm::quat_cast(glm::mat3(axes[0], axes[1], axes[2])));
+		}
+
+		void ClipDrawCommands(ImDrawList* drawList, int firstCommand, const ImVec2& clipMin, const ImVec2& clipMax)
+		{
+			for (int index = (std::max)(0, firstCommand); index < drawList->CmdBuffer.Size; ++index)
+			{
+				ImVec4& clipRect = drawList->CmdBuffer[index].ClipRect;
+				clipRect.x = (std::max)(clipRect.x, clipMin.x);
+				clipRect.y = (std::max)(clipRect.y, clipMin.y);
+				clipRect.z = (std::min)(clipRect.z, clipMax.x);
+				clipRect.w = (std::min)(clipRect.w, clipMax.y);
+			}
 		}
 
 		ImGuizmo::OPERATION ToImGuizmo(GizmoOperation operation)
@@ -193,8 +206,12 @@ namespace NeneEngine
 		const glm::mat4 projection = camera.GetProjectionMatrix();
 
 		const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		const ImVec2 clipMin = drawList->GetClipRectMin();
+		const ImVec2 clipMax = drawList->GetClipRectMax();
+		const int firstGizmoCommand = drawList->CmdBuffer.Size - 1;
 		ImGuizmo::SetOrthographic(false);
-		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+		ImGuizmo::SetDrawlist(drawList);
 		ImGuizmo::SetRect(mainViewport->Pos.x, mainViewport->Pos.y, mainViewport->Size.x, mainViewport->Size.y);
 
 		const glm::mat4 parentWorld = ComputeParentWorldMatrix(world, entity);
@@ -210,8 +227,11 @@ namespace NeneEngine
 		if (m_operation == GizmoOperation::Scale) snapValue = kScaleSnap;
 		const float snap[3] = {snapValue, snapValue, snapValue};
 
-		if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), operation, space,
-		                         glm::value_ptr(worldMatrix), nullptr, m_useSnap ? snap : nullptr))
+		const bool isManipulated =
+		    ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), operation, space,
+		                         glm::value_ptr(worldMatrix), nullptr, m_useSnap ? snap : nullptr);
+		ClipDrawCommands(drawList, firstGizmoCommand, clipMin, clipMax);
+		if (isManipulated)
 		{
 			glm::vec3 position;
 			glm::quat rotation;
