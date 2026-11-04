@@ -13,5 +13,12 @@
       "features": [ "on-demand" ]
     },
     "joltphysics"
+  ],
+  "overrides": [
+    {
+      "name": "tracy",
+      "version": "0.14.1",
+      "port-version": 1
+    }
   ]
 }
