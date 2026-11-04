@@ -7,6 +7,7 @@
 #include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TagComponent.h"
+#include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorIcons.h"
@@ -16,6 +17,8 @@
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
 #include <cstdint>
+#include <glm/common.hpp>
+#include <glm/vector_relational.hpp>
 #include <imgui.h>
 #include <string>
 
@@ -24,6 +27,14 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr int kMaxHierarchyDepth = 64;
+		constexpr float kMotionEpsilon = 1.0e-4f;
+		constexpr double kMotionHoldSeconds = 0.3;
+		constexpr float kMotionDotRadius = 3.5f;
+
+		bool HasChanged(const glm::vec3& current, const glm::vec3& previous)
+		{
+			return glm::any(glm::greaterThan(glm::abs(current - previous), glm::vec3(kMotionEpsilon)));
+		}
 
 		ECS::Entity GetValidParent(const entt::registry& registry, ECS::Entity entity)
 		{
@@ -66,6 +77,8 @@ namespace NeneEngine
 		if (context.selectedEntity != ECS::NullEntity && !registry.valid(context.selectedEntity))
 			context.selectedEntity = ECS::NullEntity;
 
+		UpdateMotionTracking(context);
+
 		ImGui::SetNextItemWidth(-FLT_MIN);
 		if (ImGui::InputTextWithHint("##Filter", NENE_ICON_SEARCH " Filter by name", m_filter.InputBuf,
 		                             IM_ARRAYSIZE(m_filter.InputBuf)))
@@ -101,6 +114,49 @@ namespace NeneEngine
 			context.selectedEntity = ECS::NullEntity;
 
 		ImGui::EndChild();
+	}
+
+	void HierarchyPanel::UpdateMotionTracking(const EditorContext& context)
+	{
+		if (context.mode != EditorMode::Play)
+		{
+			m_motionSamples.clear();
+			return;
+		}
+
+		const double now = ImGui::GetTime();
+		eastl::unordered_map<uint32_t, MotionSample> samples;
+		for (const auto [entity, transform] : context.world.GetRegistry().view<ECS::TransformComponent>().each())
+		{
+			MotionSample sample{transform.position, transform.rotation, transform.scale, -kMotionHoldSeconds};
+			const uint32_t key = static_cast<uint32_t>(entt::to_integral(entity));
+			if (const auto previous = m_motionSamples.find(key); previous != m_motionSamples.end())
+			{
+				const MotionSample& last = previous->second;
+				const bool hasMoved = HasChanged(transform.position, last.position) ||
+				                      HasChanged(transform.scale, last.scale) ||
+				                      glm::abs(glm::dot(transform.rotation, last.rotation)) < 1.0f - kMotionEpsilon;
+				sample.lastChangeTime = hasMoved ? now : last.lastChangeTime;
+			}
+			samples.emplace(key, sample);
+		}
+		m_motionSamples = std::move(samples);
+	}
+
+	void HierarchyPanel::DrawMotionDot(const EditorContext& context, ECS::Entity entity) const
+	{
+		if (context.themeColors == nullptr) return;
+
+		const auto sample = m_motionSamples.find(static_cast<uint32_t>(entt::to_integral(entity)));
+		if (sample == m_motionSamples.end() || ImGui::GetTime() - sample->second.lastChangeTime > kMotionHoldSeconds)
+			return;
+
+		const float radius = ScaledSize(kMotionDotRadius);
+		const ImVec2 itemMin = ImGui::GetItemRectMin();
+		const ImVec2 itemMax = ImGui::GetItemRectMax();
+		const ImVec2 center(itemMax.x - ImGui::GetStyle().FramePadding.x - radius, (itemMin.y + itemMax.y) * 0.5f);
+		ImGui::GetWindowDrawList()->AddCircleFilled(center, radius,
+		                                            ImGui::GetColorU32(context.themeColors->accentPlay));
 	}
 
 	void HierarchyPanel::CollectRoots(const ECS::World& world)
@@ -160,6 +216,7 @@ namespace NeneEngine
 		const bool isOpen = ImGui::TreeNodeEx(ToTreeId(entity), flags, "%s", label.c_str());
 		if (entity == context.selectedEntity && context.themeColors != nullptr)
 			DrawSelectionMarker(context.themeColors->accent);
+		DrawMotionDot(context, entity);
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) context.selectedEntity = entity;
 
 		if (!hasChildren || !isOpen) return;
@@ -200,6 +257,7 @@ namespace NeneEngine
 				const bool isSelected = entity == context.selectedEntity;
 				if (ImGui::Selectable(label.c_str(), isSelected)) context.selectedEntity = entity;
 				if (isSelected && context.themeColors != nullptr) DrawSelectionMarker(context.themeColors->accent);
+				DrawMotionDot(context, entity);
 				ImGui::PopID();
 			}
 		}
