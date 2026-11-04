@@ -40,13 +40,18 @@ namespace NeneEngine
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
-		constexpr const char* kProductName = "NeneEngine";
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
-		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png",
-		                                        "mascot_happy_256.png", "mascot_scared_256.png"};
+		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png", "mascot_happy_256.png",
+		                                        "mascot_scared_256.png"};
 		static_assert(std::size(kMascotFiles) == static_cast<size_t>(EditorMascotPose::Count));
+
+		constexpr const char* kStatusBarName = "##EditorStatusBar";
+		constexpr ImGuiWindowFlags kStatusBarFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+		                                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavFocus;
+		constexpr double kStatusHoldSeconds = 5.0;
+		constexpr float kStatusBarBorderSize = 1.0f;
 
 		constexpr int kCornerMaskSegments = 8;
 
@@ -68,6 +73,12 @@ namespace NeneEngine
 		{
 			return ImVec4(from.x + (to.x - from.x) * amount, from.y + (to.y - from.y) * amount,
 			              from.z + (to.z - from.z) * amount, from.w + (to.w - from.w) * amount);
+		}
+
+		std::string ToUtf8(const std::filesystem::path& path)
+		{
+			const std::u8string utf8Path = path.u8string();
+			return std::string(utf8Path.begin(), utf8Path.end());
 		}
 
 		ImVec2 ComputeDockSpaceSize()
@@ -147,8 +158,8 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<MaterialEditorPanel>()});
 
 		for (auto& entry : m_panels)
-			entry.windowTitle = eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetName() + "###" +
-			                    entry.panel->GetName();
+			entry.windowTitle =
+			    eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetName() + "###" + entry.panel->GetName();
 
 		NENE_LOG_INFO("Editor initialized with {} panels", m_panels.size());
 	}
@@ -165,7 +176,6 @@ namespace NeneEngine
 		if (m_imguiBackend != nullptr) m_aboutWindow.Shutdown(*m_imguiBackend);
 		m_panels.clear();
 		m_scenePath.clear();
-		m_fileStatus.clear();
 		m_layoutInitialized = false;
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
@@ -219,6 +229,7 @@ namespace NeneEngine
 
 		HandleShortcuts();
 		DrawMainMenuBar();
+		DrawStatusBar();
 		DrawDockSpace();
 		DrawPanels();
 		m_aboutWindow.Draw(*m_context);
@@ -239,16 +250,11 @@ namespace NeneEngine
 		if (ImGui::BeginMenu("File"))
 		{
 			const bool canEdit = m_context->mode == EditorMode::Edit;
-			if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
-			if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
-			if (ImGui::MenuItem("Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
-			if (!m_fileStatus.empty())
-			{
-				ImGui::Separator();
-				ImGui::TextWrapped("%s", m_fileStatus.c_str());
-			}
+			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
+			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
+			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
 			ImGui::Separator();
-			if (ImGui::MenuItem("Exit") && m_requestShutdown) m_requestShutdown();
+			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit") && m_requestShutdown) m_requestShutdown();
 			ImGui::EndMenu();
 		}
 
@@ -263,7 +269,7 @@ namespace NeneEngine
 			for (auto& entry : m_panels) ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen);
 			ImGui::Separator();
 			DrawThemeMenu();
-			if (ImGui::MenuItem("Reset Layout"))
+			if (ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
 			{
 				const auto dockSpaceId = ImHashStr(kDockSpaceName);
 				ImGui::DockBuilderRemoveNode(dockSpaceId);
@@ -287,9 +293,10 @@ namespace NeneEngine
 		if (!ImGui::BeginMenu("Theme")) return;
 
 		const EditorThemeVariant current = m_themeService.GetVariant();
-		if (ImGui::MenuItem("Evening", nullptr, current == EditorThemeVariant::Evening))
+		if (ImGui::MenuItem(NENE_ICON_MOON " Evening", nullptr, current == EditorThemeVariant::Evening))
 			SetTheme(EditorThemeVariant::Evening);
-		if (ImGui::MenuItem("Day", nullptr, current == EditorThemeVariant::Day)) SetTheme(EditorThemeVariant::Day);
+		if (ImGui::MenuItem(NENE_ICON_SUN " Day", nullptr, current == EditorThemeVariant::Day))
+			SetTheme(EditorThemeVariant::Day);
 		ImGui::EndMenu();
 	}
 
@@ -309,12 +316,13 @@ namespace NeneEngine
 			if (path.empty()) return;
 			SceneSerializer::SaveToFile(m_context->world, path);
 			m_scenePath = path;
-			m_fileStatus = "Saved: " + path.string();
-			NENE_LOG_INFO("{}", m_fileStatus);
+			m_history.MarkSaved();
+			m_context->SetStatus(EditorStatusKind::Success, "Saved: " + ToUtf8(path.filename()));
+			NENE_LOG_INFO("Saved: {}", ToUtf8(path));
 		}
 		catch (const std::exception& e)
 		{
-			m_fileStatus = e.what();
+			m_context->SetStatus(EditorStatusKind::Danger, e.what());
 			NENE_LOG_ERROR("Save scene: {}", e.what());
 		}
 	}
@@ -331,14 +339,76 @@ namespace NeneEngine
 			m_context->selectedEntity = ECS::NullEntity;
 			for (auto& entry : m_panels) entry.panel->OnSceneLoaded();
 			m_scenePath = path;
-			m_fileStatus = "Loaded: " + path.string();
-			NENE_LOG_INFO("{}", m_fileStatus);
+			m_context->SetStatus(EditorStatusKind::Success, "Loaded: " + ToUtf8(path.filename()));
+			NENE_LOG_INFO("Loaded: {}", ToUtf8(path));
 		}
 		catch (const std::exception& e)
 		{
-			m_fileStatus = e.what();
+			m_context->SetStatus(EditorStatusKind::Danger, e.what());
 			NENE_LOG_ERROR("Load scene: {}", e.what());
 		}
+	}
+
+	void EditorLayer::DrawStatusBar()
+	{
+		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+		EditorStatus& status = m_context->status;
+		if (status.kind == EditorStatusKind::Success && ImGui::GetTime() - status.time > kStatusHoldSeconds)
+			status = {};
+
+		std::string label = status.message.empty() ? "Ready" : status.message;
+		if (status.kind == EditorStatusKind::Danger) label = std::string(NENE_ICON_ERROR) + " " + label;
+		if (status.kind == EditorStatusKind::Success) label = std::string(NENE_ICON_SUCCESS) + " " + label;
+
+		const bool isPlaying = m_context->mode == EditorMode::Play;
+		const ImVec4& messageColor = isPlaying ? colors.background : GetStatusColor(colors, status.kind);
+		const ImVec4& detailColor = isPlaying ? colors.background : colors.textMuted;
+
+		const ImGuiStyle& style = ImGui::GetStyle();
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, isPlaying ? colors.accentPlay : colors.backgroundSunken);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(style.FramePadding.x, 0.0f));
+		const bool isVisible = ImGui::BeginViewportSideBar(kStatusBarName, ImGui::GetMainViewport(), ImGuiDir_Down,
+		                                                   ImGui::GetFrameHeight(), kStatusBarFlags);
+		ImGui::PopStyleVar(2);
+		ImGui::PopStyleColor();
+		if (isVisible)
+		{
+			const ImVec2 windowMin = ImGui::GetWindowPos();
+			const ImVec2 windowMax(windowMin.x + ImGui::GetWindowWidth(), windowMin.y + ImGui::GetWindowHeight());
+			const float borderSize = (std::max)(1.0f, ImTrunc(ScaledSize(kStatusBarBorderSize)));
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+			drawList->PushClipRect(windowMin, windowMax, false);
+			drawList->AddRectFilled(windowMin, ImVec2(windowMax.x, windowMin.y + borderSize),
+			                        ImGui::GetColorU32(colors.border));
+			drawList->PopClipRect();
+
+			const std::string sceneName = m_scenePath.empty() ? "Untitled" : ToUtf8(m_scenePath.filename());
+			const std::string sceneLabel =
+			    std::string(NENE_ICON_FILE) + " " + sceneName + (m_history.IsDirty() ? " *" : "");
+			const char* modeLabel = isPlaying ? "Play" : "Edit";
+			const float segmentSpacing = style.ItemSpacing.x * 2.0f;
+			const float rightWidth =
+			    ImGui::CalcTextSize(sceneLabel.c_str()).x + segmentSpacing + ImGui::CalcTextSize(modeLabel).x;
+			const float startX = ImGui::GetCursorPosX();
+			const float rightX = (std::max)(startX, startX + ImGui::GetContentRegionAvail().x - rightWidth);
+			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x);
+			const ImVec2 start = ImGui::GetCursorScreenPos();
+
+			ImGui::AlignTextToFramePadding();
+			ImGui::PushClipRect(start, ImVec2(start.x + messageWidth, start.y + ImGui::GetFrameHeight()), true);
+			ImGui::TextColored(messageColor, "%s", label.c_str());
+			ImGui::PopClipRect();
+			if (ImGui::CalcTextSize(label.c_str()).x > messageWidth)
+				ImGui::SetItemTooltip("%s", status.message.c_str());
+
+			ImGui::SameLine(rightX);
+			ImGui::TextColored(detailColor, "%s", sceneLabel.c_str());
+			if (!m_scenePath.empty()) ImGui::SetItemTooltip("%s", ToUtf8(m_scenePath).c_str());
+			ImGui::SameLine(0.0f, segmentSpacing);
+			ImGui::TextColored(detailColor, "%s", modeLabel);
+		}
+		ImGui::End();
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()
@@ -346,12 +416,14 @@ namespace NeneEngine
 		const bool isEditMode = m_context->mode == EditorMode::Edit;
 
 		const char* undoName = m_history.GetUndoName();
-		const eastl::string undoLabel = undoName != nullptr ? eastl::string("Undo ") + undoName : "Undo";
+		const eastl::string undoLabel =
+		    undoName != nullptr ? eastl::string(NENE_ICON_UNDO " Undo ") + undoName : NENE_ICON_UNDO " Undo";
 		if (ImGui::MenuItem(undoLabel.c_str(), "Ctrl+Z", false, isEditMode && m_history.CanUndo()))
 			m_history.Undo(m_context->world);
 
 		const char* redoName = m_history.GetRedoName();
-		const eastl::string redoLabel = redoName != nullptr ? eastl::string("Redo ") + redoName : "Redo";
+		const eastl::string redoLabel =
+		    redoName != nullptr ? eastl::string(NENE_ICON_REDO " Redo ") + redoName : NENE_ICON_REDO " Redo";
 		if (ImGui::MenuItem(redoLabel.c_str(), "Ctrl+Y", false, isEditMode && m_history.CanRedo()))
 			m_history.Redo(m_context->world);
 	}
@@ -383,7 +455,8 @@ namespace NeneEngine
 		if (isPlaying)
 		{
 			ImGui::SameLine();
-			ImGui::TextColored(m_themeService.GetColors().accentPlay, "PLAYING");
+			const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+			StatusPill(NENE_ICON_PLAY " Playing", colors.accentPlay, colors.background);
 		}
 	}
 
@@ -554,11 +627,11 @@ namespace NeneEngine
 		if (borderSize > 0.0f)
 		{
 			const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-			const ImVec4& borderColor = isFocused ? colors.accentPlay : colors.border;
+			const ImVec4& borderColor = isFocused ? colors.accent : colors.border;
 			const float inset = borderSize * 0.5f;
 			drawList->AddRect(ImVec2(rect.Min.x + inset, rect.Min.y + inset),
-			                  ImVec2(rect.Max.x - inset, rect.Max.y - inset),
-			                  ImGui::GetColorU32(borderColor), radius, 0, borderSize);
+			                  ImVec2(rect.Max.x - inset, rect.Max.y - inset), ImGui::GetColorU32(borderColor), radius,
+			                  0, borderSize);
 		}
 		drawList->PopClipRect();
 	}

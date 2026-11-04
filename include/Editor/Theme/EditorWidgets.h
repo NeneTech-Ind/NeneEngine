@@ -8,6 +8,15 @@
 
 namespace NeneEngine
 {
+	struct EditorThemeColorsConfig;
+
+	enum class EditorStatusKind
+	{
+		Muted,
+		Success,
+		Danger
+	};
+
 	struct AxisDragResult
 	{
 		bool changed = false;
@@ -21,6 +30,9 @@ namespace NeneEngine
 	void DrawSelectionMarker(const ImVec4& color);
 	[[nodiscard]] ImVec2 CalcStatusPillSize(const char* label);
 	void StatusPill(const char* label, const ImVec4& background, const ImVec4& textColor);
+	void DrawReadOnlyPill(const EditorThemeColorsConfig& colors);
+	[[nodiscard]] const ImVec4& GetStatusColor(const EditorThemeColorsConfig& colors, EditorStatusKind kind);
+	void StatusText(const EditorThemeColorsConfig& colors, EditorStatusKind kind, const char* text);
 	void DrawEmptyState(const ImGuiTexture& mascot, const char* hint);
 	AxisDragResult DragFloat3Axes(const char* id, float* values, float speed, float min, float max,
 	                              ImGuiSliderFlags flags, const ImVec4 (&axisColors)[3]);

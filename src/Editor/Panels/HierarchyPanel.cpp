@@ -145,8 +145,6 @@ namespace NeneEngine
 
 	void HierarchyPanel::DrawMotionDot(const EditorContext& context, ECS::Entity entity) const
 	{
-		if (context.themeColors == nullptr) return;
-
 		const auto sample = m_motionSamples.find(static_cast<uint32_t>(entt::to_integral(entity)));
 		if (sample == m_motionSamples.end() || ImGui::GetTime() - sample->second.lastChangeTime > kMotionHoldSeconds)
 			return;
@@ -214,8 +212,7 @@ namespace NeneEngine
 
 		const std::string label = GetRowLabel(registry, entity);
 		const bool isOpen = ImGui::TreeNodeEx(ToTreeId(entity), flags, "%s", label.c_str());
-		if (entity == context.selectedEntity && context.themeColors != nullptr)
-			DrawSelectionMarker(context.themeColors->accent);
+		if (entity == context.selectedEntity) DrawSelectionMarker(context.themeColors->accent);
 		DrawMotionDot(context, entity);
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) context.selectedEntity = entity;
 
@@ -256,7 +253,7 @@ namespace NeneEngine
 				const std::string label = GetRowLabel(registry, entity);
 				const bool isSelected = entity == context.selectedEntity;
 				if (ImGui::Selectable(label.c_str(), isSelected)) context.selectedEntity = entity;
-				if (isSelected && context.themeColors != nullptr) DrawSelectionMarker(context.themeColors->accent);
+				if (isSelected) DrawSelectionMarker(context.themeColors->accent);
 				DrawMotionDot(context, entity);
 				ImGui::PopID();
 			}

@@ -20,7 +20,6 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr const char* kWindowTitle = NENE_ICON_LOGO " About NeneEngine###AboutWindow";
-		constexpr const char* kProductName = "NeneEngine";
 		constexpr const char* kVersion = NENEENGINE_VERSION;
 		constexpr const char* kBannerPath = "assets/readme/banner.png";
 		constexpr const char* kNoticesPath = "THIRD_PARTY_NOTICES.txt";
@@ -116,14 +115,14 @@ namespace NeneEngine
 		{
 			DrawBanner();
 
-			if (context.themeColors != nullptr) ImGui::PushStyleColor(ImGuiCol_Text, context.themeColors->accent);
+			ImGui::PushStyleColor(ImGuiCol_Text, context.themeColors->accent);
 			ImGui::Text("%s %s", kProductName, kVersion);
-			if (context.themeColors != nullptr) ImGui::PopStyleColor();
+			ImGui::PopStyleColor();
 
 			ImGui::SeparatorText("Authors");
 			for (const char* author : kAuthors) ImGui::BulletText("%s", author);
 
-			ImGui::SeparatorText("Third-party components");
+			ImGui::SeparatorText("Third-Party Components");
 			DrawNotices();
 		}
 		ImGui::End();
