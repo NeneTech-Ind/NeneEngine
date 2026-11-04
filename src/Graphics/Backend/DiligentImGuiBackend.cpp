@@ -2,11 +2,13 @@
 
 #include "Graphics/Backend/DiligentImGuiBackend.h"
 
+#include "Core/NeneLogger.h"
 #include "Graphics/Backend/DiligentDX12Adapter.h"
 
 #include <Windows.h>
 
 #include "../external/DiligentEngine/DiligentTools/Imgui/interface/ImGuiImplWin32.hpp"
+#include "../external/DiligentEngine/DiligentTools/TextureLoader/interface/TextureLoader.h"
 
 #include <imgui.h>
 
@@ -59,6 +61,43 @@ namespace NeneEngine
 		}
 
 		return false;
+	}
+
+	ImGuiTexture DiligentImGuiBackend::RegisterTexture(const std::filesystem::path& path)
+	{
+		const std::u8string utf8Path = path.u8string();
+		const std::string pathString(utf8Path.begin(), utf8Path.end());
+
+		TextureLoadInfo loadInfo{};
+		loadInfo.Name = pathString.c_str();
+		loadInfo.IsSRGB = false;
+
+		RefCntAutoPtr<ITextureLoader> textureLoader;
+		CreateTextureLoaderFromFile(pathString.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &textureLoader);
+		if (!textureLoader)
+		{
+			NENE_LOG_ERROR("DiligentImGuiBackend: failed to load texture '{}'", pathString);
+			return {};
+		}
+
+		RefCntAutoPtr<ITexture> texture;
+		textureLoader->CreateTexture(m_adapter.GetDevice(), &texture);
+		ITextureView* view = texture ? texture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE) : nullptr;
+		if (view == nullptr)
+		{
+			NENE_LOG_ERROR("DiligentImGuiBackend: failed to create GPU texture for '{}'", pathString);
+			return {};
+		}
+
+		const TextureDesc& desc = texture->GetDesc();
+		const ImGuiTexture result{reinterpret_cast<uint64_t>(view), desc.Width, desc.Height};
+		m_textures.emplace(result.id, std::move(texture));
+		return result;
+	}
+
+	void DiligentImGuiBackend::ReleaseTexture(const ImGuiTexture& texture)
+	{
+		m_textures.erase(texture.id);
 	}
 
 } // namespace NeneEngine
