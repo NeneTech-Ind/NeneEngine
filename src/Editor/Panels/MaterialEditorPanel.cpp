@@ -117,8 +117,7 @@ namespace NeneEngine
 			}
 			if (ImGui::IsItemDeactivatedAfterEdit() && m_colorEntity == context.selectedEntity)
 			{
-				context.history.RecordComponentChange("Edit Material Color", context.selectedEntity, m_colorBefore,
-				                                      *material);
+				context.history.RecordComponentChange("Change Tint", context.selectedEntity, m_colorBefore, *material);
 				m_colorEntity = ECS::NullEntity;
 			}
 			if (!material->meshPath.empty() ||

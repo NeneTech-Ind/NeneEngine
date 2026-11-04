@@ -21,6 +21,8 @@
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 
+#include <algorithm>
+#include <cstdio>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -42,6 +44,7 @@ namespace NeneEngine
 
 		constexpr const char* kPrimitiveTypeNames[] = {"Line", "Triangle", "Quad", "Cube"};
 		constexpr const char* kColliderTypeNames[] = {"Box", "Sphere"};
+		constexpr const char* kMaterialEditorWindow = "###Material Editor";
 
 		void TrackItem(FieldEdits& edits)
 		{
@@ -140,6 +143,33 @@ namespace NeneEngine
 				DrawValueField(label, edits,
 				               [&](const char* widgetId) { return ImGui::DragFloat3(widgetId, glm::value_ptr(copy)); });
 			ImGui::EndDisabled();
+		}
+
+		int ToColorByte(float value)
+		{
+			return static_cast<int>(std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
+		}
+
+		void DrawReadOnlyTint(const glm::vec4& tint, const FieldEdits& edits)
+		{
+			const ImGuiStyle& style = ImGui::GetStyle();
+			ImGui::ColorButton("##Tint", ImVec4(tint.r, tint.g, tint.b, tint.a), ImGuiColorEditFlags_NoPicker);
+
+			char hex[16];
+			std::snprintf(hex, sizeof(hex), "#%02X%02X%02X%02X", ToColorByte(tint.r), ToColorByte(tint.g),
+			              ToColorByte(tint.b), ToColorByte(tint.a));
+			ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+			ImGui::AlignTextToFramePadding();
+			if (edits.valueFont != nullptr) ImGui::PushFont(edits.valueFont, 0.0f);
+			ImGui::TextUnformatted(hex);
+			if (edits.valueFont != nullptr) ImGui::PopFont();
+
+			ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+			if (ImGui::Button(NENE_ICON_PALETTE "##OpenMaterialEditor")) ImGui::SetWindowFocus(kMaterialEditorWindow);
+			ImGui::SetItemTooltip("Edit the tint in Material Editor");
+
+			ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+			ImGui::TextUnformatted("Tint");
 		}
 
 		std::string GetEntityLabel(const ECS::World& world, ECS::Entity entity)
@@ -250,8 +280,7 @@ namespace NeneEngine
 			                                          EnumCombo("Primitive", meshRenderer.primitiveType,
 			                                                    kPrimitiveTypeNames, edits);
 			                                          Checkbox("Visible", meshRenderer.visible, edits);
-			                                          ImGui::ColorEdit3("Tint", glm::value_ptr(meshRenderer.tint));
-			                                          TrackItem(edits);
+			                                          DrawReadOnlyTint(meshRenderer.tint, edits);
 		                                          });
 
 		DrawComponent<ECS::ColliderComponent>(
