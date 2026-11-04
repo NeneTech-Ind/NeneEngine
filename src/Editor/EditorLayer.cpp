@@ -35,7 +35,6 @@ namespace NeneEngine
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
 		constexpr float kBottomDockRatio = 0.25f;
-		constexpr float kPlayModeStripHeight = 2.0f;
 		constexpr const char* kProductName = "NeneEngine";
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
@@ -183,7 +182,6 @@ namespace NeneEngine
 
 	void EditorLayer::DrawMainMenuBar()
 	{
-		const bool isPlaying = m_context->mode == EditorMode::Play;
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
 		if (!ImGui::BeginMainMenuBar()) return;
 
@@ -219,15 +217,6 @@ namespace NeneEngine
 		}
 
 		DrawPlayControls();
-
-		if (isPlaying)
-		{
-			const ImVec2 barPos = ImGui::GetWindowPos();
-			const ImVec2 barSize = ImGui::GetWindowSize();
-			ImGui::GetWindowDrawList()->AddRectFilled(
-			    ImVec2(barPos.x, barPos.y + barSize.y - kPlayModeStripHeight),
-			    ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), ImGui::GetColorU32(colors.accentPlay));
-		}
 		ImGui::EndMainMenuBar();
 	}
 
