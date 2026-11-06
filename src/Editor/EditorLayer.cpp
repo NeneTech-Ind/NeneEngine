@@ -8,7 +8,6 @@
 #include "Editor/Panels/AssetBrowserPanel.h"
 #include "Editor/Panels/HierarchyPanel.h"
 #include "Editor/Panels/InspectorPanel.h"
-#include "Editor/Panels/MaterialEditorPanel.h"
 #include "Editor/Panels/StatisticsPanel.h"
 #include "Editor/Panels/ViewportPanel.h"
 #include "Editor/Theme/EditorIcons.h"
@@ -152,10 +151,9 @@ namespace NeneEngine
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
+		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
-		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
-		m_panels.push_back({eastl::make_unique<MaterialEditorPanel>()});
 
 		for (auto& entry : m_panels)
 			entry.windowTitle =
@@ -588,6 +586,13 @@ namespace NeneEngine
 		}
 
 		ImGui::DockBuilderFinish(dockSpaceId);
+
+		const auto firstBottomPanel =
+		    std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
+		                 { return entry.panel->GetDefaultDockSlot() == EditorDockSlot::Bottom; });
+		if (ImGuiDockNode* bottomNode = ImGui::DockBuilderGetNode(bottomId);
+		    bottomNode != nullptr && firstBottomPanel != m_panels.end())
+			bottomNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(firstBottomPanel->windowTitle.c_str()));
 	}
 
 	void EditorLayer::DrawPanels()
@@ -627,7 +632,7 @@ namespace NeneEngine
 		if (borderSize > 0.0f)
 		{
 			const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-			const ImVec4& borderColor = isFocused ? colors.accent : colors.border;
+			const ImVec4& borderColor = isFocused ? colors.accentPlay : colors.border;
 			const float inset = borderSize * 0.5f;
 			drawList->AddRect(ImVec2(rect.Min.x + inset, rect.Min.y + inset),
 			                  ImVec2(rect.Max.x - inset, rect.Max.y - inset), ImGui::GetColorU32(borderColor), radius,
