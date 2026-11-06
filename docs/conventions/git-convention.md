@@ -5,7 +5,7 @@ NeneEngine is developed by a small team that works on trust. There are no pull r
 ## Summary
 
 1. No pull requests or merge requests. The author of a branch merges it into `master`.
-2. A branch lands in `master` through a merge commit: `git merge --no-ff`.
+2. A branch lands in `master` through a merge commit, `git merge --no-ff`, with Git's default subject and a short body.
 3. Branch names, commit messages and tags are written in English. Branch names use lower case `kebab-case`.
 4. Branches, commits and tags never mention labs, assignments or their tasks. The history reads like the history of a regular engine, not a study project.
 5. A commit is a small logical unit: one local change or one indivisible new feature.
@@ -186,7 +186,9 @@ git switch -c feat/job-system
 git push -u origin feat/job-system
 ```
 
-Push the branch right away and then at least at the end of each working day. A branch that exists only on one computer is lost with it.
+Push the branch right away and then at least at the end of each working day. A branch that exists only on one computer is lost with it, and without pull requests the remote is the only place where the team sees who works on what.
+
+This applies to every branch meant to reach `master`. A short experiment that nobody will merge may stay local.
 
 ### Updating `master`
 
@@ -279,7 +281,7 @@ git push origin master
 ```
 
 - `--no-ff` is required. After a rebase the branch is ahead of `master`, and a plain `git merge` would fast-forward `master` without a merge commit.
-- Keep the default merge commit message, `Merge branch 'feat/job-system'`. It records which branch landed.
+- Write the merge commit message as described in [Merge Commit Message](#merge-commit-message).
 
 If `git push` is rejected, someone has updated `master` in the meantime. Do not run `git pull` on top of your merge commit. Redo the merge on the fresh `master`:
 
@@ -293,7 +295,43 @@ git merge --no-ff feat/job-system
 git push origin master
 ```
 
-For a shared branch, use `git merge origin/master` instead of `git rebase origin/master`.
+For a shared branch, use `git merge origin/master` instead of `git rebase origin/master`. The reset drops your merge commit, so write its message again.
+
+### Merge Commit Message
+
+```text
+Merge branch '<branch>'
+
+<body>
+```
+
+```text
+Merge branch 'feat/enkits-job-system'
+
+Add a job system on top of enkiTS and move asset loading and physics
+stepping to worker threads
+```
+
+Subject:
+
+- Keep the subject Git generates: `Merge branch 'feat/job-system'`. Do not translate it, reword it or add a type and scope. The branch name already tells the type and topic, which is why branch names matter.
+- `master` never gets `Merge branch 'master' of https://github.com/...` or `Merge remote-tracking branch ...`. Such commits come from a pull without `--ff-only` and are removed before pushing, see [Updating `master`](#updating-master).
+
+Body:
+
+- Required when the branch has more than one commit. Optional for a branch with a single commit, whose subject already says everything.
+- One to three lines in English that describe what the branch delivers as a whole, the way a release note would. Follow the [Subject](#subject) rules: imperative mood, the result rather than the activity, lines within 72 characters.
+- Do not list the branch's commits. `git log <merge>^1..<merge>^2` shows them.
+- If you resolved a non-obvious conflict, add one line on how: `Keep the new material inspector layout from master`.
+- No study context, see [No Study Context](#no-study-context).
+
+`git merge --no-ff feat/job-system` opens an editor with the subject already filled in: leave it and add the body after an empty line. Without an editor:
+
+```shell
+git merge --no-ff feat/job-system -m "Merge branch 'feat/job-system'" -m "Add a job system on top of enkiTS"
+```
+
+In Fork, choose **Create a merge commit** in the merge dialog and edit the message there.
 
 ### After Merging
 
