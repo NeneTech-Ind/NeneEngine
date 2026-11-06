@@ -16,10 +16,10 @@ namespace NeneEngine
 	{
 		nlohmann::json ReadMetadata(const std::filesystem::path& metadataPath)
 		{
-			if (!std::filesystem::exists(metadataPath)) return {};
+			if (!std::filesystem::exists(metadataPath)) return nlohmann::json::object();
 
 			std::ifstream file(metadataPath);
-			if (!file) return {};
+			if (!file) return nlohmann::json::object();
 
 			return nlohmann::json::parse(file);
 		}
