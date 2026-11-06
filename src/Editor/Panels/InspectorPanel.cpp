@@ -152,6 +152,14 @@ namespace NeneEngine
 			ImGui::TextUnformatted(label);
 		}
 
+		bool HasMeshChild(const entt::registry& registry, ECS::Entity entity)
+		{
+			const auto* hierarchy = registry.try_get<ECS::HierarchyComponent>(entity);
+			return hierarchy != nullptr &&
+			       std::any_of(hierarchy->children.begin(), hierarchy->children.end(), [&registry](ECS::Entity child)
+			                   { return registry.valid(child) && registry.all_of<ECS::MeshRendererComponent>(child); });
+		}
+
 		std::string GetEntityLabel(const ECS::World& world, ECS::Entity entity)
 		{
 			const auto* tag = world.GetRegistry().try_get<ECS::TagComponent>(entity);
@@ -418,8 +426,13 @@ namespace NeneEngine
 	void InspectorPanel::DrawMaterial(EditorContext& context)
 	{
 		auto* material = context.world.GetComponent<ECS::MeshRendererComponent>(context.selectedEntity);
-		if (material == nullptr || context.renderer == nullptr || !ComponentHeader(NENE_ICON_PALETTE, "Material"))
+		if (material == nullptr)
+		{
+			if (HasMeshChild(context.world.GetRegistry(), context.selectedEntity))
+				StatusText(*context.themeColors, EditorStatusKind::Muted, "Select a mesh part to edit its material");
 			return;
+		}
+		if (context.renderer == nullptr || !ComponentHeader(NENE_ICON_PALETTE, "Material")) return;
 
 		const EditorThemeColorsConfig& colors = *context.themeColors;
 		ComponentCardScope card;
