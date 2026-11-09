@@ -20,6 +20,7 @@ namespace NeneEngine
 
 		static void SaveToFile(const ECS::World& world, const std::filesystem::path& path);
 		static void LoadFromFile(const std::filesystem::path& path, ECS::World& world, bool preserveCameras = false);
+		[[nodiscard]] static nlohmann::json ReadFromFile(const std::filesystem::path& path);
 
 	  private:
 		static void DeserializeUnchecked(const nlohmann::json& sceneJson, ECS::World& world);

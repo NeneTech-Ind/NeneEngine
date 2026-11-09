@@ -9,6 +9,7 @@
 #include "Graphics/Runtime/SceneAssetResolver.h"
 
 #include <EASTL/array.h>
+#include <EASTL/vector.h>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -61,7 +62,10 @@ namespace NeneEngine
 		bool isViewportFocused = false;
 		IRenderAdapter* renderer = nullptr;
 		AssetCatalog assets;
-		SceneAssetResolver assetResolver;
+		SceneAssetResolver assetResolver{};
+		ResourceLoadQueue* resourceLoads = nullptr;
+		uint64_t sceneGeneration = 0;
+		eastl::vector<ResourceLoadQueue::Completion> pendingAssets;
 		EditorStatus status;
 		ImFont* monospaceFont = nullptr;
 		const EditorThemeColorsConfig* themeColors = nullptr;

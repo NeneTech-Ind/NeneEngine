@@ -67,6 +67,11 @@ namespace NeneEngine
 		m_savedPosition = 0;
 	}
 
+	void EditorHistory::InvalidateSavedState()
+	{
+		m_savedPosition = (std::numeric_limits<size_t>::max)();
+	}
+
 	const char* EditorHistory::GetUndoName() const
 	{
 		return m_undoStack.empty() ? nullptr : m_undoStack.back()->GetName();

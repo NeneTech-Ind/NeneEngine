@@ -31,6 +31,7 @@ namespace NeneEngine
 		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput, ECS::Entity cameraEntity,
 		                RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged);
 		void SetRenderer(IRenderAdapter* renderer);
+		void SetResourceLoading(ResourceLoadQueue& loads, const SceneAssetResolver& assets);
 		void Shutdown();
 
 		void Update();
@@ -79,6 +80,8 @@ namespace NeneEngine
 		eastl::unique_ptr<EditorContext> m_context;
 		eastl::vector<PanelEntry> m_panels;
 		std::filesystem::path m_scenePath;
+		ResourceLoadQueue* m_resourceLoads = nullptr;
+		uint64_t m_sceneLoadGeneration = 0;
 		bool m_layoutInitialized = false;
 		bool m_exitRequested = false;
 	};

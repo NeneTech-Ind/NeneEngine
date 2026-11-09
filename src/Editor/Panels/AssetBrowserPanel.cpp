@@ -64,7 +64,7 @@ namespace NeneEngine
 		if (ImGui::Button(NENE_ICON_REFRESH "##Refresh"))
 		{
 			context.assets.Refresh();
-			context.assetResolver.ForgetFailures();
+			context.assetResolver.RetryFailed();
 			m_failedPreviewPath.clear();
 		}
 		ImGui::SetItemTooltip("Refresh assets");
@@ -160,6 +160,8 @@ namespace NeneEngine
 		}
 
 		const auto texture = context.assetResolver.Texture(selected->path, *context.renderer);
+		if (context.assetResolver.GetTextureState(selected->path, *context.renderer) == ResourceLoadState::Loading)
+			ImGui::TextDisabled("Loading texture...");
 		if (!texture.IsValid())
 		{
 			m_failedPreviewPath = selected->path;

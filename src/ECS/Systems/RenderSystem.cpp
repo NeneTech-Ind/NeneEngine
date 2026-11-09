@@ -161,7 +161,9 @@ namespace NeneEngine::ECS
 
 			if (!meshRenderer.meshPath.empty() || !meshRenderer.texturePath.empty() || !meshRenderer.shaderPath.empty())
 			{
-				const auto binding = m_assets.Resolve(meshRenderer, *m_renderer);
+				const auto binding =
+				    m_assets.Resolve(meshRenderer.meshPath, meshRenderer.meshPart, meshRenderer.texturePath,
+				                     meshRenderer.shaderPath, meshRenderer.primitiveType, *m_renderer);
 				if (!binding.meshId.IsValid() && !meshRenderer.meshPath.empty()) continue;
 				item.meshId = binding.meshId;
 				item.shaderId = binding.shaderId;

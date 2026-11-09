@@ -25,6 +25,9 @@ namespace NeneEngine
 		virtual GPUBuffer CreateIndexBuffer(const uint32_t* indices, uint32_t indexCount) = 0;
 		virtual GPUMesh UploadMesh(const MeshData& meshData) = 0;
 		virtual GPUTexture CreateTexture2D(const TextureResource& texture) = 0;
+		virtual eastl::shared_ptr<ITextureUploadData> PrepareTexture2D(const TextureResource& texture) const = 0;
+		virtual GPUTexture CreateTexture2D(const TextureResource& texture, const ITextureUploadData& data) = 0;
+		virtual GPUTexture CreatePlaceholderTexture() = 0;
 		virtual GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram) = 0;
 		virtual RenderTarget CreateRenderTarget(uint32_t width, uint32_t height) = 0;
 		virtual void DestroyRenderTarget(RenderTargetId target) = 0;

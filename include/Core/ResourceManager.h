@@ -11,6 +11,8 @@
 #include <EASTL/functional.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
+#include <filesystem>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <typeindex>
@@ -38,27 +40,38 @@ namespace NeneEngine
 		{
 			NENE_PROFILE_SCOPE("Resource Load");
 			NENE_PROFILE_ZONE_TEXT(path.data(), path.size());
+			const auto key = std::filesystem::absolute(path).lexically_normal().generic_string();
 
-			std::scoped_lock lock(m_mutex);
-
-			auto& cache = GetOrCreateCache<T>();
-			if (const auto cached = cache.find(path); cached != cache.end())
+			LoaderFn<T> loader;
+			std::shared_ptr<std::mutex> resourceMutex;
 			{
-				NENE_LOG_DEBUG("ResourceManager: cache hit for '{}' ({})", path, typeid(T).name());
-				return cached->second;
+				std::scoped_lock lock(m_mutex);
+				auto& cache = GetOrCreateCache<T>();
+				if (const auto cached = cache.find(key); cached != cache.end()) return cached->second;
+				if (const auto* registered = GetLoader<T>()) loader = *registered;
+				auto& entry = m_loadMutexes[std::string(typeid(T).name()) + ":" + key];
+				if (!entry) entry = std::make_shared<std::mutex>();
+				resourceMutex = entry;
 			}
-
-			LoaderFn<T>* loader = GetLoader<T>();
-			if (loader == nullptr)
+			if (!loader)
 			{
 				NENE_LOG_ERROR("ResourceManager: no loader registered for '{}' ({})", path, typeid(T).name());
 				return nullptr;
 			}
+			std::scoped_lock resourceLock(*resourceMutex);
+			{
+				std::scoped_lock lock(m_mutex);
+				auto& cache = GetOrCreateCache<T>();
+				if (const auto cached = cache.find(key); cached != cache.end()) return cached->second;
+			}
 
 			try
 			{
-				auto resource = eastl::make_shared<CachedResource<T>>((*loader)(path));
-				cache.emplace(path, resource);
+				auto resource = eastl::make_shared<CachedResource<T>>(loader(path));
+				{
+					std::scoped_lock lock(m_mutex);
+					GetOrCreateCache<T>().emplace(key, resource);
+				}
 				NENE_LOG_INFO("ResourceManager: loaded '{}' ({})", path, typeid(T).name());
 				return resource;
 			}
@@ -73,6 +86,12 @@ namespace NeneEngine
 			}
 
 			return nullptr;
+		}
+
+		template <typename T> void Invalidate(const std::string& path)
+		{
+			std::scoped_lock lock(m_mutex);
+			GetOrCreateCache<T>().erase(std::filesystem::absolute(path).lexically_normal().generic_string());
 		}
 
 	  private:
@@ -98,6 +117,7 @@ namespace NeneEngine
 		}
 
 		std::mutex m_mutex;
+		eastl::unordered_map<std::string, std::shared_ptr<std::mutex>> m_loadMutexes;
 		// Type-erased registries keep the public API templated while storing one typed loader/cache per resource type.
 		eastl::unordered_map<std::type_index, eastl::any> m_loaders;
 		eastl::unordered_map<std::type_index, eastl::any> m_resourceCaches;

@@ -1,20 +1,20 @@
+// ModelSpawner.cpp
+
 #include "Scene/Instantiation/ModelSpawner.h"
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "Core/ResourceLoadQueue.h"
 #include "Core/ResourceManager.h"
-#include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TransformComponent.h"
+#include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/World.h"
-#include "Graphics/Backend/IRenderAdapter.h"
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Graphics/Runtime/SceneAssetResolver.h"
 #include "Scene/Instantiation/ModelInstanceConfig.h"
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 
-#include <EASTL/algorithm.h>
-#include <EASTL/vector.h>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
 #include <sstream>
@@ -66,55 +66,6 @@ namespace NeneEngine
 			return {};
 		}
 
-		TextureId CreateTexture(IRenderAdapter& renderer, const std::filesystem::path& texturePath)
-		{
-			if (texturePath.empty() || !std::filesystem::exists(texturePath)) return {};
-
-			auto textureResource = ResourceManager::GetInstance().Load<TextureResource>(texturePath.string());
-			if (textureResource == nullptr) return {};
-
-			const GPUTexture gpuTexture = renderer.CreateTexture2D(textureResource->GetData());
-			return gpuTexture.textureId;
-		}
-
-		uintptr_t GetRendererKey(const IRenderAdapter& renderer)
-		{
-			return renderer.GetResourceDomainKey();
-		}
-
-		const GPUMesh* FindUploadedMeshForRenderer(const Mesh& mesh, const IRenderAdapter& renderer)
-		{
-			const auto it = mesh.gpuMeshesByRenderer.find(GetRendererKey(renderer));
-			return it != mesh.gpuMeshesByRenderer.end() ? &it->second : nullptr;
-		}
-
-		ECS::Entity CreateUploadedModelEntity(ECS::World& world, std::string_view name, const glm::vec3& position,
-		                                      const glm::vec3& scale, const glm::vec3& worldOffset = {0.0f, 0.0f, 0.0f},
-		                                      const glm::vec3& rotationOffsetDegrees = {0.0f, 0.0f, 0.0f},
-		                                      bool visible = true)
-		{
-			const ECS::Entity modelEntity = world.CreateEntity(std::string(name));
-			auto& modelTransform = world.AddComponent<ECS::TransformComponent>(modelEntity);
-			modelTransform.position = position + worldOffset;
-			modelTransform.scale = scale;
-			modelTransform.rotation = glm::quat(glm::radians(rotationOffsetDegrees));
-
-			auto& modelRenderer = world.AddComponent<ECS::MeshRendererComponent>(modelEntity);
-			modelRenderer.tint = {1.0f, 1.0f, 1.0f, 1.0f};
-			modelRenderer.visible = visible;
-
-			return modelEntity;
-		}
-
-		void BindUploadedModelEntity(ECS::World& world, ECS::Entity entity, const IRenderAdapter& renderer,
-		                             const GPUMesh& gpuMesh, ShaderId shaderId, TextureId textureId)
-		{
-			MeshRenderRuntimeBinding runtimeBinding{};
-			runtimeBinding.meshId = gpuMesh.meshId;
-			runtimeBinding.textureId = textureId;
-			if (shaderId.IsValid() && textureId.IsValid()) runtimeBinding.shaderId = shaderId;
-			ECS::BindMeshRenderRuntime(world, entity, runtimeBinding, &renderer);
-		}
 
 		std::filesystem::path ResolveOptionalAssetPath(const std::filesystem::path& manifestPath,
 		                                               const std::filesystem::path& path)
@@ -134,150 +85,74 @@ namespace NeneEngine
 			return ResolveFromAncestors(manifestDirectory, path);
 		}
 
+		struct PreparedModelEntity
+		{
+			std::string name;
+			ECS::TransformComponent transform;
+			ECS::MeshRendererComponent renderer;
+		};
 	} // namespace
 
-	ShaderId CreateTexturedMeshShader(IRenderAdapter& renderer, const std::filesystem::path& shaderPath)
+	void SpawnModelsFromManifest(ECS::World& world, ResourceLoadQueue& loads, const std::filesystem::path& shaderPath,
+	                             const std::filesystem::path& manifestPath)
 	{
-		if (shaderPath.empty() || !std::filesystem::exists(shaderPath)) return {};
-
-		auto shaderResource = ResourceManager::GetInstance().Load<ShaderProgramResource>(shaderPath.string());
-		if (shaderResource == nullptr) return {};
-
-		const GPUShaderProgram gpuShader = renderer.CreateShaderProgram(shaderResource->GetData());
-		return gpuShader.shaderId;
+		auto cancelled = eastl::make_shared<bool>(false);
+		world.GetEventBus().Subscribe<ECS::SceneRestoredEvent>([cancelled](const auto&) { *cancelled = true; });
+		loads.Request(
+		    "Model Manifest",
+		    [&world, cancelled, shaderPath, manifestPath]() -> ResourceLoadQueue::Completion
+		    {
+			    eastl::vector<PreparedModelEntity> entities;
+			    const auto manifest = LoadModelSpawnManifest(manifestPath);
+			    for (const auto& model : manifest.models)
+			    {
+				    const auto path = ResolveOptionalAssetPath(manifestPath, model.meshPath);
+				    if (path.empty()) continue;
+				    const auto config =
+				        LoadModelInstanceConfig(ResolveOptionalAssetPath(manifestPath, model.instanceConfigPath));
+				    const auto resource =
+				        ResourceManager::GetInstance().Load<eastl::vector<MeshPart>>(path.generic_string());
+				    if (!resource) continue;
+				    const auto& parts = resource->GetData();
+				    const size_t count = model.splitByMeshParts ? parts.size() : 1;
+				    for (size_t index = 0; index < count; ++index)
+				    {
+					    PreparedModelEntity entity;
+					    entity.name = model.entityName + (model.splitByMeshParts ? "_" + std::to_string(index) : "");
+					    entity.transform.position = config.position;
+					    entity.transform.scale = config.scale;
+					    entity.renderer.meshPath = PortableAssetPath(path);
+					    entity.renderer.meshPart = model.splitByMeshParts ? static_cast<int>(index) : -1;
+					    entity.renderer.shaderPath = PortableAssetPath(shaderPath);
+					    auto texturePath = model.splitByMeshParts ? parts[index].diffuseTexturePath
+					                                              : FindDiffuseTextureFromObjMaterial(path);
+					    if (model.splitByMeshParts)
+					    {
+						    if (const auto* part = FindPartOverride(config, parts[index].name))
+						    {
+							    entity.transform.position += part->positionOffset;
+							    entity.transform.scale *= part->scaleMultiplier;
+							    entity.transform.rotation = glm::quat(glm::radians(part->rotationOffsetDegrees));
+							    entity.renderer.visible = part->visible;
+							    if (!part->textureOverride.empty())
+								    texturePath = path.parent_path() / part->textureOverride;
+						    }
+					    }
+					    entity.renderer.texturePath = PortableAssetPath(texturePath);
+					    entities.push_back(std::move(entity));
+				    }
+			    }
+			    return [&world, cancelled, entities = std::move(entities)]()
+			    {
+				    if (*cancelled) return;
+				    for (const auto& source : entities)
+				    {
+					    const auto entity = world.CreateEntity(source.name);
+					    world.AddComponent<ECS::TransformComponent>(entity) = source.transform;
+					    world.AddComponent<ECS::MeshRendererComponent>(entity) = source.renderer;
+				    }
+			    };
+		    },
+		    [](const std::string& error) { NENE_LOG_ERROR("Model manifest failed: {}", error); });
 	}
-
-	void SpawnModelsFromManifest(ECS::World& world, eastl::span<IRenderAdapter* const> renderers,
-	                             const std::filesystem::path& shaderPath, const std::filesystem::path& manifestPath)
-	{
-		if (renderers.empty()) return;
-
-		eastl::vector<IRenderAdapter*> validRenderers;
-		validRenderers.reserve(renderers.size());
-		eastl::vector<ShaderId> shaderIds;
-		shaderIds.reserve(renderers.size());
-		for (IRenderAdapter* renderer : renderers)
-		{
-			if (renderer == nullptr) continue;
-
-			const bool domainAlreadyCovered =
-			    eastl::any_of(validRenderers.begin(), validRenderers.end(), [renderer](const IRenderAdapter* other)
-			                  { return other->GetResourceDomainKey() == renderer->GetResourceDomainKey(); });
-			if (domainAlreadyCovered) continue;
-
-			validRenderers.push_back(renderer);
-			shaderIds.push_back(CreateTexturedMeshShader(*renderer, shaderPath));
-		}
-
-		if (validRenderers.empty()) return;
-
-		const ModelSpawnManifestConfig manifest = LoadModelSpawnManifest(manifestPath);
-
-		for (const auto& modelEntry : manifest.models)
-		{
-			const auto meshPath = ResolveOptionalAssetPath(manifestPath, modelEntry.meshPath);
-			if (meshPath.empty())
-			{
-				NENE_LOG_WARN("Model entry '{}' mesh '{}' was not found", modelEntry.entityName,
-				              modelEntry.meshPath.string());
-				continue;
-			}
-
-			const auto instanceConfigPath = ResolveOptionalAssetPath(manifestPath, modelEntry.instanceConfigPath);
-			const ModelInstanceConfig modelConfig = LoadModelInstanceConfig(instanceConfigPath);
-
-			if (!modelEntry.splitByMeshParts)
-			{
-				if (auto meshResource = ResourceManager::GetInstance().Load<Mesh>(meshPath.string());
-				    meshResource != nullptr)
-				{
-					Mesh& mesh = meshResource->GetData();
-					auto texturePath = FindDiffuseTextureFromObjMaterial(meshPath);
-					if (!texturePath.empty() && !std::filesystem::exists(texturePath)) texturePath.clear();
-					const ECS::Entity modelEntity =
-					    CreateUploadedModelEntity(world, modelEntry.entityName, modelConfig.position, modelConfig.scale);
-					auto& source = *world.GetComponent<ECS::MeshRendererComponent>(modelEntity);
-					source.meshPath = PortableAssetPath(meshPath);
-					source.texturePath = PortableAssetPath(texturePath);
-					source.shaderPath = PortableAssetPath(shaderPath);
-					bool boundForAnyRenderer = false;
-
-					for (size_t rendererIndex = 0; rendererIndex < validRenderers.size(); ++rendererIndex)
-					{
-						IRenderAdapter& renderer = *validRenderers[rendererIndex];
-						if (const GPUMesh* uploadedMesh = FindUploadedMeshForRenderer(mesh, renderer);
-						    uploadedMesh == nullptr || !uploadedMesh->IsValid())
-						{
-							const GPUMesh gpuMesh = renderer.UploadMesh(mesh.data);
-							if (gpuMesh.IsValid()) mesh.gpuMeshesByRenderer[GetRendererKey(renderer)] = gpuMesh;
-						}
-
-						const GPUMesh* uploadedMesh = FindUploadedMeshForRenderer(mesh, renderer);
-						if (uploadedMesh == nullptr || !uploadedMesh->IsValid()) continue;
-
-						const TextureId textureId = CreateTexture(renderer, texturePath);
-						BindUploadedModelEntity(world, modelEntity, renderer, *uploadedMesh, shaderIds[rendererIndex],
-						                        textureId);
-						boundForAnyRenderer = true;
-
-						NENE_LOG_INFO("Assigned uploaded meshId={} to standalone entity '{}' for renderer {}",
-						              uploadedMesh->meshId.value, modelEntry.entityName, rendererIndex);
-					}
-
-					if (!boundForAnyRenderer) world.DestroyEntity(modelEntity);
-				}
-
-				continue;
-			}
-
-			const auto modelDirectory = meshPath.parent_path();
-			const eastl::vector<MeshPart> meshParts = LoadMeshPartsFromFile(meshPath.string());
-			for (size_t meshPartIndex = 0; meshPartIndex < meshParts.size(); ++meshPartIndex)
-			{
-				const MeshPart& meshPart = meshParts[meshPartIndex];
-				const ModelPartOverrideConfig* overrideConfig = FindPartOverride(modelConfig, meshPart.name);
-				const std::filesystem::path texturePath =
-				    overrideConfig != nullptr && !overrideConfig->textureOverride.empty()
-				        ? (overrideConfig->textureOverride.is_absolute()
-				               ? overrideConfig->textureOverride
-				               : modelDirectory / overrideConfig->textureOverride)
-				        : meshPart.diffuseTexturePath;
-				const glm::vec3 worldOffset =
-				    overrideConfig != nullptr ? overrideConfig->positionOffset : glm::vec3{0.0f, 0.0f, 0.0f};
-				const glm::vec3 rotationOffsetDegrees =
-				    overrideConfig != nullptr ? overrideConfig->rotationOffsetDegrees : glm::vec3{0.0f, 0.0f, 0.0f};
-				const glm::vec3 scale =
-				    overrideConfig != nullptr ? modelConfig.scale * overrideConfig->scaleMultiplier : modelConfig.scale;
-				const bool visible = overrideConfig != nullptr ? overrideConfig->visible : true;
-				const ECS::Entity modelEntity = CreateUploadedModelEntity(
-				    world, modelEntry.entityName + "_" + std::to_string(meshPartIndex), modelConfig.position, scale,
-				    worldOffset, rotationOffsetDegrees, visible);
-				auto& source = *world.GetComponent<ECS::MeshRendererComponent>(modelEntity);
-				source.meshPath = PortableAssetPath(meshPath);
-				source.meshPart = static_cast<int>(meshPartIndex);
-				source.texturePath = PortableAssetPath(texturePath);
-				source.shaderPath = PortableAssetPath(shaderPath);
-				bool boundForAnyRenderer = false;
-
-				for (size_t rendererIndex = 0; rendererIndex < validRenderers.size(); ++rendererIndex)
-				{
-					IRenderAdapter& renderer = *validRenderers[rendererIndex];
-					const GPUMesh gpuMesh = renderer.UploadMesh(meshPart.data);
-					if (!gpuMesh.IsValid()) continue;
-
-					const TextureId textureId = CreateTexture(renderer, texturePath);
-					BindUploadedModelEntity(world, modelEntity, renderer, gpuMesh, shaderIds[rendererIndex], textureId);
-					boundForAnyRenderer = true;
-
-					NENE_LOG_INFO(
-					    "Uploaded mesh part '{}' for '{}' as meshId={} (vertices={}, indices={}, texture='{}', renderer={})",
-					    meshPart.name, modelEntry.entityName, gpuMesh.meshId.value, gpuMesh.vertexCount,
-					    gpuMesh.indexCount, texturePath.string(), rendererIndex);
-				}
-
-				if (!boundForAnyRenderer) world.DestroyEntity(modelEntity);
-			}
-		}
-	}
-
 } // namespace NeneEngine

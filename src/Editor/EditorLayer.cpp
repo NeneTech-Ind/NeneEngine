@@ -109,6 +109,16 @@ namespace NeneEngine
 
 	EditorLayer::EditorLayer() = default;
 
+	void EditorLayer::SetResourceLoading(ResourceLoadQueue& loads, const SceneAssetResolver& assets)
+	{
+		m_resourceLoads = &loads;
+		if (m_context)
+		{
+			m_context->resourceLoads = &loads;
+			m_context->assetResolver = assets;
+		}
+	}
+
 	void EditorLayer::SetRenderer(IRenderAdapter* renderer)
 	{
 		if (m_context) m_context->renderer = renderer;
@@ -164,6 +174,8 @@ namespace NeneEngine
 
 	void EditorLayer::Shutdown()
 	{
+		++m_sceneLoadGeneration;
+		m_resourceLoads = nullptr;
 		if (m_uiInput != nullptr)
 		{
 			m_uiInput->SetMouseCaptured(false);
@@ -221,6 +233,20 @@ namespace NeneEngine
 		}
 
 		if (m_imguiBackend == nullptr) return;
+		if (m_context->mode == EditorMode::Edit && !m_context->pendingAssets.empty())
+		{
+			auto complete = std::move(m_context->pendingAssets.back());
+			m_context->pendingAssets.pop_back();
+			try
+			{
+				complete();
+			}
+			catch (const std::exception& exception)
+			{
+				m_context->SetStatus(EditorStatusKind::Danger, exception.what());
+				NENE_LOG_ERROR("Deferred asset finalization failed: {}", exception.what());
+			}
+		}
 
 		if (const float dpiScale = m_imguiBackend->GetDpiScale(); dpiScale != m_themeService.GetDpiScale())
 			m_themeService.SetDpiScale(dpiScale);
@@ -354,28 +380,54 @@ namespace NeneEngine
 
 	void EditorLayer::LoadScene()
 	{
-		if (!ConfirmDiscardChanges()) return;
-
-		try
+		if (!m_resourceLoads) return;
+		const auto path = ChooseSceneFile(false, m_scenePath);
+		if (path.empty()) return;
+		const auto generation = ++m_sceneLoadGeneration;
+		m_context->SetStatus(EditorStatusKind::Muted, "Loading scene...");
+		const auto fail = [this, generation](const std::string& error)
 		{
-			const auto path = ChooseSceneFile(false, m_scenePath);
-			if (path.empty()) return;
-			SceneSerializer::LoadFromFile(path, m_context->world, true);
-			m_history.Clear();
-			m_sceneSnapshot.Clear();
-			m_context->selectedEntity = ECS::NullEntity;
-			for (auto& entry : m_panels) entry.panel->OnSceneLoaded();
-			m_scenePath = path;
-			m_context->SetStatus(EditorStatusKind::Success, "Loaded: " + ToUtf8(path.filename()));
-			NENE_LOG_INFO("Loaded: {}", ToUtf8(path));
-		}
-		catch (const std::exception& e)
-		{
-			m_context->SetStatus(EditorStatusKind::Danger, e.what());
-			NENE_LOG_ERROR("Load scene: {}", e.what());
-		}
+			if (generation != m_sceneLoadGeneration || !m_context) return;
+			m_context->SetStatus(EditorStatusKind::Danger, error);
+			NENE_LOG_ERROR("Load scene: {}", error);
+		};
+		if (!m_resourceLoads->Request(
+		        path.generic_string(),
+		        [this, generation, path]() -> ResourceLoadQueue::Completion
+		        {
+			        auto scene = SceneSerializer::ReadFromFile(path);
+			        return [this, generation, path, scene = std::move(scene)]()
+			        {
+				        if (generation != m_sceneLoadGeneration || !m_context) return;
+				        auto apply = [this, generation, path, scene]()
+				        {
+					        if (generation != m_sceneLoadGeneration || !m_context) return;
+					        if (!ConfirmDiscardChanges())
+					        {
+						        if (m_context->status.kind != EditorStatusKind::Danger)
+							        m_context->SetStatus(EditorStatusKind::Muted, "Scene load canceled");
+						        return;
+					        }
+					        SceneSerializer::Deserialize(scene, m_context->world, true);
+					        ++m_context->sceneGeneration;
+					        m_context->pendingAssets.clear();
+					        m_history.Clear();
+					        m_sceneSnapshot.Clear();
+					        m_context->selectedEntity = ECS::NullEntity;
+					        for (auto& entry : m_panels) entry.panel->OnSceneLoaded();
+					        m_scenePath = path;
+					        m_context->SetStatus(EditorStatusKind::Success, "Loaded: " + ToUtf8(path.filename()));
+					        NENE_LOG_INFO("Loaded: {}", ToUtf8(path));
+				        };
+				        if (m_context->mode == EditorMode::Edit)
+					        apply();
+				        else
+					        m_context->pendingAssets.push_back(std::move(apply));
+			        };
+		        },
+		        fail, JobPriority::High))
+			fail("Resource loader is stopping");
 	}
-
 	void EditorLayer::DrawStatusBar()
 	{
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();

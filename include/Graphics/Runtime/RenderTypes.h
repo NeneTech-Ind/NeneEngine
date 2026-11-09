@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
 #include <compare>
@@ -138,6 +139,13 @@ namespace NeneEngine
 		uint32_t height = 0;
 
 		constexpr bool IsValid() const noexcept { return textureId.IsValid(); }
+	};
+
+	// Backend-owned CPU data. No device or graphics context is needed to prepare it.
+	class ITextureUploadData
+	{
+	  public:
+		virtual ~ITextureUploadData() = default;
 	};
 
 	struct ShaderProgramResource

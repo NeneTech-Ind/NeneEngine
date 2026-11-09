@@ -16,6 +16,7 @@ namespace NeneEngine
 	class GameTimer;
 	class InputDevice;
 	class InputManager;
+	class ResourceLoadQueue;
 
 	class AppFrameLoopService final
 	{
@@ -25,8 +26,9 @@ namespace NeneEngine
 
 		void Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
 		         InputManager& inputManager, AppRuntimeConfigService& runtimeConfigService,
-		         AppWindowRuntimeService& windowRuntimeService, EditorLayer& editorLayer,
-		         ApplyConfigCallback applyRuntimeConfig, FocusedInputCallback getFocusedInput);
+		         AppWindowRuntimeService& windowRuntimeService, ResourceLoadQueue& resourceLoads,
+		         EditorLayer& editorLayer, ApplyConfigCallback applyRuntimeConfig,
+		         FocusedInputCallback getFocusedInput);
 
 	  private:
 		void InputPhase(float deltaTime, InputManager& inputManager, AppWindowRuntimeService& windowRuntimeService,

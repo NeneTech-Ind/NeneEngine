@@ -1,6 +1,7 @@
 // SceneSerializer.cpp
 
 #include "Scene/SceneSerializer.h"
+#include "Core/Profiler.h"
 
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
@@ -580,12 +581,18 @@ namespace NeneEngine
 
 	void SceneSerializer::LoadFromFile(const std::filesystem::path& path, ECS::World& world, bool preserveCameras)
 	{
+		Deserialize(ReadFromFile(path), world, preserveCameras);
+	}
+
+	nlohmann::json SceneSerializer::ReadFromFile(const std::filesystem::path& path)
+	{
+		NENE_PROFILE_SCOPE("Scene File Load");
 		std::ifstream file(path);
 		if (!file.is_open()) throw std::runtime_error("Failed to open scene file for reading: " + path.string());
 
 		nlohmann::json sceneJson;
 		file >> sceneJson;
-		Deserialize(sceneJson, world, preserveCameras);
+		return sceneJson;
 	}
 
 } // namespace NeneEngine

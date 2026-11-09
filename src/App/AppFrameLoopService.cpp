@@ -7,6 +7,7 @@
 #include "Core/GameTimer.h"
 #include "Core/NeneLogger.h"
 #include "Core/Profiler.h"
+#include "Core/ResourceLoadQueue.h"
 #include "Editor/EditorLayer.h"
 #include "GameStates/GameStateMachine.h"
 #include "Input/InputDevice.h"
@@ -23,8 +24,9 @@ namespace NeneEngine
 
 	void AppFrameLoopService::Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
 	                              InputManager& inputManager, AppRuntimeConfigService& runtimeConfigService,
-	                              AppWindowRuntimeService& windowRuntimeService, EditorLayer& editorLayer,
-	                              ApplyConfigCallback applyRuntimeConfig, FocusedInputCallback getFocusedInput)
+	                              AppWindowRuntimeService& windowRuntimeService, ResourceLoadQueue& resourceLoads,
+	                              EditorLayer& editorLayer, ApplyConfigCallback applyRuntimeConfig,
+	                              FocusedInputCallback getFocusedInput)
 	{
 		running = true;
 		timer.Reset();
@@ -34,6 +36,7 @@ namespace NeneEngine
 			NENE_PROFILE_SCOPE("Frame");
 			windowRuntimeService.PumpWindowMessages();
 			if (!running.load() || windowRuntimeService.IsMainWindowClosed()) break;
+			resourceLoads.Pump();
 
 			if (windowRuntimeService.AreAllWindowsMinimized())
 			{

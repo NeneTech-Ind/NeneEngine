@@ -7,6 +7,7 @@
 namespace NeneEngine
 {
 	class IRenderAdapter;
+	class ResourceLoadQueue;
 
-	void RunDemoBootstrap(ECS::World& world, eastl::span<IRenderAdapter* const> renderers);
+	void RunDemoBootstrap(ECS::World& world, eastl::span<IRenderAdapter* const> renderers, ResourceLoadQueue& loads);
 } // namespace NeneEngine

@@ -17,7 +17,9 @@
 #include "Scene/SceneConfig.h"
 #include "Scene/SceneSerializer.h"
 
+#include <chrono>
 #include <exception>
+#include <thread>
 
 namespace NeneEngine::DemoScene
 {
@@ -82,7 +84,8 @@ namespace NeneEngine::DemoScene
 			world.AddComponent<ECS::PlayerControllerComponent>(player);
 		}
 
-		void SaveDefaultScene(ECS::World& world, uint32_t width, uint32_t height, const std::filesystem::path& scenePath)
+		void SaveDefaultScene(ECS::World& world, uint32_t width, uint32_t height,
+		                      const std::filesystem::path& scenePath)
 		{
 			Create(world, width, height);
 
@@ -155,6 +158,66 @@ namespace NeneEngine::DemoScene
 		cubeHierarchy.parent = movingQuad;
 
 		CreatePhysicsDemo(world);
+	}
+
+	void LoadOrCreate(ECS::World& world, ResourceLoadQueue& loads, uint32_t width, uint32_t height)
+	{
+		bool completed = false;
+		const bool accepted = loads.Request(
+		    "Startup Scene",
+		    [&world, &completed, width, height]() -> ResourceLoadQueue::Completion
+		    {
+			    const auto path = ResolveFromExecutionRoots(GetDefaultScenePath(), true);
+			    const auto config = LoadSceneConfig(ResolveFromExecutionRoots(GetDefaultSceneConfigPath(), true));
+			    nlohmann::json scene;
+			    std::string error;
+			    const bool exists = !path.empty() && std::filesystem::exists(path);
+			    if (exists)
+			    {
+				    try
+				    {
+					    scene = SceneSerializer::ReadFromFile(path);
+				    }
+				    catch (const std::exception& exception)
+				    {
+					    error = exception.what();
+				    }
+			    }
+			    return [&world, &completed, width, height, path, config, scene = std::move(scene), error, exists]()
+			    {
+				    if (!exists)
+					    SaveDefaultScene(world, width, height, path.empty() ? GetDefaultScenePath() : path);
+				    else
+				    {
+					    try
+					    {
+						    if (!error.empty()) throw std::runtime_error(error);
+						    SceneSerializer::Deserialize(scene, world);
+					    }
+					    catch (const std::exception& exception)
+					    {
+						    NENE_LOG_WARN("Demo scene failed to load: {}. Using defaults", exception.what());
+						    Create(world, width, height);
+					    }
+				    }
+				    ApplySceneConfig(world, config);
+				    completed = true;
+			    };
+		    },
+		    [&world, &completed, width, height](const std::string& error)
+		    {
+			    NENE_LOG_ERROR("Startup scene loading failed: {}", error);
+			    Create(world, width, height);
+			    completed = true;
+		    },
+		    JobPriority::High);
+		if (!accepted) throw std::runtime_error("Could not schedule the startup scene");
+		// Camera entities are required before creating windows; frame-time loads do not wait here.
+		while (!completed)
+		{
+			loads.Pump(1);
+			std::this_thread::sleep_for(std::chrono::milliseconds{1});
+		}
 	}
 
 	void LoadOrCreate(ECS::World& world, uint32_t width, uint32_t height, const std::filesystem::path& scenePath,

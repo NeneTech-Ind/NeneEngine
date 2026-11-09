@@ -106,6 +106,9 @@ namespace NeneEngine
 		GPUBuffer CreateIndexBuffer(const uint32_t* indices, uint32_t indexCount) override;
 		GPUMesh UploadMesh(const MeshData& meshData) override;
 		GPUTexture CreateTexture2D(const TextureResource& texture) override;
+		eastl::shared_ptr<ITextureUploadData> PrepareTexture2D(const TextureResource& texture) const override;
+		GPUTexture CreateTexture2D(const TextureResource& texture, const ITextureUploadData& data) override;
+		GPUTexture CreatePlaceholderTexture() override;
 		GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram) override;
 		RenderTarget CreateRenderTarget(uint32_t width, uint32_t height) override;
 		void DestroyRenderTarget(RenderTargetId target) override;

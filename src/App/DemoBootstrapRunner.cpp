@@ -8,7 +8,7 @@
 
 namespace NeneEngine
 {
-	void RunDemoBootstrap(ECS::World& world, eastl::span<IRenderAdapter* const> renderers)
+	void RunDemoBootstrap(ECS::World& world, eastl::span<IRenderAdapter* const> renderers, ResourceLoadQueue& loads)
 	{
 		NENE_PROFILE_SCOPE("Demo Bootstrap");
 
@@ -31,7 +31,7 @@ namespace NeneEngine
 
 		NENE_LOG_INFO("Demo bootstrap: spawning demo models from '{}' for {} renderer(s)", manifestPath.string(),
 		              renderers.size());
-		SpawnModelsFromManifest(world, renderers, shaderPath, manifestPath);
-		NENE_LOG_INFO("Demo bootstrap completed");
+		SpawnModelsFromManifest(world, loads, shaderPath, manifestPath);
+		NENE_LOG_INFO("Demo bootstrap queued");
 	}
 } // namespace NeneEngine

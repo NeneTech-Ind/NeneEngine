@@ -7,8 +7,10 @@
 #include "Core/PathResolver.h"
 #include "Core/Profiler.h"
 
+#include <chrono>
 #include <filesystem>
 #include <stdexcept>
+#include <thread>
 
 namespace NeneEngine
 {
@@ -27,7 +29,9 @@ namespace NeneEngine
 	NeneEngineApp::~NeneEngineApp()
 	{
 		if (m_running) RequestShutdown();
+		m_resourceLoads.Shutdown();
 		m_jobSystem.Shutdown();
+		m_editorLayer.Shutdown();
 		m_gameStateMachine.Clear();
 		NeneLogger::GetInstance().Shutdown();
 	}
@@ -39,17 +43,32 @@ namespace NeneEngine
 
 		try
 		{
+			m_windowRuntimeService.SetAssetResolver(m_sceneAssets);
 			if (!m_bootstrapService.Initialize(
 			        *this, m_jobSystem, m_gameStateMachine, m_world, m_runtimeConfigService, m_windowRuntimeService,
 			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, ResolveLogFilePath().string(),
 			        width, height))
 				return false;
 
+			if (auto* renderer = m_windowRuntimeService.GetMainRenderer())
+			{
+				// Compile the built-in material before frames start, just like the primitive pipelines.
+				NENE_PROFILE_SCOPE("Default Shader Warmup");
+				const std::string shaderPath = "assets/shaders/textured_mesh.shader";
+				m_sceneAssets.Shader(shaderPath, *renderer, JobPriority::High);
+				while (m_sceneAssets.GetShaderState(shaderPath, *renderer) == ResourceLoadState::Loading)
+				{
+					m_resourceLoads.Pump(1);
+					std::this_thread::sleep_for(std::chrono::milliseconds{1});
+				}
+			}
+
 			m_editorLayer.Initialize(
 			    m_world, m_windowRuntimeService.GetMainImGuiBackend(), m_windowRuntimeService.GetMainWindowInput(),
 			    m_windowRuntimeService.GetMainCameraEntity(), [this]() { RequestShutdown(); },
 			    [this](EditorMode mode) { OnEditorModeChanged(mode); });
 			m_editorLayer.SetRenderer(m_windowRuntimeService.GetMainRenderer());
+			m_editorLayer.SetResourceLoading(m_resourceLoads, m_sceneAssets);
 			m_windowRuntimeService.SetMainWindowCloseRequestHandler(
 			    [this]() { return m_editorLayer.ConfirmDiscardChanges(); });
 			return true;
@@ -74,7 +93,7 @@ namespace NeneEngine
 		{
 			m_frameLoopService.Run(
 			    m_running, m_timer, m_gameStateMachine, m_inputManager, m_runtimeConfigService, m_windowRuntimeService,
-			    m_editorLayer, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
+			    m_resourceLoads, m_editorLayer, [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); },
 			    [this]() { return m_windowRuntimeService.GetFocusedInput(); });
 		}
 		catch (const std::exception& e)

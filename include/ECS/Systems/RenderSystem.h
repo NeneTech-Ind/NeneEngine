@@ -18,8 +18,9 @@ namespace NeneEngine::ECS
 	class RenderSystem final
 	{
 	  public:
-		explicit RenderSystem(IRenderAdapter* adapter, Entity cameraEntity = NullEntity)
-		    : m_renderer(adapter), m_cameraEntity(cameraEntity)
+		explicit RenderSystem(IRenderAdapter* adapter, Entity cameraEntity = NullEntity,
+		                      const SceneAssetResolver* assets = nullptr)
+		    : m_renderer(adapter), m_assets(assets ? *assets : SceneAssetResolver{}), m_cameraEntity(cameraEntity)
 		{
 		}
 

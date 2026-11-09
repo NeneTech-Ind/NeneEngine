@@ -46,6 +46,7 @@ namespace NeneEngine
 		bool Redo(ECS::World& world);
 		void Clear();
 		void MarkSaved() { m_savedPosition = m_position; }
+		void InvalidateSavedState();
 
 		[[nodiscard]] bool IsDirty() const { return m_position != m_savedPosition; }
 		[[nodiscard]] bool CanUndo() const { return !m_undoStack.empty(); }

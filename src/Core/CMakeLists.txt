@@ -1,4 +1,6 @@
 target_sources(NeneEngine PRIVATE
+	"${CMAKE_CURRENT_SOURCE_DIR}/ResourceLoadQueue.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/ResourceLoadQueue.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/CachedResource.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/NeneLogger.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Delegate.h"

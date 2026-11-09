@@ -360,9 +360,13 @@ namespace NeneEngine
 	{
 		if (!path.empty())
 		{
-			const bool valid = texture ? context.assetResolver.Texture(path, *context.renderer).IsValid()
-			                           : context.assetResolver.Shader(path, *context.renderer).IsValid();
-			if (!valid)
+			if (texture)
+				context.assetResolver.Texture(path, *context.renderer);
+			else
+				context.assetResolver.Shader(path, *context.renderer);
+			const auto state = texture ? context.assetResolver.GetTextureState(path, *context.renderer)
+			                           : context.assetResolver.GetShaderState(path, *context.renderer);
+			if (state == ResourceLoadState::Failed)
 			{
 				m_materialError = texture ? "Could not load texture" : "Could not compile shader";
 				return;
@@ -412,6 +416,9 @@ namespace NeneEngine
 		if (material.texturePath.empty()) return;
 
 		const auto texture = context.assetResolver.Texture(material.texturePath, *context.renderer);
+		if (context.assetResolver.GetTextureState(material.texturePath, *context.renderer) ==
+		    ResourceLoadState::Loading)
+			ImGui::TextDisabled("Loading texture...");
 		if (!texture.IsValid()) return;
 
 		if (context.monospaceFont != nullptr) ImGui::PushFont(context.monospaceFont, 0.0f);
@@ -461,6 +468,12 @@ namespace NeneEngine
 		ImGui::EndDisabled();
 		if (!m_materialError.empty()) StatusText(colors, EditorStatusKind::Danger, m_materialError.c_str());
 		DrawMaterialPreview(context, *material);
+		if (!material->texturePath.empty() &&
+		    context.assetResolver.GetTextureState(material->texturePath, *context.renderer) == ResourceLoadState::Failed)
+			StatusText(colors, EditorStatusKind::Danger, "Texture loading failed. Refresh assets to retry.");
+		if (!material->shaderPath.empty() &&
+		    context.assetResolver.GetShaderState(material->shaderPath, *context.renderer) == ResourceLoadState::Failed)
+			StatusText(colors, EditorStatusKind::Danger, "Shader loading failed. Refresh assets to retry.");
 		ImGui::PopID();
 	}
 

@@ -9,6 +9,7 @@
 #include "App/AppWindowRuntimeService.h"
 #include "Core/GameTimer.h"
 #include "Core/JobSystem.h"
+#include "Core/ResourceLoadQueue.h"
 #include "ECS/World.h"
 #include "Editor/EditorLayer.h"
 #include "GameStates/GameStateMachine.h"
@@ -31,9 +32,13 @@ namespace NeneEngine
 		void RequestExit();
 		InputManager& GetInputManager() { return m_inputManager; }
 		const InputManager& GetInputManager() const { return m_inputManager; }
+		ResourceLoadQueue& GetResourceLoads() { return m_resourceLoads; }
+		SceneAssetResolver& GetSceneAssets() { return m_sceneAssets; }
 
 	  private:
 		JobSystem m_jobSystem;
+		ResourceLoadQueue m_resourceLoads{m_jobSystem};
+		SceneAssetResolver m_sceneAssets{&m_resourceLoads};
 		GameTimer m_timer;
 		GameStateMachine m_gameStateMachine;
 		ECS::World m_world;

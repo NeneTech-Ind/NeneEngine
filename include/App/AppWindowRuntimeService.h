@@ -22,6 +22,7 @@ namespace NeneEngine
 	class AppWindowRuntimeService final
 	{
 	  public:
+		void SetAssetResolver(SceneAssetResolver& assets) { m_windowContextFactory.SetAssetResolver(assets); }
 		~AppWindowRuntimeService();
 
 		bool Initialize(const AppConfig& config, ECS::World& world, ECS::Entity primaryCameraEntity, uint32_t width,

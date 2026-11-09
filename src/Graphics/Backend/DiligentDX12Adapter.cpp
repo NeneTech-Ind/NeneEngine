@@ -11,6 +11,7 @@
 #include "Core/Profiler.h"
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -671,35 +672,50 @@ namespace NeneEngine
 		return GPUMesh{meshId, vertexBuffer.bufferId, indexBuffer.bufferId, vertexCount, indexCount};
 	}
 
+	namespace
+	{
+		class DiligentTextureUploadData final : public ITextureUploadData
+		{
+		  public:
+			RefCntAutoPtr<ITextureLoader> loader;
+		};
+	} // namespace
+
+	eastl::shared_ptr<ITextureUploadData> DiligentDX12Adapter::PrepareTexture2D(const TextureResource& texture) const
+	{
+		NENE_PROFILE_SCOPE("Texture File Load");
+		NENE_PROFILE_ZONE_TEXT(texture.path.data(), texture.path.size());
+		TextureLoadInfo loadInfo{};
+		loadInfo.IsSRGB = texture.isSrgb;
+		auto prepared = eastl::make_shared<DiligentTextureUploadData>();
+		CreateTextureLoaderFromFile(texture.path.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &prepared->loader);
+		if (!prepared->loader) throw std::runtime_error("Could not decode texture: " + texture.path);
+		return prepared;
+	}
+
 	GPUTexture DiligentDX12Adapter::CreateTexture2D(const TextureResource& texture)
+	{
+		const auto prepared = PrepareTexture2D(texture);
+		return CreateTexture2D(texture, *prepared);
+	}
+
+	GPUTexture DiligentDX12Adapter::CreateTexture2D(const TextureResource& texture, const ITextureUploadData& data)
 	{
 		NENE_PROFILE_SCOPE("Texture Create");
 		NENE_PROFILE_ZONE_TEXT(texture.path.data(), texture.path.size());
-
 		if (!IsDeviceReady("CreateTexture2D")) return {};
-
-		TextureLoadInfo loadInfo{};
-		loadInfo.IsSRGB = texture.isSrgb;
-
-		RefCntAutoPtr<ITextureLoader> textureLoader;
-		{
-			NENE_PROFILE_SCOPE("Texture File Load");
-			CreateTextureLoaderFromFile(texture.path.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &textureLoader);
-		}
-		if (!textureLoader)
-		{
-			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create texture loader for '{}'", texture.path);
-			return {};
-		}
+		const auto* prepared = dynamic_cast<const DiligentTextureUploadData*>(&data);
+		if (!prepared || !prepared->loader) return {};
+		const auto& textureLoader = prepared->loader;
 
 		DiligentDX12SharedDevice::UploadedTexture uploadedTexture{};
 		const auto sourceFormat = textureLoader->GetTextureDesc().Format;
 		auto storageDesc = textureLoader->GetTextureDesc();
 		storageDesc.Format = ColorStorageFormat(sourceFormat);
-		const auto data = textureLoader->GetTextureData();
+		const auto textureData = textureLoader->GetTextureData();
 		{
 			NENE_PROFILE_SCOPE("Texture Upload");
-			m_shared->device->CreateTexture(storageDesc, &data, &uploadedTexture.texture);
+			m_shared->device->CreateTexture(storageDesc, &textureData, &uploadedTexture.texture);
 		}
 		if (!uploadedTexture.texture)
 		{
@@ -732,6 +748,31 @@ namespace NeneEngine
 		NENE_LOG_INFO("DiligentDX12Adapter: uploaded texture {} '{}' ({}x{})", textureId.value, texture.path,
 		              textureDesc.Width, textureDesc.Height);
 		return GPUTexture{textureId, textureDesc.Width, textureDesc.Height};
+	}
+
+	GPUTexture DiligentDX12Adapter::CreatePlaceholderTexture()
+	{
+		if (!IsDeviceReady("CreatePlaceholderTexture")) return {};
+		constexpr uint32_t kPixels[] = {0xFF555555, 0xFFBBBBBB, 0xFFBBBBBB, 0xFF555555};
+		TextureDesc desc{};
+		desc.Name = "Loading placeholder";
+		desc.Type = RESOURCE_DIM_TEX_2D;
+		desc.Width = desc.Height = 2;
+		desc.Format = TEX_FORMAT_RGBA8_UNORM;
+		desc.Usage = USAGE_IMMUTABLE;
+		desc.BindFlags = BIND_SHADER_RESOURCE;
+		TextureSubResData subresource{};
+		subresource.pData = kPixels;
+		subresource.Stride = 2 * sizeof(uint32_t);
+		TextureData initialData{&subresource, 1};
+		DiligentDX12SharedDevice::UploadedTexture uploaded{};
+		m_shared->device->CreateTexture(desc, &initialData, &uploaded.texture);
+		if (!uploaded.texture) return {};
+		uploaded.shaderResourceView = uploaded.texture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+		uploaded.imguiView = uploaded.shaderResourceView;
+		const TextureId id{m_shared->nextTextureId++};
+		m_shared->uploadedTextures.emplace(id.value, std::move(uploaded));
+		return {id, 2, 2};
 	}
 
 	GPUShaderProgram DiligentDX12Adapter::CreateShaderProgram(const ShaderProgramResource& shaderProgram)

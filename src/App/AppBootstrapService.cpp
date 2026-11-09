@@ -83,7 +83,7 @@ namespace NeneEngine
 		world.AddSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(app.GetInputManager()));
 		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>());
 		SubscribeCollisionLogger(world);
-		DemoScene::LoadOrCreate(world, width, height);
+		DemoScene::LoadOrCreate(world, app.GetResourceLoads(), width, height);
 		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::GetDefaultScenePath().string());
 
 		const ECS::Entity primaryCameraEntity = FindPrimaryCameraEntity(world);
@@ -95,7 +95,7 @@ namespace NeneEngine
 
 		if (!windowRuntimeService.Initialize(appConfig, world, primaryCameraEntity, width, height)) return false;
 
-		RunDemoBootstrap(world, windowRuntimeService.GetRenderers());
+		RunDemoBootstrap(world, windowRuntimeService.GetRenderers(), app.GetResourceLoads());
 		applyRuntimeConfig(appConfig);
 
 		NENE_LOG_INFO("Application initialized successfully ({}x{})", width, height);
