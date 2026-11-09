@@ -25,6 +25,10 @@ namespace NeneEngine
 		std::string GetTitle() const override { return m_title; }
 		void SetTitleSuffix(const std::string& suffix) override;
 		void SetMessageHook(MessageHook hook) override { m_messageHook = std::move(hook); }
+		void SetCloseRequestHandler(CloseRequestHandler handler) override
+		{
+			m_closeRequestHandler = std::move(handler);
+		}
 		uint32_t GetWidth() const override { return m_width; }
 		uint32_t GetHeight() const override { return m_height; }
 		InputDevice& GetInput() override { return m_input; }
@@ -49,5 +53,6 @@ namespace NeneEngine
 		InputDevice m_input;
 		MulticastDelegate<uint32_t, uint32_t> m_resized;
 		MessageHook m_messageHook;
+		CloseRequestHandler m_closeRequestHandler;
 	};
 } // namespace NeneEngine

@@ -18,6 +18,7 @@ namespace NeneEngine
 	  public:
 		using MessageHook =
 		    eastl::function<bool(HWND hwnd, uint32_t message, uintptr_t wParam, intptr_t lParam, intptr_t& result)>;
+		using CloseRequestHandler = eastl::function<bool()>;
 
 		virtual ~IWindow() = default;
 
@@ -33,6 +34,7 @@ namespace NeneEngine
 		virtual std::string GetTitle() const = 0;
 		virtual void SetTitleSuffix(const std::string& suffix) = 0;
 		virtual void SetMessageHook(MessageHook hook) = 0;
+		virtual void SetCloseRequestHandler(CloseRequestHandler handler) = 0;
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;
 		virtual InputDevice& GetInput() = 0;

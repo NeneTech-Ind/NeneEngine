@@ -34,6 +34,7 @@ namespace NeneEngine
 		void Shutdown();
 
 		void Update();
+		[[nodiscard]] bool ConfirmDiscardChanges();
 
 		[[nodiscard]] bool IsGameplayRunning() const
 		{
