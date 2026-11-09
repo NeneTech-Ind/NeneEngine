@@ -64,6 +64,7 @@ namespace NeneEngine
 		if (ImGui::Button(NENE_ICON_REFRESH "##Refresh"))
 		{
 			context.assets.Refresh();
+			context.assetResolver.ForgetFailures();
 			m_failedPreviewPath.clear();
 		}
 		ImGui::SetItemTooltip("Refresh assets");

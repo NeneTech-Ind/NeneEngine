@@ -21,6 +21,7 @@ namespace NeneEngine
 		GPUShaderProgram Shader(const std::string& path, IRenderAdapter& renderer);
 		GPUMesh Mesh(const std::string& path, int part, IRenderAdapter& renderer);
 		[[nodiscard]] const std::string& GetError() const { return m_error; }
+		void ForgetFailures();
 
 	  private:
 		std::unordered_map<std::string, GPUMesh> m_meshes;
