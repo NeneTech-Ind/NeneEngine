@@ -127,6 +127,14 @@ namespace NeneEngine
 		return result;
 	}
 
+	void SceneAssetResolver::ForgetFailures()
+	{
+		std::erase_if(m_meshes, [](const auto& entry) { return !entry.second.IsValid(); });
+		std::erase_if(m_textures, [](const auto& entry) { return !entry.second.IsValid(); });
+		std::erase_if(m_shaders, [](const auto& entry) { return !entry.second.IsValid(); });
+		m_error.clear();
+	}
+
 	MeshRenderRuntimeBinding SceneAssetResolver::Resolve(const ECS::MeshRendererComponent& source,
 	                                                     IRenderAdapter& renderer)
 	{

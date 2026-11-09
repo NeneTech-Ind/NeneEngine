@@ -214,6 +214,12 @@ namespace NeneEngine
 
 	void EditorLayer::Update()
 	{
+		if (m_exitRequested)
+		{
+			m_exitRequested = false;
+			if (ConfirmDiscardChanges() && m_requestShutdown) m_requestShutdown();
+		}
+
 		if (m_imguiBackend == nullptr) return;
 
 		if (const float dpiScale = m_imguiBackend->GetDpiScale(); dpiScale != m_themeService.GetDpiScale())
@@ -252,7 +258,8 @@ namespace NeneEngine
 			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
 			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
 			ImGui::Separator();
-			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit") && m_requestShutdown) m_requestShutdown();
+			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit") && m_requestShutdown && ConfirmDiscardChanges())
+				m_requestShutdown();
 			ImGui::EndMenu();
 		}
 
@@ -325,8 +332,30 @@ namespace NeneEngine
 		}
 	}
 
+	bool EditorLayer::ConfirmDiscardChanges()
+	{
+		if (m_context == nullptr || !m_history.IsDirty()) return true;
+
+		const std::wstring sceneName =
+		    m_scenePath.empty() ? std::wstring(L"Untitled") : m_scenePath.filename().wstring();
+		const std::wstring message = L"Save changes to " + sceneName + L"?";
+		switch (MessageBoxW(GetActiveWindow(), message.c_str(), L"NeneEngine", MB_YESNOCANCEL | MB_ICONWARNING))
+		{
+		case IDYES:
+			SetMode(EditorMode::Edit);
+			SaveScene(false);
+			return !m_history.IsDirty();
+		case IDNO:
+			return true;
+		default:
+			return false;
+		}
+	}
+
 	void EditorLayer::LoadScene()
 	{
+		if (!ConfirmDiscardChanges()) return;
+
 		try
 		{
 			const auto path = ChooseSceneFile(false, m_scenePath);
@@ -597,6 +626,8 @@ namespace NeneEngine
 
 	void EditorLayer::DrawPanels()
 	{
+		for (auto& entry : m_panels) entry.panel->Update(*m_context);
+
 		for (auto& entry : m_panels)
 		{
 			if (!entry.isOpen) continue;

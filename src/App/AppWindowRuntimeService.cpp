@@ -321,6 +321,12 @@ namespace NeneEngine
 		return mainWindow != nullptr && mainWindow->window ? &mainWindow->window->GetInput() : nullptr;
 	}
 
+	void AppWindowRuntimeService::SetMainWindowCloseRequestHandler(IWindow::CloseRequestHandler handler)
+	{
+		AppWindowContext* mainWindow = FindMainWindow();
+		if (mainWindow != nullptr && mainWindow->window) mainWindow->window->SetCloseRequestHandler(std::move(handler));
+	}
+
 	ECS::Entity AppWindowRuntimeService::GetMainCameraEntity()
 	{
 		AppWindowContext* mainWindow = FindMainWindow();

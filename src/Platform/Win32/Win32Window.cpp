@@ -175,6 +175,7 @@ namespace NeneEngine
 			return 0;
 
 		case WM_CLOSE:
+			if (m_closeRequestHandler && !m_closeRequestHandler()) return 0;
 			m_shouldClose = true;
 			Destroy();
 			return 0;

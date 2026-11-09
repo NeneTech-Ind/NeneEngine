@@ -44,6 +44,7 @@ namespace NeneEngine
 		[[nodiscard]] IRenderAdapter* GetMainRenderer();
 		[[nodiscard]] InputDevice* GetMainWindowInput();
 		[[nodiscard]] ECS::Entity GetMainCameraEntity();
+		void SetMainWindowCloseRequestHandler(IWindow::CloseRequestHandler handler);
 		[[nodiscard]] eastl::vector<IRenderAdapter*> GetRenderers() const;
 
 	  private:

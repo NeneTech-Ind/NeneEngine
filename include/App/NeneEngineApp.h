@@ -28,6 +28,7 @@ namespace NeneEngine
 		bool Init(uint32_t width = 1280, uint32_t height = 720);
 		void Run();
 		void RequestShutdown();
+		void RequestExit();
 		InputManager& GetInputManager() { return m_inputManager; }
 		const InputManager& GetInputManager() const { return m_inputManager; }
 

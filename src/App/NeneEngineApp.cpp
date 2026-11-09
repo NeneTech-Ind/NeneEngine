@@ -50,6 +50,8 @@ namespace NeneEngine
 			    m_windowRuntimeService.GetMainCameraEntity(), [this]() { RequestShutdown(); },
 			    [this](EditorMode mode) { OnEditorModeChanged(mode); });
 			m_editorLayer.SetRenderer(m_windowRuntimeService.GetMainRenderer());
+			m_windowRuntimeService.SetMainWindowCloseRequestHandler(
+			    [this]() { return m_editorLayer.ConfirmDiscardChanges(); });
 			return true;
 		}
 		catch (const std::exception& e)
@@ -95,6 +97,11 @@ namespace NeneEngine
 	void NeneEngineApp::RequestShutdown()
 	{
 		m_running = false;
+	}
+
+	void NeneEngineApp::RequestExit()
+	{
+		m_editorLayer.RequestExit();
 	}
 
 } // namespace NeneEngine

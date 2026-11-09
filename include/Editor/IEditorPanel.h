@@ -26,6 +26,7 @@ namespace NeneEngine
 		[[nodiscard]] virtual EditorDockSlot GetDefaultDockSlot() const = 0;
 		[[nodiscard]] virtual ImGuiWindowFlags GetWindowFlags() const { return ImGuiWindowFlags_None; }
 
+		virtual void Update(EditorContext& /*context*/) {}
 		virtual void Draw(EditorContext& context) = 0;
 		virtual void OnSceneLoaded() {}
 	};

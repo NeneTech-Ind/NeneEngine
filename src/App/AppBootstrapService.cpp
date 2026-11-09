@@ -75,7 +75,7 @@ namespace NeneEngine
 		const AppConfig& appConfig = runtimeConfigService.GetConfig();
 
 		GameStateContext stateContext{app.GetInputManager(), world, gameStateMachine,
-		                              [&app]() { app.RequestShutdown(); }};
+		                              [&app]() { app.RequestExit(); }};
 		gameStateMachine.PushState(eastl::make_unique<PlayState>(stateContext));
 
 		world.AddSystem(eastl::make_unique<ECS::MovementSystem>());
