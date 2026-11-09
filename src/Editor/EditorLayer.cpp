@@ -597,6 +597,8 @@ namespace NeneEngine
 
 	void EditorLayer::DrawPanels()
 	{
+		for (auto& entry : m_panels) entry.panel->Update(*m_context);
+
 		for (auto& entry : m_panels)
 		{
 			if (!entry.isOpen) continue;
