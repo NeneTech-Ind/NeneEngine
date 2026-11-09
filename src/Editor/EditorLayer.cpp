@@ -214,6 +214,12 @@ namespace NeneEngine
 
 	void EditorLayer::Update()
 	{
+		if (m_exitRequested)
+		{
+			m_exitRequested = false;
+			if (ConfirmDiscardChanges() && m_requestShutdown) m_requestShutdown();
+		}
+
 		if (m_imguiBackend == nullptr) return;
 
 		if (const float dpiScale = m_imguiBackend->GetDpiScale(); dpiScale != m_themeService.GetDpiScale())

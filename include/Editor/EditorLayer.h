@@ -35,6 +35,7 @@ namespace NeneEngine
 
 		void Update();
 		[[nodiscard]] bool ConfirmDiscardChanges();
+		void RequestExit() { m_exitRequested = true; }
 
 		[[nodiscard]] bool IsGameplayRunning() const
 		{
@@ -79,6 +80,7 @@ namespace NeneEngine
 		eastl::vector<PanelEntry> m_panels;
 		std::filesystem::path m_scenePath;
 		bool m_layoutInitialized = false;
+		bool m_exitRequested = false;
 	};
 
 } // namespace NeneEngine

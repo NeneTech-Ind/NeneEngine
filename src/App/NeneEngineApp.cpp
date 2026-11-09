@@ -99,4 +99,9 @@ namespace NeneEngine
 		m_running = false;
 	}
 
+	void NeneEngineApp::RequestExit()
+	{
+		m_editorLayer.RequestExit();
+	}
+
 } // namespace NeneEngine
