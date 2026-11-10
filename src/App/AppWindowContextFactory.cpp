@@ -53,7 +53,7 @@ namespace NeneEngine
 		windowContext.renderer = std::move(renderer);
 		windowContext.inputManager.SetInputDevice(&windowContext.window->GetInput());
 		windowContext.renderSystem =
-		    eastl::make_unique<ECS::RenderSystem>(windowContext.renderer.get(), cameraEntity, m_assets);
+		    eastl::make_unique<ECS::RenderSystem>(windowContext.renderer.get(), cameraEntity, m_assets, m_jobs);
 		return windowContext;
 	}
 
