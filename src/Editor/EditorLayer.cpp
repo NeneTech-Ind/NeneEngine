@@ -380,7 +380,7 @@ namespace NeneEngine
 
 	void EditorLayer::LoadScene()
 	{
-		if (!m_resourceLoads) return;
+		if (!m_resourceLoads || !ConfirmDiscardChanges()) return;
 		const auto path = ChooseSceneFile(false, m_scenePath);
 		if (path.empty()) return;
 		const auto generation = ++m_sceneLoadGeneration;
@@ -402,12 +402,6 @@ namespace NeneEngine
 				        auto apply = [this, generation, path, scene]()
 				        {
 					        if (generation != m_sceneLoadGeneration || !m_context) return;
-					        if (!ConfirmDiscardChanges())
-					        {
-						        if (m_context->status.kind != EditorStatusKind::Danger)
-							        m_context->SetStatus(EditorStatusKind::Muted, "Scene load canceled");
-						        return;
-					        }
 					        SceneSerializer::Deserialize(scene, m_context->world, true);
 					        ++m_context->sceneGeneration;
 					        m_context->pendingAssets.clear();
@@ -428,6 +422,7 @@ namespace NeneEngine
 		        fail, JobPriority::High))
 			fail("Resource loader is stopping");
 	}
+
 	void EditorLayer::DrawStatusBar()
 	{
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
