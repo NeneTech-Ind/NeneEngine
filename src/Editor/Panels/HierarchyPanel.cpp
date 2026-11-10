@@ -4,7 +4,6 @@
 
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
-#include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
@@ -54,8 +53,11 @@ namespace NeneEngine
 		const char* GetEntityIcon(const entt::registry& registry, ECS::Entity entity)
 		{
 			if (registry.all_of<ECS::CameraComponent>(entity)) return NENE_ICON_CAMERA;
-			if (registry.all_of<ECS::MeshRenderRuntimeComponent>(entity)) return NENE_ICON_MESH;
-			if (registry.all_of<ECS::MeshRendererComponent>(entity)) return NENE_ICON_PRIMITIVE;
+			if (const auto* mesh = registry.try_get<ECS::MeshRendererComponent>(entity))
+				return !mesh->meshPath.empty() && mesh->meshPath.front() != '@' ? NENE_ICON_MESH : NENE_ICON_PRIMITIVE;
+			if (const auto* hierarchy = registry.try_get<ECS::HierarchyComponent>(entity);
+			    hierarchy != nullptr && !hierarchy->children.empty())
+				return NENE_ICON_HIERARCHY;
 			return NENE_ICON_ENTITY;
 		}
 

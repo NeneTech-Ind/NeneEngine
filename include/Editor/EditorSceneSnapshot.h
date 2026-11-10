@@ -5,7 +5,6 @@
 #include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/ContactStateComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
-#include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/MovementComponent.h"
 #include "ECS/Components/PlayerControllerComponent.h"
@@ -45,7 +44,6 @@ namespace NeneEngine
 		using ComponentStores =
 		    eastl::tuple<ComponentStore<ECS::TagComponent>, ComponentStore<ECS::TransformComponent>,
 		                 ComponentStore<ECS::HierarchyComponent>, ComponentStore<ECS::MeshRendererComponent>,
-		                 ComponentStore<ECS::MeshRenderRuntimeComponent>,
 		                 ComponentStore<ECS::ColliderComponent>, ComponentStore<ECS::RigidbodyComponent>,
 		                 ComponentStore<ECS::ContactStateComponent>, ComponentStore<ECS::MovementComponent>,
 		                 ComponentStore<ECS::PlayerControllerComponent>,

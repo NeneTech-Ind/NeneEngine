@@ -6,7 +6,6 @@
 #include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/ContactStateComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
-#include "ECS/Components/MeshRenderRuntimeComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TransformComponent.h"
@@ -168,14 +167,6 @@ namespace NeneEngine::ECS
 				item.meshId = binding.meshId;
 				item.shaderId = binding.shaderId;
 				item.textureId = binding.textureId;
-			}
-			else if (const auto* renderRuntime = GetMeshRenderRuntimeBinding(world, entity, m_renderer);
-			    renderRuntime != nullptr)
-			{
-				item.meshId = renderRuntime->meshId;
-				item.materialId = renderRuntime->materialId;
-				item.shaderId = renderRuntime->shaderId;
-				item.textureId = renderRuntime->textureId;
 			}
 
 			m_renderer->SubmitRenderItem(item);
