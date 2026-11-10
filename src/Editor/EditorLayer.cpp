@@ -235,8 +235,8 @@ namespace NeneEngine
 		if (m_imguiBackend == nullptr) return;
 		if (m_context->mode == EditorMode::Edit && !m_context->pendingAssets.empty())
 		{
-			auto complete = std::move(m_context->pendingAssets.back());
-			m_context->pendingAssets.pop_back();
+			auto complete = std::move(m_context->pendingAssets.front());
+			m_context->pendingAssets.erase(m_context->pendingAssets.begin());
 			try
 			{
 				complete();
