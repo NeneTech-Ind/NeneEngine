@@ -101,7 +101,6 @@ namespace NeneEngine
 		std::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUTexture>>> textures;
 		std::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUShaderProgram>>> shaders;
 		std::unordered_map<uintptr_t, GPUTexture> placeholders;
-		std::string error;
 	};
 
 	SceneAssetResolver::SceneAssetResolver(ResourceLoadQueue* loads) : m_impl(eastl::make_shared<Impl>())
@@ -113,15 +112,13 @@ namespace NeneEngine
 	{
 		const auto resolved = AssetPath(path);
 		if (const auto it = m_impl->models.find(resolved); it != m_impl->models.end()) return it->second;
+		if (!m_impl->loads) throw std::logic_error("Asset resolver has no resource loading queue");
 		auto asset = eastl::make_shared<ModelAsset>();
 		m_impl->models.emplace(resolved, asset);
-		if (!m_impl->loads) throw std::logic_error("Asset resolver has no resource loading queue");
-		const auto state = m_impl;
-		const auto fail = [asset, state](const std::string& error)
+		const auto fail = [asset](const std::string& error)
 		{
 			asset->state = ResourceLoadState::Failed;
 			asset->error = error;
-			state->error = error;
 			NENE_LOG_ERROR("Model loading failed: {}", error);
 		};
 		if (!m_impl->loads->Request(
@@ -130,10 +127,9 @@ namespace NeneEngine
 		        {
 			        const auto resource = ResourceManager::GetInstance().Load<eastl::vector<MeshPart>>(resolved);
 			        if (!resource) throw std::runtime_error("Could not read model: " + resolved);
-			        auto parts = resource->GetData();
-			        return [asset, parts = std::move(parts)]() mutable
+			        return [asset, resource]()
 			        {
-				        asset->parts = std::move(parts);
+				        asset->parts = resource;
 				        asset->state = ResourceLoadState::Ready;
 			        };
 		        },
@@ -167,12 +163,11 @@ namespace NeneEngine
 		if (model->state != ResourceLoadState::Ready) return Mesh("@cube", -1, renderer);
 		auto entry = eastl::make_shared<AssetEntry<GPUMesh>>();
 		m_impl->meshes.emplace(key, entry);
-		const auto state = m_impl;
-		const auto fail = [entry, state](const std::string& error)
+		const auto fail = [entry](const std::string& error)
 		{
 			entry->state = ResourceLoadState::Failed;
 			entry->error = error;
-			state->error = error;
+			NENE_LOG_ERROR("Mesh loading failed: {}", error);
 		};
 		if (!m_impl->loads->Request(
 		        resolved,
@@ -180,17 +175,17 @@ namespace NeneEngine
 		        {
 			        if (part >= 0)
 			        {
-				        if (static_cast<size_t>(part) >= model->parts.size())
+				        if (static_cast<size_t>(part) >= model->parts->GetData().size())
 					        throw std::runtime_error("Model part does not exist");
 				        return [model, part, entry, &renderer]()
 				        {
-					        entry->data = renderer.UploadMesh(model->parts[part].data);
+					        entry->data = renderer.UploadMesh(model->parts->GetData()[part].data);
 					        RequireValid(entry->data);
 					        entry->state = ResourceLoadState::Ready;
 				        };
 			        }
 			        MeshData merged;
-			        for (const auto& mesh : model->parts)
+			        for (const auto& mesh : model->parts->GetData())
 			        {
 				        const auto base = static_cast<uint32_t>(merged.vertices.size());
 				        merged.vertices.insert(merged.vertices.end(), mesh.data.vertices.begin(),
@@ -217,17 +212,15 @@ namespace NeneEngine
 		auto it = m_impl->textures.find(key);
 		if (it == m_impl->textures.end())
 		{
+			if (!m_impl->loads) throw std::logic_error("Asset resolver has no resource loading queue");
 			auto entry = eastl::make_shared<AssetEntry<GPUTexture>>();
 			m_impl->textures.emplace(key, entry);
-			const auto state = m_impl;
-			const auto fail = [entry, state](const std::string& error)
+			const auto fail = [entry](const std::string& error)
 			{
 				entry->state = ResourceLoadState::Failed;
 				entry->error = error;
-				state->error = error;
 				NENE_LOG_ERROR("Texture loading failed: {}", error);
 			};
-			if (!m_impl->loads) throw std::logic_error("Asset resolver has no resource loading queue");
 			if (!m_impl->loads->Request(
 			        resolved,
 			        [entry, resolved, &renderer]() -> ResourceLoadQueue::Completion
@@ -259,27 +252,26 @@ namespace NeneEngine
 		const auto resolved = AssetPath(path);
 		const auto key = CacheKey(resolved, renderer);
 		if (const auto it = m_impl->shaders.find(key); it != m_impl->shaders.end()) return it->second->data;
+		if (!m_impl->loads) throw std::logic_error("Asset resolver has no resource loading queue");
 		auto entry = eastl::make_shared<AssetEntry<GPUShaderProgram>>();
 		m_impl->shaders.emplace(key, entry);
-		const auto state = m_impl;
-		const auto fail = [entry, state, resolved](const std::string& error)
+		const auto fail = [entry, resolved](const std::string& error)
 		{
 			entry->state = ResourceLoadState::Failed;
 			entry->error = error;
-			state->error = error;
 			ResourceManager::GetInstance().Invalidate<ShaderProgramResource>(resolved);
 			NENE_LOG_ERROR("Shader loading failed: {}", error);
 		};
-		if (!m_impl->loads) throw std::logic_error("Asset resolver has no resource loading queue");
 		if (!m_impl->loads->Request(
 		        resolved,
 		        [entry, resolved, &renderer]() -> ResourceLoadQueue::Completion
 		        {
 			        auto resource = ResourceManager::GetInstance().Load<ShaderProgramResource>(resolved);
 			        if (!resource) throw std::runtime_error("Could not read shader: " + resolved);
-			        return [entry, resource, &renderer]()
+			        auto prepared = renderer.PrepareShaderProgram(resource->GetData());
+			        return [entry, resource, prepared, &renderer]()
 			        {
-				        entry->data = renderer.CreateShaderProgram(resource->GetData());
+				        entry->data = renderer.CreateShaderProgram(resource->GetData(), *prepared);
 				        RequireValid(entry->data);
 				        entry->state = ResourceLoadState::Ready;
 			        };
@@ -301,11 +293,6 @@ namespace NeneEngine
 		return it == m_impl->shaders.end() ? ResourceLoadState::Loading : it->second->state;
 	}
 
-	const std::string& SceneAssetResolver::GetError() const
-	{
-		return m_impl->error;
-	}
-
 	void SceneAssetResolver::RetryFailed()
 	{
 		const auto failed = [](const auto& entry) { return entry.second->state == ResourceLoadState::Failed; };
@@ -313,7 +300,6 @@ namespace NeneEngine
 		std::erase_if(m_impl->meshes, failed);
 		std::erase_if(m_impl->textures, failed);
 		std::erase_if(m_impl->shaders, failed);
-		m_impl->error.clear();
 	}
 
 	MeshRenderRuntimeBinding SceneAssetResolver::Resolve(const std::string& sourcePath, int meshPart,

@@ -220,37 +220,4 @@ namespace NeneEngine::DemoScene
 		}
 	}
 
-	void LoadOrCreate(ECS::World& world, uint32_t width, uint32_t height, const std::filesystem::path& scenePath,
-	                  const std::filesystem::path& sceneConfigPath)
-	{
-		const std::filesystem::path resolvedScenePath =
-		    scenePath.is_absolute() ? scenePath : ResolveFromExecutionRoots(scenePath, true);
-		const std::filesystem::path resolvedSceneConfigPath =
-		    sceneConfigPath.is_absolute() ? sceneConfigPath : ResolveFromExecutionRoots(sceneConfigPath);
-
-		const std::filesystem::path effectiveScenePath = resolvedScenePath.empty() ? scenePath : resolvedScenePath;
-		const std::filesystem::path effectiveSceneConfigPath =
-		    resolvedSceneConfigPath.empty() ? sceneConfigPath : resolvedSceneConfigPath;
-
-		if (std::filesystem::exists(effectiveScenePath))
-		{
-			try
-			{
-				SceneSerializer::LoadFromFile(effectiveScenePath, world);
-			}
-			catch (const std::exception& ex)
-			{
-				NENE_LOG_WARN("Demo scene '{}' failed to load: {}. Using default scene without overwriting the file",
-				              effectiveScenePath.string(), ex.what());
-				Create(world, width, height);
-			}
-		}
-		else
-		{
-			SaveDefaultScene(world, width, height, effectiveScenePath);
-		}
-
-		ApplySceneConfig(world, LoadSceneConfig(effectiveSceneConfigPath));
-	}
-
 } // namespace NeneEngine::DemoScene

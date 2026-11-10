@@ -679,6 +679,12 @@ namespace NeneEngine
 		  public:
 			RefCntAutoPtr<ITextureLoader> loader;
 		};
+
+		class DiligentShaderProgramUploadData final : public IShaderProgramUploadData
+		{
+		  public:
+			DiligentDX12SharedDevice::UploadedShaderProgram program;
+		};
 	} // namespace
 
 	eastl::shared_ptr<ITextureUploadData> DiligentDX12Adapter::PrepareTexture2D(const TextureResource& texture) const
@@ -775,17 +781,77 @@ namespace NeneEngine
 		return {id, 2, 2};
 	}
 
+	eastl::shared_ptr<IShaderProgramUploadData> DiligentDX12Adapter::PrepareShaderProgram(
+	    const ShaderProgramResource& shaderProgram) const
+	{
+		NENE_PROFILE_SCOPE("Shader Program Compile");
+		NENE_PROFILE_ZONE_TEXT(shaderProgram.vertexPath.data(), shaderProgram.vertexPath.size());
+		NENE_PROFILE_ZONE_TEXT(shaderProgram.pixelPath.data(), shaderProgram.pixelPath.size());
+
+		if (!m_shared->device || !m_shared->pipelinesCreated)
+			throw std::runtime_error("Shader program requested before renderer initialization");
+
+		const ShaderPair shaders =
+		    CreateShaderPair(*m_shared->device, shaderProgram.vertexPath.c_str(), shaderProgram.vertexSource.c_str(),
+		                     shaderProgram.pixelPath.c_str(), shaderProgram.pixelSource.c_str());
+		if (!shaders.IsValid())
+			throw std::runtime_error("Could not compile shader program: " + shaderProgram.vertexPath + ", " +
+			                         shaderProgram.pixelPath);
+
+		GraphicsPipelineStateCreateInfo createInfo{};
+		ConfigureGraphicsPipeline(createInfo, "Resource Shader Program PSO", m_shared->colorBufferFormat,
+		                          m_shared->depthBufferFormat, PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true);
+		SetMeshInputLayout(createInfo);
+		createInfo.PSODesc.ResourceLayout.Variables = kTexturedMeshVariables;
+		createInfo.PSODesc.ResourceLayout.NumVariables = _countof(kTexturedMeshVariables);
+		createInfo.pVS = shaders.vertexShader;
+		createInfo.pPS = shaders.pixelShader;
+
+		auto prepared = eastl::make_shared<DiligentShaderProgramUploadData>();
+		for (const TextureAddressMode addressMode : {TextureAddressMode::Wrap, TextureAddressMode::Clamp})
+		{
+			for (const TextureFilterMode filterMode : {TextureFilterMode::Linear, TextureFilterMode::Nearest})
+			{
+				const ImmutableSamplerDesc immutableSamplers[] = {
+				    {SHADER_TYPE_PIXEL, "g_Texture", MakeSamplerDesc(filterMode, addressMode)}};
+				createInfo.PSODesc.ResourceLayout.ImmutableSamplers = immutableSamplers;
+				createInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(immutableSamplers);
+
+				auto& pipelineState = prepared->program.pipelineStates[GetSamplerVariantIndex(filterMode, addressMode)];
+				m_shared->device->CreateGraphicsPipelineState(createInfo, &pipelineState);
+				if (!pipelineState) throw std::runtime_error("Could not create shader program pipelines");
+			}
+		}
+		return prepared;
+	}
+
 	GPUShaderProgram DiligentDX12Adapter::CreateShaderProgram(const ShaderProgramResource& shaderProgram)
+	{
+		try
+		{
+			const auto prepared = PrepareShaderProgram(shaderProgram);
+			return CreateShaderProgram(shaderProgram, *prepared);
+		}
+		catch (const std::exception& exception)
+		{
+			NENE_LOG_ERROR("DiligentDX12Adapter: {}", exception.what());
+			return {};
+		}
+	}
+
+	GPUShaderProgram DiligentDX12Adapter::CreateShaderProgram(const ShaderProgramResource& shaderProgram,
+	                                                          const IShaderProgramUploadData& data)
 	{
 		NENE_PROFILE_SCOPE("Shader Program Create");
 		NENE_PROFILE_ZONE_TEXT(shaderProgram.vertexPath.data(), shaderProgram.vertexPath.size());
-		NENE_PROFILE_ZONE_TEXT(shaderProgram.pixelPath.data(), shaderProgram.pixelPath.size());
 
 		if (!m_shared->device || !m_shared->pipelinesCreated)
 		{
 			NENE_LOG_ERROR("DiligentDX12Adapter: CreateShaderProgram called before renderer initialization");
 			return {};
 		}
+		const auto* prepared = dynamic_cast<const DiligentShaderProgramUploadData*>(&data);
+		if (!prepared) return {};
 
 		if (!m_shared->whiteTextureId.IsValid())
 		{
@@ -812,46 +878,13 @@ namespace NeneEngine
 			m_shared->uploadedTextures.emplace(m_shared->whiteTextureId.value, std::move(texture));
 		}
 
-		const ShaderPair shaders =
-		    CreateShaderPair(*m_shared->device, shaderProgram.vertexPath.c_str(), shaderProgram.vertexSource.c_str(),
-		                     shaderProgram.pixelPath.c_str(), shaderProgram.pixelSource.c_str());
-		if (!shaders.IsValid())
-		{
-			NENE_LOG_ERROR("DiligentDX12Adapter: failed to create shader program '{}', '{}'", shaderProgram.vertexPath,
-			               shaderProgram.pixelPath);
-			return {};
-		}
-
-		GraphicsPipelineStateCreateInfo createInfo{};
-		ConfigureGraphicsPipeline(createInfo, "Resource Shader Program PSO", m_shared->colorBufferFormat,
-		                          m_shared->depthBufferFormat, PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true);
-		SetMeshInputLayout(createInfo);
-		createInfo.PSODesc.ResourceLayout.Variables = kTexturedMeshVariables;
-		createInfo.PSODesc.ResourceLayout.NumVariables = _countof(kTexturedMeshVariables);
-		createInfo.pVS = shaders.vertexShader;
-		createInfo.pPS = shaders.pixelShader;
-
 		UploadedShaderProgram uploadedShader{};
-		for (const TextureAddressMode addressMode : {TextureAddressMode::Wrap, TextureAddressMode::Clamp})
+		uploadedShader.pipelineStates = prepared->program.pipelineStates;
+		for (auto& pipelineState : uploadedShader.pipelineStates)
 		{
-			for (const TextureFilterMode filterMode : {TextureFilterMode::Linear, TextureFilterMode::Nearest})
-			{
-				const ImmutableSamplerDesc immutableSamplers[] = {
-				    {SHADER_TYPE_PIXEL, "g_Texture", MakeSamplerDesc(filterMode, addressMode)}};
-				createInfo.PSODesc.ResourceLayout.ImmutableSamplers = immutableSamplers;
-				createInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(immutableSamplers);
-
-				auto& pipelineState = uploadedShader.pipelineStates[GetSamplerVariantIndex(filterMode, addressMode)];
-				m_shared->device->CreateGraphicsPipelineState(createInfo, &pipelineState);
-				if (!pipelineState)
-				{
-					NENE_LOG_ERROR("DiligentDX12Adapter: failed to create shader program pipelines");
-					return {};
-				}
-
-				if (auto* constantsVariable = pipelineState->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants"))
-					constantsVariable->Set(m_shared->meshPipeline.constantBuffer);
-			}
+			if (!pipelineState) return {};
+			if (auto* constantsVariable = pipelineState->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants"))
+				constantsVariable->Set(m_shared->meshPipeline.constantBuffer);
 		}
 
 		const ShaderId shaderId{m_shared->nextShaderId++};

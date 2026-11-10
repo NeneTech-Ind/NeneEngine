@@ -148,7 +148,7 @@ namespace NeneEngine
 			camera->aspectRatio = m_imageSize.x / m_imageSize.y;
 		ImGui::Image(static_cast<ImTextureID>(m_renderer->GetRenderTargetTextureHandle(m_target.id)), m_imageSize);
 		context.isViewportHovered = ImGui::IsItemHovered();
-		if (context.mode == EditorMode::Edit && ImGui::BeginDragDropTarget())
+		if (context.CanEdit() && ImGui::BeginDragDropTarget())
 		{
 			for (const bool isTexture : {false, true})
 			{
@@ -190,7 +190,7 @@ namespace NeneEngine
 
 	void ViewportPanel::HandleShortcuts(const EditorContext& context)
 	{
-		if (context.mode != EditorMode::Edit || !context.isViewportHovered || ImGui::GetIO().WantTextInput ||
+		if (!context.CanEdit() || !context.isViewportHovered || ImGui::GetIO().WantTextInput ||
 		    ImGui::IsMouseDown(ImGuiMouseButton_Right))
 			return;
 
@@ -209,7 +209,7 @@ namespace NeneEngine
 		drawList->ChannelsSetCurrent(1);
 
 		ImGui::BeginGroup();
-		ImGui::BeginDisabled(context.mode != EditorMode::Edit);
+		ImGui::BeginDisabled(!context.CanEdit());
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, style.ItemSpacing.y));
 
@@ -262,9 +262,8 @@ namespace NeneEngine
 		const entt::registry& registry = world.GetRegistry();
 		const ECS::Entity entity = context.selectedEntity;
 
-		const bool canManipulate = context.mode == EditorMode::Edit && entity != ECS::NullEntity &&
-		                           registry.valid(entity) && entity != context.cameraEntity &&
-		                           registry.all_of<ECS::TransformComponent>(entity) &&
+		const bool canManipulate = context.CanEdit() && entity != ECS::NullEntity && registry.valid(entity) &&
+		                           entity != context.cameraEntity && registry.all_of<ECS::TransformComponent>(entity) &&
 		                           registry.valid(context.cameraEntity) &&
 		                           registry.all_of<ECS::TransformComponent, ECS::CameraComponent>(context.cameraEntity);
 		if (!canManipulate)

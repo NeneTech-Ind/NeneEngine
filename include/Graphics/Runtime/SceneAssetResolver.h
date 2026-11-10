@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/CachedResource.h"
 #include "Core/EASTLStdHash.h"
 #include "Core/ResourceLoadQueue.h"
 #include "Graphics/Loaders/MeshLoader.h"
@@ -14,7 +15,7 @@ namespace NeneEngine
 	struct ModelAsset
 	{
 		ResourceLoadState state = ResourceLoadState::Loading;
-		eastl::vector<MeshPart> parts;
+		eastl::shared_ptr<const CachedResource<eastl::vector<MeshPart>>> parts;
 		std::string error;
 	};
 
@@ -32,7 +33,6 @@ namespace NeneEngine
 		GPUMesh Mesh(const std::string& path, int part, IRenderAdapter& renderer);
 		[[nodiscard]] ResourceLoadState GetTextureState(const std::string& path, const IRenderAdapter& renderer) const;
 		[[nodiscard]] ResourceLoadState GetShaderState(const std::string& path, const IRenderAdapter& renderer) const;
-		[[nodiscard]] const std::string& GetError() const;
 		void RetryFailed();
 
 	  private:

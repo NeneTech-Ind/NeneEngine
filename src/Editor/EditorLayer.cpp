@@ -235,8 +235,8 @@ namespace NeneEngine
 		if (m_imguiBackend == nullptr) return;
 		if (m_context->mode == EditorMode::Edit && !m_context->pendingAssets.empty())
 		{
-			auto complete = std::move(m_context->pendingAssets.back());
-			m_context->pendingAssets.pop_back();
+			auto complete = std::move(m_context->pendingAssets.front());
+			m_context->pendingAssets.erase(m_context->pendingAssets.begin());
 			try
 			{
 				complete();
@@ -279,7 +279,7 @@ namespace NeneEngine
 
 		if (ImGui::BeginMenu("File"))
 		{
-			const bool canEdit = m_context->mode == EditorMode::Edit;
+			const bool canEdit = m_context->CanEdit();
 			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
 			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
 			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
@@ -380,14 +380,16 @@ namespace NeneEngine
 
 	void EditorLayer::LoadScene()
 	{
-		if (!m_resourceLoads) return;
+		if (!m_resourceLoads || !ConfirmDiscardChanges()) return;
 		const auto path = ChooseSceneFile(false, m_scenePath);
 		if (path.empty()) return;
 		const auto generation = ++m_sceneLoadGeneration;
 		m_context->SetStatus(EditorStatusKind::Muted, "Loading scene...");
+		m_context->isSceneLoading = true;
 		const auto fail = [this, generation](const std::string& error)
 		{
 			if (generation != m_sceneLoadGeneration || !m_context) return;
+			m_context->isSceneLoading = false;
 			m_context->SetStatus(EditorStatusKind::Danger, error);
 			NENE_LOG_ERROR("Load scene: {}", error);
 		};
@@ -402,12 +404,7 @@ namespace NeneEngine
 				        auto apply = [this, generation, path, scene]()
 				        {
 					        if (generation != m_sceneLoadGeneration || !m_context) return;
-					        if (!ConfirmDiscardChanges())
-					        {
-						        if (m_context->status.kind != EditorStatusKind::Danger)
-							        m_context->SetStatus(EditorStatusKind::Muted, "Scene load canceled");
-						        return;
-					        }
+					        m_context->isSceneLoading = false;
 					        SceneSerializer::Deserialize(scene, m_context->world, true);
 					        ++m_context->sceneGeneration;
 					        m_context->pendingAssets.clear();
@@ -428,6 +425,7 @@ namespace NeneEngine
 		        fail, JobPriority::High))
 			fail("Resource loader is stopping");
 	}
+
 	void EditorLayer::DrawStatusBar()
 	{
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
@@ -492,7 +490,7 @@ namespace NeneEngine
 
 	void EditorLayer::DrawHistoryMenuItems()
 	{
-		const bool isEditMode = m_context->mode == EditorMode::Edit;
+		const bool isEditMode = m_context->CanEdit();
 
 		const char* undoName = m_history.GetUndoName();
 		const eastl::string undoLabel =
@@ -565,7 +563,7 @@ namespace NeneEngine
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, ImGuiInputFlags_RouteGlobal))
 			SetMode(m_context->mode == EditorMode::Play ? EditorMode::Edit : EditorMode::Play);
 
-		if (m_context->mode != EditorMode::Edit) return;
+		if (!m_context->CanEdit()) return;
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
 			SaveScene(true);
 		else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))

@@ -16,8 +16,5 @@ namespace NeneEngine::DemoScene
 
 	void Create(ECS::World& world, uint32_t width, uint32_t height);
 	void LoadOrCreate(ECS::World& world, ResourceLoadQueue& loads, uint32_t width, uint32_t height);
-	void LoadOrCreate(ECS::World& world, uint32_t width, uint32_t height,
-	                  const std::filesystem::path& scenePath = GetDefaultScenePath(),
-	                  const std::filesystem::path& sceneConfigPath = GetDefaultSceneConfigPath());
 
 } // namespace NeneEngine::DemoScene
