@@ -65,11 +65,14 @@ namespace NeneEngine
 		SceneAssetResolver assetResolver{};
 		ResourceLoadQueue* resourceLoads = nullptr;
 		uint64_t sceneGeneration = 0;
+		bool isSceneLoading = false;
 		eastl::vector<ResourceLoadQueue::Completion> pendingAssets;
 		EditorStatus status;
 		ImFont* monospaceFont = nullptr;
 		const EditorThemeColorsConfig* themeColors = nullptr;
 		eastl::array<ImGuiTexture, static_cast<size_t>(EditorMascotPose::Count)> mascots{};
+
+		[[nodiscard]] bool CanEdit() const { return mode == EditorMode::Edit && !isSceneLoading; }
 
 		void SetStatus(EditorStatusKind kind, std::string message)
 		{

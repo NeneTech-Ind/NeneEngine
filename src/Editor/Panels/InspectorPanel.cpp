@@ -176,7 +176,7 @@ namespace NeneEngine
 		Component* component = context.world.GetComponent<Component>(entity);
 		if (component == nullptr || !ComponentHeader(icon, label)) return;
 
-		const bool isEditMode = context.mode == EditorMode::Edit;
+		const bool isEditMode = context.CanEdit();
 		const Component before = *component;
 		FieldEdits edits;
 		edits.valueFont = context.monospaceFont;
@@ -239,7 +239,7 @@ namespace NeneEngine
 		ImGui::AlignTextToFramePadding();
 		ImGui::Text("Entity %u", static_cast<uint32_t>(entt::to_integral(context.selectedEntity)));
 
-		if (context.mode == EditorMode::Play) DrawReadOnlyPill(*context.themeColors);
+		if (!context.CanEdit()) DrawReadOnlyPill(*context.themeColors);
 
 		if (const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(context.selectedEntity))
 		{
@@ -444,7 +444,7 @@ namespace NeneEngine
 		const EditorThemeColorsConfig& colors = *context.themeColors;
 		ComponentCardScope card;
 		ImGui::PushID("Material");
-		ImGui::BeginDisabled(context.mode != EditorMode::Edit);
+		ImGui::BeginDisabled(!context.CanEdit());
 		const auto before = *material;
 		ImGui::ColorEdit4("Tint", glm::value_ptr(material->tint));
 		if (ImGui::IsItemActivated())

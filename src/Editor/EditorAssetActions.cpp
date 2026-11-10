@@ -70,7 +70,7 @@ namespace NeneEngine
 
 	bool CreateSceneAsset(EditorContext& context, const std::string& path, bool isTexture, const glm::vec3& position)
 	{
-		if (context.mode != EditorMode::Edit || !context.renderer || !context.resourceLoads) return false;
+		if (!context.CanEdit() || !context.renderer || !context.resourceLoads) return false;
 		const auto root = context.world.CreateEntity(std::filesystem::path(path).stem().string());
 		auto created = eastl::make_shared<std::vector<CreatedEntity>>();
 		CreatedEntity rootEntry{root, ECS::TagComponent(std::filesystem::path(path).stem().string()), {}, {}, {}, true};

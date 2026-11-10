@@ -75,8 +75,9 @@ namespace NeneEngine
 			m_filter.Build();
 
 		StatusText(colors, EditorStatusKind::Muted,
-		           context.mode == EditorMode::Edit ? "Drag a model or texture into Viewport to create an entity"
-		                                            : "Assets cannot be dragged during Play");
+		           context.CanEdit()                  ? "Drag a model or texture into Viewport to create an entity"
+		           : context.mode == EditorMode::Play ? "Assets cannot be dragged during Play"
+		                                              : "Assets cannot be dragged while a scene is loading");
 		if (!context.assets.Error().empty())
 			StatusText(colors, EditorStatusKind::Danger, context.assets.Error().c_str());
 		ImGui::Separator();
@@ -128,7 +129,7 @@ namespace NeneEngine
 					DrawPath(context, entry.path);
 					ImGui::EndTooltip();
 				}
-				if (context.mode == EditorMode::Edit && ImGui::BeginDragDropSource())
+				if (context.CanEdit() && ImGui::BeginDragDropSource())
 				{
 					ImGui::SetDragDropPayload(GetAssetPayload(entry.kind), entry.path.c_str(), entry.path.size() + 1);
 					ImGui::TextUnformatted(label.c_str());
