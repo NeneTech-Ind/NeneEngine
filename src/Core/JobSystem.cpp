@@ -172,6 +172,7 @@ namespace NeneEngine
 		eastl::vector<eastl::shared_ptr<StreamingJob>> streamingJobs;
 		eastl::vector<eastl::unique_ptr<StreamingWorkerLoop>> streamingLoops;
 		uint32_t nextStreamingWorker = 0;
+		uint32_t computeWorkerCount = 0;
 		bool isRunning = false;
 	};
 
@@ -196,6 +197,7 @@ namespace NeneEngine
 		m_impl->scheduler.Initialize(config);
 		m_impl->isRunning = true;
 		m_impl->nextStreamingWorker = 0;
+		m_impl->computeWorkerCount = computeWorkers;
 		for (uint32_t index = 0; index < streamingWorkerCount; ++index)
 		{
 			auto loop = eastl::make_unique<StreamingWorkerLoop>(m_impl->scheduler, computeWorkers + 1 + index);
@@ -223,8 +225,24 @@ namespace NeneEngine
 		m_impl->activeJobs.clear();
 		m_impl->streamingJobs.clear();
 		m_impl->streamingLoops.clear();
+		m_impl->computeWorkerCount = 0;
 
 		NENE_LOG_INFO("JobSystem: stopped");
+	}
+
+	enki::TaskScheduler& JobSystem::GetScheduler()
+	{
+		return m_impl->scheduler;
+	}
+
+	const enki::TaskScheduler& JobSystem::GetScheduler() const
+	{
+		return m_impl->scheduler;
+	}
+
+	uint32_t JobSystem::GetComputeWorkerCount() const
+	{
+		return m_impl->computeWorkerCount;
 	}
 
 	JobHandle JobSystem::Schedule(const char* name, JobFunction function, JobPriority priority)

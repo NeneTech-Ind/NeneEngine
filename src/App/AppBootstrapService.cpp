@@ -81,7 +81,7 @@ namespace NeneEngine
 		world.AddSystem(eastl::make_unique<ECS::MovementSystem>());
 		world.AddSystem(eastl::make_unique<ECS::PlayerControllerSystem>(app.GetInputManager()));
 		world.AddSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(app.GetInputManager()));
-		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>());
+		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>(jobSystem));
 		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, app.GetResourceLoads(), width, height);
 		NENE_LOG_INFO("Demo scene loaded from {}", DemoScene::GetDefaultScenePath().string());

@@ -2,6 +2,7 @@
 
 #include "ECS/Systems/PhysicsSystem.h"
 
+#include "Core/JoltJobSystem.h"
 #include "Core/NeneLogger.h"
 #include "Core/Profiler.h"
 #include "ECS/Components/ColliderComponent.h"
@@ -16,7 +17,6 @@
 #include <Jolt/Jolt.h>
 
 #include <Jolt/Core/Factory.h>
-#include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
@@ -30,7 +30,6 @@
 #include <algorithm>
 #include <cmath>
 #include <mutex>
-#include <thread>
 #include <type_traits>
 #include <EASTL/unordered_map.h>
 #include <EASTL/utility.h>
@@ -351,8 +350,7 @@ namespace NeneEngine::ECS
 		ObjectLayerPairFilterImpl objectLayerPairFilter;
 		ContactListenerImpl contactListener;
 		JPH::TempAllocatorImpl tempAllocator{kTempAllocatorBytes};
-		JPH::JobSystemThreadPool jobSystem{JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers,
-		                                   static_cast<int>((std::max)(1u, std::thread::hardware_concurrency()) - 1)};
+		JoltJobSystem jobSystem;
 		JPH::PhysicsSystem physicsSystem;
 
 		eastl::unordered_map<Entity, BodyRecord> bodies;
@@ -360,7 +358,8 @@ namespace NeneEngine::ECS
 		eastl::vector<CollisionEvent> pendingEvents;
 		float accumulator = 0.0f;
 
-		Impl()
+		explicit Impl(JobSystem& engineJobSystem)
+		    : jobSystem(engineJobSystem, JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers)
 		{
 			physicsSystem.Init(kMaxBodies, 0, kMaxBodyPairs, kMaxContactConstraints, broadPhaseLayerInterface,
 			                   objectVsBroadPhaseLayerFilter, objectLayerPairFilter);
@@ -591,10 +590,10 @@ namespace NeneEngine::ECS
 		}
 	};
 
-	PhysicsSystem::PhysicsSystem()
+	PhysicsSystem::PhysicsSystem(JobSystem& jobSystem)
 	{
 		AcquireJolt();
-		m_impl = eastl::make_unique<Impl>();
+		m_impl = eastl::make_unique<Impl>(jobSystem);
 	}
 
 	PhysicsSystem::~PhysicsSystem()

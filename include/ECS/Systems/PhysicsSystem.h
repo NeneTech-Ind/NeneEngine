@@ -6,6 +6,11 @@
 
 #include <EASTL/unique_ptr.h>
 
+namespace NeneEngine
+{
+	class JobSystem;
+} // namespace NeneEngine
+
 namespace NeneEngine::ECS
 {
 
@@ -18,7 +23,7 @@ namespace NeneEngine::ECS
 		static constexpr float FixedTimeStep = 1.0f / 60.0f;
 		static constexpr int MaxStepsPerFrame = 5;
 
-		PhysicsSystem();
+		explicit PhysicsSystem(JobSystem& jobSystem);
 		~PhysicsSystem() override;
 
 		PhysicsSystem(const PhysicsSystem&) = delete;

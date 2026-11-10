@@ -7,6 +7,11 @@
 #include <EASTL/unique_ptr.h>
 #include <cstdint>
 
+namespace enki
+{
+	class TaskScheduler;
+} // namespace enki
+
 namespace NeneEngine
 {
 
@@ -59,6 +64,10 @@ namespace NeneEngine
 		JobHandle ParallelFor(const char* name, uint32_t itemCount, uint32_t minRange, RangeFunction function,
 		                      JobPriority priority = JobPriority::Normal);
 		void Wait(const JobHandle& handle);
+
+		[[nodiscard]] enki::TaskScheduler& GetScheduler();
+		[[nodiscard]] const enki::TaskScheduler& GetScheduler() const;
+		[[nodiscard]] uint32_t GetComputeWorkerCount() const;
 
 	  private:
 		struct Impl;

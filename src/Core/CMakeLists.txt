@@ -7,6 +7,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/EASTLStdHash.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/GameTimer.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/JobSystem.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/JoltJobSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/PathResolver.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Profiler.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/ResourceManager.h"
@@ -14,6 +15,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/EASTLAllocator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GameTimer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/JobSystem.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/JoltJobSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PathResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResourceManager.cpp"
 )
