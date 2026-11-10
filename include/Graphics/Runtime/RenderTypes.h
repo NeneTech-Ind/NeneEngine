@@ -148,6 +148,12 @@ namespace NeneEngine
 		virtual ~ITextureUploadData() = default;
 	};
 
+	class IShaderProgramUploadData
+	{
+	  public:
+		virtual ~IShaderProgramUploadData() = default;
+	};
+
 	struct ShaderProgramResource
 	{
 		std::string vertexPath;

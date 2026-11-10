@@ -29,6 +29,10 @@ namespace NeneEngine
 		virtual GPUTexture CreateTexture2D(const TextureResource& texture, const ITextureUploadData& data) = 0;
 		virtual GPUTexture CreatePlaceholderTexture() = 0;
 		virtual GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram) = 0;
+		virtual eastl::shared_ptr<IShaderProgramUploadData> PrepareShaderProgram(
+		    const ShaderProgramResource& shaderProgram) const = 0;
+		virtual GPUShaderProgram CreateShaderProgram(const ShaderProgramResource& shaderProgram,
+		                                             const IShaderProgramUploadData& data) = 0;
 		virtual RenderTarget CreateRenderTarget(uint32_t width, uint32_t height) = 0;
 		virtual void DestroyRenderTarget(RenderTargetId target) = 0;
 		// An invalid id selects the swap chain. Targets are local to this adapter.

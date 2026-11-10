@@ -277,9 +277,10 @@ namespace NeneEngine
 		        {
 			        auto resource = ResourceManager::GetInstance().Load<ShaderProgramResource>(resolved);
 			        if (!resource) throw std::runtime_error("Could not read shader: " + resolved);
-			        return [entry, resource, &renderer]()
+			        auto prepared = renderer.PrepareShaderProgram(resource->GetData());
+			        return [entry, resource, prepared, &renderer]()
 			        {
-				        entry->data = renderer.CreateShaderProgram(resource->GetData());
+				        entry->data = renderer.CreateShaderProgram(resource->GetData(), *prepared);
 				        RequireValid(entry->data);
 				        entry->state = ResourceLoadState::Ready;
 			        };
