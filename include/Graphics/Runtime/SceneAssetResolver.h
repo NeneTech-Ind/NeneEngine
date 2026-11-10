@@ -33,7 +33,6 @@ namespace NeneEngine
 		GPUMesh Mesh(const std::string& path, int part, IRenderAdapter& renderer);
 		[[nodiscard]] ResourceLoadState GetTextureState(const std::string& path, const IRenderAdapter& renderer) const;
 		[[nodiscard]] ResourceLoadState GetShaderState(const std::string& path, const IRenderAdapter& renderer) const;
-		[[nodiscard]] const std::string& GetError() const;
 		void RetryFailed();
 
 	  private:
