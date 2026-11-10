@@ -2,6 +2,8 @@
 
 #include "Editor/Panels/StatisticsPanel.h"
 
+#include "ECS/RenderSettings.h"
+#include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
@@ -34,6 +36,40 @@ namespace NeneEngine
 			if (context.monospaceFont != nullptr) ImGui::PushFont(context.monospaceFont, 0.0f);
 			ImGui::Text("%.2f ms", valueMs);
 			if (context.monospaceFont != nullptr) ImGui::PopFont();
+		}
+
+		void DrawCountRow(const EditorContext& context, const char* label, uint32_t value)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::TextUnformatted(label);
+			ImGui::TableNextColumn();
+			if (context.monospaceFont != nullptr) ImGui::PushFont(context.monospaceFont, 0.0f);
+			ImGui::Text("%u", value);
+			if (context.monospaceFont != nullptr) ImGui::PopFont();
+		}
+
+		void DrawRenderPreparation(EditorContext& context)
+		{
+			auto& registryContext = context.world.GetRegistry().ctx();
+			auto& settings = registryContext.emplace<ECS::RenderSettings>();
+
+			ImGui::SeparatorText("Render preparation");
+			ImGui::Checkbox("Use job system", &settings.useJobSystem);
+			ImGui::SetItemTooltip("Compute world and render matrices in parallel on the job system workers");
+
+			const auto* stats = registryContext.find<ECS::RenderStats>();
+			if (stats == nullptr) return;
+
+			if (ImGui::BeginTable("##RenderPreparationStats", 2, ImGuiTableFlags_SizingStretchProp))
+			{
+				DrawStatRow(context, stats->usedJobSystem ? "CPU time (parallel)" : "CPU time (serial)",
+				            stats->preparationMs);
+				DrawCountRow(context, "Transforms", stats->transformCount);
+				DrawCountRow(context, "Hierarchy levels", stats->hierarchyDepth);
+				DrawCountRow(context, "Render items", stats->itemCount);
+				ImGui::EndTable();
+			}
 		}
 	} // namespace
 
@@ -88,6 +124,8 @@ namespace NeneEngine
 			DrawStatRow(context, "Max", maxMs);
 			ImGui::EndTable();
 		}
+
+		DrawRenderPreparation(context);
 	}
 
 	void StatisticsPanel::Reset()
