@@ -469,7 +469,8 @@ namespace NeneEngine
 		if (!m_materialError.empty()) StatusText(colors, EditorStatusKind::Danger, m_materialError.c_str());
 		DrawMaterialPreview(context, *material);
 		if (!material->texturePath.empty() &&
-		    context.assetResolver.GetTextureState(material->texturePath, *context.renderer) == ResourceLoadState::Failed)
+		    context.assetResolver.GetTextureState(material->texturePath, *context.renderer) ==
+		        ResourceLoadState::Failed)
 			StatusText(colors, EditorStatusKind::Danger, "Texture loading failed. Refresh assets to retry.");
 		if (!material->shaderPath.empty() &&
 		    context.assetResolver.GetShaderState(material->shaderPath, *context.renderer) == ResourceLoadState::Failed)

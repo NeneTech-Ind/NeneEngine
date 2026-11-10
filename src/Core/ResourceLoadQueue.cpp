@@ -49,7 +49,8 @@ namespace NeneEngine
 		Shutdown();
 	}
 
-	bool ResourceLoadQueue::Request(std::string name, PrepareFunction prepare, ErrorFunction onError, JobPriority priority)
+	bool ResourceLoadQueue::Request(std::string name, PrepareFunction prepare, ErrorFunction onError,
+	                                JobPriority priority)
 	{
 		if (m_impl->stopping || !prepare) return false;
 		if (std::this_thread::get_id() != m_impl->mainThread)
