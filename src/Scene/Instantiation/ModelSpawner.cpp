@@ -6,6 +6,7 @@
 #include "Core/PathResolver.h"
 #include "Core/ResourceLoadQueue.h"
 #include "Core/ResourceManager.h"
+#include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
@@ -92,9 +93,16 @@ namespace NeneEngine
 			ECS::MeshRendererComponent renderer;
 		};
 
-		eastl::vector<PreparedModelEntity> PrepareModelEntities(const ModelSpawnEntryConfig& model,
-		                                                        const std::filesystem::path& shaderPath,
-		                                                        const std::filesystem::path& manifestPath)
+		struct PreparedModel
+		{
+			std::string name;
+			ECS::TransformComponent rootTransform;
+			bool hasRoot = false;
+			eastl::vector<PreparedModelEntity> parts;
+		};
+
+		PreparedModel PrepareModel(const ModelSpawnEntryConfig& model, const std::filesystem::path& shaderPath,
+		                           const std::filesystem::path& manifestPath)
 		{
 			const auto path = ResolveOptionalAssetPath(manifestPath, model.meshPath);
 			if (path.empty()) throw std::runtime_error("Model mesh was not found: " + model.meshPath.string());
@@ -103,14 +111,18 @@ namespace NeneEngine
 			const auto resource = ResourceManager::GetInstance().Load<eastl::vector<MeshPart>>(path.generic_string());
 			if (!resource) throw std::runtime_error("Could not read model: " + path.string());
 
-			eastl::vector<PreparedModelEntity> entities;
+			PreparedModel prepared;
+			prepared.name = model.entityName;
+			prepared.hasRoot = model.splitByMeshParts;
+			prepared.rootTransform.position = config.position;
 			const auto& parts = resource->GetData();
 			const size_t count = model.splitByMeshParts ? parts.size() : 1;
 			for (size_t index = 0; index < count; ++index)
 			{
 				PreparedModelEntity entity;
-				entity.name = model.entityName + (model.splitByMeshParts ? "_" + std::to_string(index) : "");
-				entity.transform.position = config.position;
+				entity.name = model.splitByMeshParts ? parts[index].name : model.entityName;
+				if (entity.name.empty()) entity.name = model.entityName + "_" + std::to_string(index);
+				if (!model.splitByMeshParts) entity.transform.position = config.position;
 				entity.transform.scale = config.scale;
 				entity.renderer.meshPath = PortableAssetPath(path);
 				entity.renderer.meshPart = model.splitByMeshParts ? static_cast<int>(index) : -1;
@@ -129,9 +141,9 @@ namespace NeneEngine
 					}
 				}
 				entity.renderer.texturePath = PortableAssetPath(texturePath);
-				entities.push_back(std::move(entity));
+				prepared.parts.push_back(std::move(entity));
 			}
-			return entities;
+			return prepared;
 		}
 
 		void RequestModel(ECS::World& world, ResourceLoadQueue& loads, const eastl::shared_ptr<bool>& cancelled,
@@ -145,15 +157,25 @@ namespace NeneEngine
 			     manifestPath]() -> ResourceLoadQueue::Completion
 			    {
 				    if (*cancelled) return {};
-				    auto entities = PrepareModelEntities(model, shaderPath, manifestPath);
-				    return [&world, cancelled, entities = std::move(entities)]()
+				    auto prepared = PrepareModel(model, shaderPath, manifestPath);
+				    return [&world, cancelled, prepared = std::move(prepared)]()
 				    {
 					    if (*cancelled) return;
-					    for (const auto& source : entities)
+					    ECS::Entity root = ECS::NullEntity;
+					    if (prepared.hasRoot)
+					    {
+						    root = world.CreateEntity(prepared.name);
+						    world.AddComponent<ECS::TransformComponent>(root) = prepared.rootTransform;
+						    world.AddComponent<ECS::HierarchyComponent>(root);
+					    }
+					    for (const auto& source : prepared.parts)
 					    {
 						    const auto entity = world.CreateEntity(source.name);
 						    world.AddComponent<ECS::TransformComponent>(entity) = source.transform;
 						    world.AddComponent<ECS::MeshRendererComponent>(entity) = source.renderer;
+						    if (root == ECS::NullEntity) continue;
+						    world.AddComponent<ECS::HierarchyComponent>(entity).parent = root;
+						    world.GetComponent<ECS::HierarchyComponent>(root)->children.push_back(entity);
 					    }
 				    };
 			    },
