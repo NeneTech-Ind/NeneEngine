@@ -60,6 +60,7 @@ namespace NeneEngine
 		AppSecondaryCameraFactory m_secondaryCameraFactory;
 		AppWindowContextFactory m_windowContextFactory;
 		eastl::vector<AppWindowContext> m_windows;
+		bool m_vsync = true;
 		eastl::vector<eastl::unique_ptr<ECS::ISystem>> m_appSystems;
 	};
 

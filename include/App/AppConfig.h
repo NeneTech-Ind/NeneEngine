@@ -25,6 +25,7 @@ namespace NeneEngine
 	struct WindowConfig
 	{
 		glm::vec4 backgroundColor{0.1f, 0.1f, 0.2f, 1.0f};
+		bool vsync = true;
 	};
 
 	struct InputConfig

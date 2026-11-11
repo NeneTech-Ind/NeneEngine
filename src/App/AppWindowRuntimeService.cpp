@@ -166,6 +166,7 @@ namespace NeneEngine
 
 	void AppWindowRuntimeService::ApplyRuntimeConfig(const AppConfig& config)
 	{
+		m_vsync = config.window.vsync;
 		for (size_t index = 0; index < m_windows.size(); ++index)
 		{
 			auto& windowContext = m_windows[index];
@@ -256,7 +257,7 @@ namespace NeneEngine
 			windowContext.renderSystem->Render(*m_world);
 			windowContext.renderer->EndFrame();
 			if (windowContext.imguiBackend) windowContext.imguiBackend->Render();
-			windowContext.renderer->Present(index == lastRenderedIndex ? 1u : 0u);
+			windowContext.renderer->Present(m_vsync && index == lastRenderedIndex ? 1u : 0u);
 		}
 	}
 

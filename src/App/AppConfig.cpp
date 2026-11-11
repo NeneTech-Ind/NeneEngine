@@ -98,6 +98,22 @@ namespace NeneEngine
 			return parsedColor;
 		}
 
+		[[nodiscard]] bool ReadVSyncOrDefault(const nlohmann::json& root)
+		{
+			const auto windowIt = root.find("window");
+			if (windowIt == root.end() || !windowIt->is_object()) return true;
+
+			const auto vsyncIt = windowIt->find("vsync");
+			if (vsyncIt == windowIt->end()) return true;
+			if (!vsyncIt->is_boolean())
+			{
+				NENE_LOG_WARN("App config: 'window.vsync' must be a boolean, using vsync");
+				return true;
+			}
+
+			return vsyncIt->get<bool>();
+		}
+
 		[[nodiscard]] eastl::vector<WindowDefinitionConfig> ReadWindowsOrDefault(const nlohmann::json& root)
 		{
 			eastl::vector<WindowDefinitionConfig> windows;
@@ -289,13 +305,14 @@ namespace NeneEngine
 
 			AppConfig config{};
 			config.window.backgroundColor = ReadBackgroundColorOrDefault(root);
+			config.window.vsync = ReadVSyncOrDefault(root);
 			config.input = ReadInputConfigOrDefault(root);
 			config.windows = ReadWindowsOrDefault(root);
-			NENE_LOG_INFO(
-			    "App config loaded from '{}'; backgroundColor=({:.2f}, {:.2f}, {:.2f}, {:.2f}), windows={}, actions={}",
+			NENE_LOG_INFO("App config loaded from '{}'; backgroundColor=({:.2f}, {:.2f}, {:.2f}, {:.2f}), vsync={}, "
+			              "windows={}, actions={}",
 			              configPath.string(), config.window.backgroundColor.r, config.window.backgroundColor.g,
-			              config.window.backgroundColor.b, config.window.backgroundColor.a, config.windows.size(),
-			              config.input.actions.size());
+			              config.window.backgroundColor.b, config.window.backgroundColor.a, config.window.vsync,
+			              config.windows.size(), config.input.actions.size());
 			return config;
 		}
 		catch (const std::exception& ex)
