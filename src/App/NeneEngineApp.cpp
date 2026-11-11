@@ -53,7 +53,6 @@ namespace NeneEngine
 
 			if (auto* renderer = m_windowRuntimeService.GetMainRenderer())
 			{
-				// Compile the built-in material before frames start, just like the primitive pipelines.
 				NENE_PROFILE_SCOPE("Default Shader Warmup");
 				const std::string shaderPath = "assets/shaders/textured_mesh.shader";
 				m_sceneAssets.Shader(shaderPath, *renderer, JobPriority::High);

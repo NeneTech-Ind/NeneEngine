@@ -5,6 +5,7 @@
 #include "Core/NeneLogger.h"
 #include "Core/Profiler.h"
 
+#include <EASTL/algorithm.h>
 #include <EASTL/vector.h>
 #include <TaskScheduler.h>
 #include <algorithm>
@@ -13,6 +14,7 @@
 #include <exception>
 #include <mutex>
 #include <string>
+#include <vector>
 
 namespace NeneEngine
 {
@@ -72,7 +74,24 @@ namespace NeneEngine
 			}
 		}
 
+		void DependOn(const eastl::shared_ptr<JobTaskSet>& dependency, const eastl::shared_ptr<JobTaskSet>& self)
+		{
+			m_dependencies.emplace_back(dependency.get(), this);
+			dependency->m_dependents.push_back(self);
+		}
+
+		void CollectGraph(eastl::vector<eastl::shared_ptr<JobTaskSet>>& jobs, const eastl::shared_ptr<JobTaskSet>& self)
+		{
+			if (eastl::find(jobs.begin(), jobs.end(), self) != jobs.end()) return;
+			jobs.push_back(self);
+			for (const auto& dependent : m_dependents) dependent->CollectGraph(jobs, dependent);
+		}
+
 		void MarkSubmitted() { m_submitted.store(true, std::memory_order_release); }
+
+		[[nodiscard]] bool IsSubmitted() const { return m_submitted.load(std::memory_order_acquire); }
+
+		[[nodiscard]] bool HasDependencies() const { return !m_dependencies.empty(); }
 
 		[[nodiscard]] bool IsFinished() const { return m_submitted.load(std::memory_order_acquire) && GetIsComplete(); }
 
@@ -81,6 +100,8 @@ namespace NeneEngine
 	  private:
 		std::string m_name;
 		JobSystem::RangeFunction m_function;
+		std::vector<enki::Dependency> m_dependencies;
+		eastl::vector<eastl::shared_ptr<JobTaskSet>> m_dependents;
 		std::atomic<bool> m_submitted{false};
 		std::atomic<bool> m_failed{false};
 	};
@@ -270,9 +291,34 @@ namespace NeneEngine
 	JobHandle JobSystem::ParallelFor(const char* name, uint32_t itemCount, uint32_t minRange, RangeFunction function,
 	                                 JobPriority priority)
 	{
+		JobHandle handle = CreateParallelFor(name, itemCount, minRange, std::move(function), priority);
+		return Submit(handle) ? handle : JobHandle{};
+	}
+
+	JobHandle JobSystem::CreateParallelFor(const char* name, uint32_t itemCount, uint32_t minRange,
+	                                       RangeFunction function, JobPriority priority)
+	{
 		if (itemCount == 0 || !function) return {};
 
-		return Submit(eastl::make_shared<JobTaskSet>(name, itemCount, minRange, std::move(function), priority));
+		return JobHandle(eastl::make_shared<JobTaskSet>(name, itemCount, minRange, std::move(function), priority));
+	}
+
+	bool JobSystem::AddDependency(const JobHandle& job, const JobHandle& dependency)
+	{
+		if (!job.m_job || !dependency.m_job || job.m_job == dependency.m_job)
+		{
+			NENE_LOG_ERROR("JobSystem: dependencies are supported only between two different compute jobs");
+			return false;
+		}
+
+		if (job.m_job->IsSubmitted() || dependency.m_job->IsSubmitted())
+		{
+			NENE_LOG_ERROR("JobSystem: dependencies must be added before the jobs are submitted");
+			return false;
+		}
+
+		job.m_job->DependOn(dependency.m_job, job.m_job);
+		return true;
 	}
 
 	void JobSystem::Wait(const JobHandle& handle)
@@ -292,31 +338,42 @@ namespace NeneEngine
 			m_impl->scheduler.WaitforTask(handle.m_job.get(), handle.m_job->m_Priority);
 	}
 
-	JobHandle JobSystem::Submit(eastl::shared_ptr<JobTaskSet> job)
+	bool JobSystem::Submit(const JobHandle& handle)
 	{
 		NENE_PROFILE_SCOPE("Job Submit");
+
+		const auto& job = handle.m_job;
+		if (!job || job->IsSubmitted()) return false;
+		if (job->HasDependencies())
+		{
+			NENE_LOG_ERROR("JobSystem: a job with dependencies starts on its own and must not be submitted");
+			return false;
+		}
+
+		eastl::vector<eastl::shared_ptr<JobTaskSet>> graph;
+		job->CollectGraph(graph, job);
 
 		{
 			std::scoped_lock lock(m_impl->mutex);
 			if (!m_impl->isRunning)
 			{
 				NENE_LOG_WARN("JobSystem: job rejected because the system is not running");
-				return {};
+				return false;
 			}
 
 			if (m_impl->scheduler.GetThreadNum() == enki::NO_THREAD_NUM)
 			{
 				NENE_LOG_ERROR("JobSystem: job submitted from a thread the scheduler does not know");
-				return {};
+				return false;
 			}
 
 			eastl::erase_if(m_impl->activeJobs, [](const auto& activeJob) { return activeJob->IsFinished(); });
-			m_impl->activeJobs.push_back(job);
+			m_impl->activeJobs.insert(m_impl->activeJobs.end(), graph.begin(), graph.end());
 		}
 
 		m_impl->scheduler.AddTaskSetToPipe(job.get());
-		job->MarkSubmitted();
-		return JobHandle(std::move(job));
+		for (const auto& node : graph) node->MarkSubmitted();
+		return true;
 	}
 
 } // namespace NeneEngine

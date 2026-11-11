@@ -96,7 +96,6 @@ namespace NeneEngine
 			}
 		}
 
-		// Bound decoded data waiting for the main thread as well as active decoding jobs
 		constexpr size_t kMaxInFlight = 4;
 		while (!m_impl->pending.empty() && m_impl->inFlight < kMaxInFlight)
 		{
@@ -141,6 +140,15 @@ namespace NeneEngine
 				if (onError) onError("JobSystem rejected resource loading");
 			}
 		}
+
+		size_t waiting = 0;
+		{
+			std::scoped_lock lock(m_impl->mutex);
+			waiting = m_impl->finished.size();
+		}
+		NENE_PROFILE_PLOT("Resource Loads Queued", m_impl->pending.size());
+		NENE_PROFILE_PLOT("Resource Loads Running", m_impl->inFlight - waiting);
+		NENE_PROFILE_PLOT("Resource Loads Awaiting Main Thread", waiting);
 	}
 
 	void ResourceLoadQueue::Shutdown()

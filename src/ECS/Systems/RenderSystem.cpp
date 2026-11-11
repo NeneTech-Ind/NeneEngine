@@ -214,22 +214,44 @@ namespace NeneEngine::ECS
 		NENE_PROFILE_SCOPE("Render World Matrices");
 		m_worldMatrices.resize(m_entities.size());
 
-		for (uint32_t level = 0; level + 1 < m_levelOffsets.size(); ++level)
+		const auto levelCount = static_cast<uint32_t>(m_levelOffsets.size() - 1);
+		const auto computeLevel = [this](uint32_t level)
 		{
-			const uint32_t levelBegin = m_levelOffsets[level];
-			ForEachRange("World Matrices", m_levelOffsets[level + 1] - levelBegin,
-			             [this, levelBegin](uint32_t begin, uint32_t end)
-			             {
-				             for (uint32_t position = levelBegin + begin; position < levelBegin + end; ++position)
-				             {
-					             const uint32_t index = m_levelOrder[position];
-					             const glm::mat4 localMatrix = m_transforms[index]->GetModelMatrix();
-					             const uint32_t parent = m_parents[index];
-					             m_worldMatrices[index] =
-					                 parent == kNoIndex ? localMatrix : m_worldMatrices[parent] * localMatrix;
-				             }
-			             });
+			return [this, levelBegin = m_levelOffsets[level]](uint32_t begin, uint32_t end)
+			{
+				for (uint32_t position = levelBegin + begin; position < levelBegin + end; ++position)
+				{
+					const uint32_t index = m_levelOrder[position];
+					const glm::mat4 localMatrix = m_transforms[index]->GetModelMatrix();
+					const uint32_t parent = m_parents[index];
+					m_worldMatrices[index] = parent == kNoIndex ? localMatrix : m_worldMatrices[parent] * localMatrix;
+				}
+			};
+		};
+		const auto levelSize = [this](uint32_t level) { return m_levelOffsets[level + 1] - m_levelOffsets[level]; };
+
+		if (m_useJobs && m_entities.size() > kMinJobRange)
+		{
+			JobHandle first;
+			JobHandle last;
+			for (uint32_t level = 0; level < levelCount; ++level)
+			{
+				const JobHandle job =
+				    m_jobs->CreateParallelFor("World Matrices", levelSize(level), kMinJobRange, computeLevel(level));
+				if (last.IsValid())
+					m_jobs->AddDependency(job, last);
+				else
+					first = job;
+				last = job;
+			}
+			if (m_jobs->Submit(first))
+			{
+				m_jobs->Wait(last);
+				return;
+			}
 		}
+
+		for (uint32_t level = 0; level < levelCount; ++level) computeLevel(level)(0, levelSize(level));
 	}
 
 	void RenderSystem::CollectDrawRecords(World& world)

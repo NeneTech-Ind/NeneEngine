@@ -30,7 +30,6 @@ namespace NeneEngine
 		ResourceLoadQueue(const ResourceLoadQueue&) = delete;
 		ResourceLoadQueue& operator=(const ResourceLoadQueue&) = delete;
 
-		// Request, pump and shutdown belong to the main thread and prepare runs on a streaming worker
 		bool Request(std::string name, PrepareFunction prepare, ErrorFunction onError,
 		             JobPriority priority = JobPriority::Normal);
 		void Pump(size_t maxFinalizations = 2, double budgetMilliseconds = 2.0);
