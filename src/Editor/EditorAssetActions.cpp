@@ -119,17 +119,9 @@ namespace NeneEngine
 					    rootEntry.hasMesh = false;
 					    std::vector<CreatedEntity> entries{rootEntry};
 					    const auto& parts = resource->GetData();
-					    // Keep the root index reserved while assigning stable child ids for redo.
 					    const bool exists = context.world.GetRegistry().valid(root);
-					    if (!exists)
-					    {
-						    const auto reserved = context.world.GetRegistry().create(root);
-						    if (reserved != root)
-						    {
-							    context.world.DestroyEntity(reserved);
-							    return;
-						    }
-					    }
+					    if (!exists) CreateAssetCommand(created).Execute(context.world);
+					    if (!context.world.GetRegistry().valid(root)) return;
 					    for (size_t index = 0; index < parts.size(); ++index)
 					    {
 						    const auto child = context.world.CreateEntity(parts[index].name);
@@ -166,11 +158,7 @@ namespace NeneEngine
 						    context.SetStatus(EditorStatusKind::Success, "Created: " + resolved.filename().string());
 					    }
 					    else
-					    {
-						    for (size_t index = 1; index < created->size(); ++index)
-							    context.world.DestroyEntity((*created)[index].entity);
-						    context.world.DestroyEntity(root);
-					    }
+						    CreateAssetCommand(created).Undo(context.world);
 				    };
 				    if (context.mode == EditorMode::Edit)
 					    apply();

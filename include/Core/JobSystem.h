@@ -59,7 +59,6 @@ namespace NeneEngine
 		void Shutdown();
 
 		JobHandle Schedule(const char* name, JobFunction function, JobPriority priority = JobPriority::Normal);
-		// Streaming jobs run only on the reserved workers, never on the submitting thread.
 		JobHandle ScheduleStreaming(const char* name, JobFunction function, JobPriority priority = JobPriority::Normal);
 		JobHandle ParallelFor(const char* name, uint32_t itemCount, uint32_t minRange, RangeFunction function,
 		                      JobPriority priority = JobPriority::Normal);

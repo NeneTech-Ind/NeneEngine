@@ -96,7 +96,6 @@ namespace NeneEngine
 			}
 		}
 
-		// Bound decoded data waiting for the main thread as well as active decoding jobs
 		constexpr size_t kMaxInFlight = 4;
 		while (!m_impl->pending.empty() && m_impl->inFlight < kMaxInFlight)
 		{
