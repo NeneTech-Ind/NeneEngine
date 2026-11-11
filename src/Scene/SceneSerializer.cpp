@@ -15,6 +15,7 @@
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/DebugDrawSettings.h"
+#include "ECS/PhysicsSettings.h"
 #include "ECS/RenderSettings.h"
 #include "ECS/Events/SceneRestoredEvent.h"
 #include <Windows.h>
@@ -554,6 +555,8 @@ namespace NeneEngine
 			target.ctx().emplace<ECS::DebugDrawSettings>(*settings);
 		if (const auto* settings = world.GetRegistry().ctx().find<ECS::RenderSettings>())
 			target.ctx().emplace<ECS::RenderSettings>(*settings);
+		if (const auto* settings = world.GetRegistry().ctx().find<ECS::PhysicsSettings>())
+			target.ctx().emplace<ECS::PhysicsSettings>(*settings);
 		world.GetRegistry().swap(target);
 		world.GetEventBus().Publish(ECS::SceneRestoredEvent{});
 	}

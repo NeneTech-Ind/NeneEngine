@@ -11,12 +11,14 @@
 #include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Events/CollisionEvent.h"
+#include "ECS/PhysicsSettings.h"
 #include "ECS/World.h"
 
 // Jolt.h must be included before any other Jolt header.
 #include <Jolt/Jolt.h>
 
 #include <Jolt/Core/Factory.h>
+#include <Jolt/Core/JobSystemSingleThreaded.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
@@ -28,6 +30,7 @@
 #include <Jolt/RegisterTypes.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <mutex>
 #include <type_traits>
@@ -48,6 +51,7 @@ namespace NeneEngine::ECS
 		constexpr JPH::uint kMaxBodyPairs = 4096;
 		constexpr JPH::uint kMaxContactConstraints = 4096;
 		constexpr size_t kTempAllocatorBytes = 10 * 1024 * 1024;
+		constexpr float kStatsSmoothing = 0.1f;
 
 		namespace ObjectLayers
 		{
@@ -351,6 +355,7 @@ namespace NeneEngine::ECS
 		ContactListenerImpl contactListener;
 		JPH::TempAllocatorImpl tempAllocator{kTempAllocatorBytes};
 		JoltJobSystem jobSystem;
+		JPH::JobSystemSingleThreaded singleThreadedJobSystem{JPH::cMaxPhysicsJobs};
 		JPH::PhysicsSystem physicsSystem;
 
 		eastl::unordered_map<Entity, BodyRecord> bodies;
@@ -613,22 +618,38 @@ namespace NeneEngine::ECS
 		// after long stalls such as window dragging.
 		impl.accumulator = (std::min)(impl.accumulator + (std::max)(deltaTime, 0.0f), FixedTimeStep * MaxStepsPerFrame);
 
-		bool stepped = false;
+		const auto* settings = world.GetRegistry().ctx().find<PhysicsSettings>();
+		const bool useJobs = settings == nullptr || settings->useJobSystem;
+		JPH::JobSystem* jobs = useJobs ? static_cast<JPH::JobSystem*>(&impl.jobSystem) : &impl.singleThreadedJobSystem;
+
+		uint32_t steps = 0;
+		float simulationMs = 0.0f;
 		while (impl.accumulator >= FixedTimeStep)
 		{
 			impl.ApplyAccelerations(world);
 
+			const auto stepStart = std::chrono::steady_clock::now();
 			const JPH::EPhysicsUpdateError error =
-			    impl.physicsSystem.Update(FixedTimeStep, 1, &impl.tempAllocator, &impl.jobSystem);
+			    impl.physicsSystem.Update(FixedTimeStep, 1, &impl.tempAllocator, jobs);
+			simulationMs +=
+			    std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - stepStart).count();
+			++steps;
 			if (error != JPH::EPhysicsUpdateError::None)
 				NENE_LOG_WARN("PhysicsSystem: Jolt update reported error flags {}", static_cast<uint32_t>(error));
 
 			impl.ProcessContactChanges();
 			impl.accumulator -= FixedTimeStep;
-			stepped = true;
 		}
 
-		if (!stepped) return;
+		if (steps == 0) return;
+
+		const float stepMs = simulationMs / static_cast<float>(steps);
+		auto& stats = world.GetRegistry().ctx().emplace<PhysicsStats>();
+		stats.stepMs = stats.usedJobSystem == useJobs && stats.stepMs > 0.0f
+		                   ? stats.stepMs + (stepMs - stats.stepMs) * kStatsSmoothing
+		                   : stepMs;
+		stats.bodyCount = static_cast<uint32_t>(impl.bodies.size());
+		stats.usedJobSystem = useJobs;
 
 		impl.ReadBackDynamicBodies(world);
 		impl.UpdateContactStates(world);

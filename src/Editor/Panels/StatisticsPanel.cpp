@@ -2,6 +2,7 @@
 
 #include "Editor/Panels/StatisticsPanel.h"
 
+#include "ECS/PhysicsSettings.h"
 #include "ECS/RenderSettings.h"
 #include "ECS/World.h"
 #include "Editor/EditorContext.h"
@@ -71,6 +72,27 @@ namespace NeneEngine
 				ImGui::EndTable();
 			}
 		}
+
+		void DrawPhysicsSimulation(EditorContext& context)
+		{
+			auto& registryContext = context.world.GetRegistry().ctx();
+			auto& settings = registryContext.emplace<ECS::PhysicsSettings>();
+
+			ImGui::SeparatorText("Physics simulation");
+			ImGui::Checkbox("Use job system##Physics", &settings.useJobSystem);
+			ImGui::SetItemTooltip("Run Jolt physics jobs on the job system workers instead of the main thread");
+
+			const auto* stats = registryContext.find<ECS::PhysicsStats>();
+			if (stats == nullptr) return;
+
+			if (ImGui::BeginTable("##PhysicsSimulationStats", 2, ImGuiTableFlags_SizingStretchProp))
+			{
+				DrawStatRow(context, stats->usedJobSystem ? "Step time (parallel)" : "Step time (serial)",
+				            stats->stepMs);
+				DrawCountRow(context, "Bodies", stats->bodyCount);
+				ImGui::EndTable();
+			}
+		}
 	} // namespace
 
 	void StatisticsPanel::Update(EditorContext& /*context*/)
@@ -126,6 +148,7 @@ namespace NeneEngine
 		}
 
 		DrawRenderPreparation(context);
+		DrawPhysicsSimulation(context);
 	}
 
 	void StatisticsPanel::Reset()
