@@ -45,6 +45,9 @@ namespace NeneEngine
 		[[nodiscard]] virtual uintptr_t GetTextureHandle(TextureId texture) const = 0;
 
 		[[nodiscard]] virtual uintptr_t GetResourceDomainKey() const { return reinterpret_cast<uintptr_t>(this); }
+		[[nodiscard]] virtual bool HasTransferQueue() const { return false; }
+		[[nodiscard]] virtual bool IsTransferQueueEnabled() const { return false; }
+		virtual void SetTransferQueueEnabled(bool /*enabled*/) {}
 
 		virtual void BeginFrame() = 0;
 		virtual void SubmitRenderItem(const RenderItem& item) = 0;

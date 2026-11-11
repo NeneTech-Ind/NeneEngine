@@ -484,6 +484,11 @@ namespace NeneEngine
 		return true;
 	}
 
+	bool DiligentDX12SharedDevice::UsesTransferQueue() const
+	{
+		return device && transferContext && transferEnabled.load(std::memory_order_relaxed);
+	}
+
 	void DiligentDX12SharedDevice::RunOnTransferQueue(const eastl::function<void()>& record)
 	{
 		uint64_t value = 0;
@@ -653,6 +658,22 @@ namespace NeneEngine
 		return reinterpret_cast<uintptr_t>(m_shared.get());
 	}
 
+	bool DiligentDX12Adapter::HasTransferQueue() const
+	{
+		return static_cast<bool>(m_shared->transferContext);
+	}
+
+	bool DiligentDX12Adapter::IsTransferQueueEnabled() const
+	{
+		return m_shared->UsesTransferQueue();
+	}
+
+	void DiligentDX12Adapter::SetTransferQueueEnabled(bool enabled)
+	{
+		m_shared->transferEnabled.store(enabled, std::memory_order_relaxed);
+		NENE_LOG_INFO("DiligentDX12Adapter: transfer queue uploads {}", enabled ? "enabled" : "disabled");
+	}
+
 	bool DiligentDX12Adapter::IsDeviceReady(const char* operation) const
 	{
 		if (m_shared->device) return true;
@@ -747,7 +768,7 @@ namespace NeneEngine
 		auto prepared = eastl::make_shared<DiligentMeshUploadData>();
 		prepared->vertexCount = static_cast<uint32_t>(meshData.vertices.size());
 		prepared->indexCount = static_cast<uint32_t>(meshData.indices.size());
-		if (!m_shared->device || !m_shared->transferContext)
+		if (!m_shared->UsesTransferQueue())
 		{
 			prepared->meshData = meshData;
 			return prepared;
@@ -830,7 +851,7 @@ namespace NeneEngine
 		auto prepared = eastl::make_shared<DiligentTextureUploadData>();
 		CreateTextureLoaderFromFile(texture.path.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &prepared->loader);
 		if (!prepared->loader) throw std::runtime_error("Could not decode texture: " + texture.path);
-		if (!m_shared->device || !m_shared->transferContext) return prepared;
+		if (!m_shared->UsesTransferQueue()) return prepared;
 
 		auto storageDesc = prepared->loader->GetTextureDesc();
 		storageDesc.Format = ColorStorageFormat(storageDesc.Format);

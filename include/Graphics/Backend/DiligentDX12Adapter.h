@@ -21,6 +21,7 @@
 #include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
 #include <array>
+#include <atomic>
 #include <mutex>
 
 namespace Diligent
@@ -71,6 +72,7 @@ namespace NeneEngine
 		bool InitializeDevice(Diligent::IEngineFactoryD3D12& factory);
 		bool InitializePipelines(Diligent::TEXTURE_FORMAT colorFormat, Diligent::TEXTURE_FORMAT depthFormat);
 		void RunOnTransferQueue(const eastl::function<void()>& record);
+		[[nodiscard]] bool UsesTransferQueue() const;
 
 		Diligent::RefCntAutoPtr<Diligent::IRenderDevice> device;
 		Diligent::RefCntAutoPtr<Diligent::IDeviceContext> immediateContext;
@@ -78,6 +80,7 @@ namespace NeneEngine
 		Diligent::RefCntAutoPtr<Diligent::IFence> transferFence;
 		uint64_t nextTransferFenceValue = 1;
 		std::mutex transferMutex;
+		std::atomic<bool> transferEnabled{true};
 
 		Diligent::TEXTURE_FORMAT colorBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
 		Diligent::TEXTURE_FORMAT depthBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
@@ -131,6 +134,9 @@ namespace NeneEngine
 		[[nodiscard]] uintptr_t GetRenderTargetTextureHandle(RenderTargetId target) const override;
 		[[nodiscard]] uintptr_t GetTextureHandle(TextureId texture) const override;
 		[[nodiscard]] uintptr_t GetResourceDomainKey() const override;
+		[[nodiscard]] bool HasTransferQueue() const override;
+		[[nodiscard]] bool IsTransferQueueEnabled() const override;
+		void SetTransferQueueEnabled(bool enabled) override;
 		void BeginFrame() override;
 		void SubmitRenderItem(const RenderItem& item) override;
 		void EndFrame() override;
