@@ -141,11 +141,16 @@ namespace NeneEngine
 		constexpr bool IsValid() const noexcept { return textureId.IsValid(); }
 	};
 
-	// Backend-owned CPU data. No device or graphics context is needed to prepare it.
 	class ITextureUploadData
 	{
 	  public:
 		virtual ~ITextureUploadData() = default;
+	};
+
+	class IMeshUploadData
+	{
+	  public:
+		virtual ~IMeshUploadData() = default;
 	};
 
 	class IShaderProgramUploadData

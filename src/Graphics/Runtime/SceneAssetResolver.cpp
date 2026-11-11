@@ -173,28 +173,28 @@ namespace NeneEngine
 		        resolved,
 		        [model, part, entry, &renderer]() -> ResourceLoadQueue::Completion
 		        {
+			        eastl::shared_ptr<IMeshUploadData> prepared;
 			        if (part >= 0)
 			        {
 				        if (static_cast<size_t>(part) >= model->parts->GetData().size())
 					        throw std::runtime_error("Model part does not exist");
-				        return [model, part, entry, &renderer]()
+				        prepared = renderer.PrepareMesh(model->parts->GetData()[part].data);
+			        }
+			        else
+			        {
+				        MeshData merged;
+				        for (const auto& mesh : model->parts->GetData())
 				        {
-					        entry->data = renderer.UploadMesh(model->parts->GetData()[part].data);
-					        RequireValid(entry->data);
-					        entry->state = ResourceLoadState::Ready;
-				        };
+					        const auto base = static_cast<uint32_t>(merged.vertices.size());
+					        merged.vertices.insert(merged.vertices.end(), mesh.data.vertices.begin(),
+					                               mesh.data.vertices.end());
+					        for (uint32_t index : mesh.data.indices) merged.indices.push_back(base + index);
+				        }
+				        prepared = renderer.PrepareMesh(merged);
 			        }
-			        MeshData merged;
-			        for (const auto& mesh : model->parts->GetData())
+			        return [entry, prepared, &renderer]()
 			        {
-				        const auto base = static_cast<uint32_t>(merged.vertices.size());
-				        merged.vertices.insert(merged.vertices.end(), mesh.data.vertices.begin(),
-				                               mesh.data.vertices.end());
-				        for (uint32_t index : mesh.data.indices) merged.indices.push_back(base + index);
-			        }
-			        return [entry, merged = std::move(merged), &renderer]()
-			        {
-				        entry->data = renderer.UploadMesh(merged);
+				        entry->data = renderer.UploadMesh(*prepared);
 				        RequireValid(entry->data);
 				        entry->state = ResourceLoadState::Ready;
 			        };

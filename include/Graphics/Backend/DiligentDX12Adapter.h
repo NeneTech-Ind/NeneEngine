@@ -7,6 +7,7 @@
 #include "../external/DiligentEngine/DiligentCore/Common/interface/RefCntAutoPtr.hpp"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Buffer.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/DeviceContext.h"
+#include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Fence.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/PipelineState.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/RenderDevice.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/ShaderResourceBinding.h"
@@ -14,11 +15,14 @@
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Texture.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/TextureView.h"
 
+#include <EASTL/functional.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
 #include <array>
+#include <atomic>
+#include <mutex>
 
 namespace Diligent
 {
@@ -67,9 +71,17 @@ namespace NeneEngine
 
 		bool InitializeDevice(Diligent::IEngineFactoryD3D12& factory);
 		bool InitializePipelines(Diligent::TEXTURE_FORMAT colorFormat, Diligent::TEXTURE_FORMAT depthFormat);
+		void RunOnTransferQueue(const eastl::function<void()>& record);
+		[[nodiscard]] bool UsesTransferQueue() const;
 
 		Diligent::RefCntAutoPtr<Diligent::IRenderDevice> device;
 		Diligent::RefCntAutoPtr<Diligent::IDeviceContext> immediateContext;
+		Diligent::RefCntAutoPtr<Diligent::IDeviceContext> transferContext;
+		Diligent::RefCntAutoPtr<Diligent::IFence> transferFence;
+		uint64_t nextTransferFenceValue = 1;
+		std::mutex transferMutex;
+		std::atomic<bool> transferEnabled{true};
+		std::atomic<uint32_t> transferUploadsInFlight{0};
 
 		Diligent::TEXTURE_FORMAT colorBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
 		Diligent::TEXTURE_FORMAT depthBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
@@ -105,6 +117,8 @@ namespace NeneEngine
 		GPUBuffer CreateVertexBuffer(const void* vertexData, uint64_t sizeBytes, uint32_t vertexCount) override;
 		GPUBuffer CreateIndexBuffer(const uint32_t* indices, uint32_t indexCount) override;
 		GPUMesh UploadMesh(const MeshData& meshData) override;
+		eastl::shared_ptr<IMeshUploadData> PrepareMesh(const MeshData& meshData) const override;
+		GPUMesh UploadMesh(const IMeshUploadData& data) override;
 		GPUTexture CreateTexture2D(const TextureResource& texture) override;
 		eastl::shared_ptr<ITextureUploadData> PrepareTexture2D(const TextureResource& texture) const override;
 		GPUTexture CreateTexture2D(const TextureResource& texture, const ITextureUploadData& data) override;
@@ -121,6 +135,9 @@ namespace NeneEngine
 		[[nodiscard]] uintptr_t GetRenderTargetTextureHandle(RenderTargetId target) const override;
 		[[nodiscard]] uintptr_t GetTextureHandle(TextureId texture) const override;
 		[[nodiscard]] uintptr_t GetResourceDomainKey() const override;
+		[[nodiscard]] bool HasTransferQueue() const override;
+		[[nodiscard]] bool IsTransferQueueEnabled() const override;
+		void SetTransferQueueEnabled(bool enabled) override;
 		void BeginFrame() override;
 		void SubmitRenderItem(const RenderItem& item) override;
 		void EndFrame() override;
@@ -140,6 +157,9 @@ namespace NeneEngine
 		[[nodiscard]] bool IsDeviceReady(const char* operation) const;
 		[[nodiscard]] GPUBufferId CreateImmutableBuffer(const char* name, Diligent::BIND_FLAGS bindFlags,
 		                                                const void* data, uint64_t sizeBytes);
+		[[nodiscard]] GPUBufferId RegisterBuffer(Diligent::RefCntAutoPtr<Diligent::IBuffer> buffer);
+		[[nodiscard]] GPUMesh RegisterMesh(GPUBufferId vertexBufferId, GPUBufferId indexBufferId, uint32_t vertexCount,
+		                                   uint32_t indexCount);
 		void DrawMesh(const RenderItem& item, const UploadedMesh& mesh);
 		void DrawPrimitive(const RenderItem& item);
 		[[nodiscard]] bool WriteDrawConstants(Diligent::IBuffer* constantBuffer, const RenderItem& item);

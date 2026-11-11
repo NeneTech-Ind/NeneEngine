@@ -29,6 +29,9 @@ namespace NeneEngine
 		constexpr bool kEnableGpuValidation = true;
 		constexpr DRAW_FLAGS kDrawVerifyFlags = DRAW_FLAG_VERIFY_ALL;
 #endif
+		constexpr Uint8 kGraphicsQueueId = 0;
+		constexpr Uint8 kTransferQueueId = 2;
+		constexpr Uint64 kGraphicsAndTransferContexts = 0b11;
 
 		struct DrawConstants
 		{
@@ -382,6 +385,38 @@ namespace NeneEngine
 			}
 		}
 
+		RefCntAutoPtr<IBuffer> CreateBufferWithData(IRenderDevice& device, const char* name,
+		                                            Diligent::BIND_FLAGS bindFlags, const void* data, uint64_t sizeBytes,
+		                                            IDeviceContext* context = nullptr,
+		                                            Uint64 contextMask = BufferDesc{}.ImmediateContextMask)
+		{
+			BufferDesc bufferDesc{};
+			bufferDesc.Name = name;
+			bufferDesc.BindFlags = bindFlags;
+			bufferDesc.Usage = USAGE_IMMUTABLE;
+			bufferDesc.Size = sizeBytes;
+			bufferDesc.ImmediateContextMask = contextMask;
+
+			BufferData bufferData{};
+			bufferData.pData = data;
+			bufferData.DataSize = sizeBytes;
+			bufferData.pContext = context;
+
+			RefCntAutoPtr<IBuffer> buffer;
+			device.CreateBuffer(bufferDesc, &bufferData, &buffer);
+			return buffer;
+		}
+
+		class DiligentMeshUploadData final : public IMeshUploadData
+		{
+		  public:
+			MeshData meshData;
+			RefCntAutoPtr<IBuffer> vertexBuffer;
+			RefCntAutoPtr<IBuffer> indexBuffer;
+			uint32_t vertexCount = 0;
+			uint32_t indexCount = 0;
+		};
+
 		template <typename Map> auto* FindUploaded(Map& resources, uint32_t id)
 		{
 			const auto it = id != 0 ? resources.find(id) : resources.end();
@@ -391,6 +426,7 @@ namespace NeneEngine
 
 	DiligentDX12SharedDevice::~DiligentDX12SharedDevice()
 	{
+		if (transferContext) transferContext->Flush();
 		if (immediateContext) immediateContext->Flush();
 		if (device) device->IdleGPU();
 	}
@@ -402,7 +438,26 @@ namespace NeneEngine
 		EngineD3D12CreateInfo engineCreateInfo{};
 		engineCreateInfo.EnableValidation = kEnableGpuValidation;
 
-		factory.CreateDeviceAndContextsD3D12(engineCreateInfo, &device, &immediateContext);
+		const ImmediateContextCreateInfo contextInfos[] = {{"Graphics", kGraphicsQueueId},
+		                                                   {"Transfer", kTransferQueueId}};
+		engineCreateInfo.NumImmediateContexts = _countof(contextInfos);
+		engineCreateInfo.pImmediateContextInfo = contextInfos;
+		IDeviceContext* contexts[_countof(contextInfos)] = {};
+		factory.CreateDeviceAndContextsD3D12(engineCreateInfo, &device, contexts);
+		immediateContext.Attach(contexts[0]);
+		transferContext.Attach(contexts[1]);
+
+		if (!device || !immediateContext)
+		{
+			NENE_LOG_WARN("DiligentDX12Adapter: could not create a transfer queue, using the graphics queue only");
+			transferContext.Release();
+			immediateContext.Release();
+			device.Release();
+			engineCreateInfo.NumImmediateContexts = 0;
+			engineCreateInfo.pImmediateContextInfo = nullptr;
+			factory.CreateDeviceAndContextsD3D12(engineCreateInfo, &device, &immediateContext);
+		}
+
 		if (!device || !immediateContext)
 		{
 			NENE_LOG_ERROR("Failed to create D3D12 device and immediate context");
@@ -411,8 +466,47 @@ namespace NeneEngine
 			return false;
 		}
 
-		NENE_LOG_INFO("DiligentDX12Adapter: created shared D3D12 device (validation={})", kEnableGpuValidation);
+		if (transferContext)
+		{
+			FenceDesc fenceDesc{};
+			fenceDesc.Name = "Transfer Upload Fence";
+			fenceDesc.Type = FENCE_TYPE_CPU_WAIT_ONLY;
+			device->CreateFence(fenceDesc, &transferFence);
+			if (!transferFence)
+			{
+				NENE_LOG_WARN("DiligentDX12Adapter: could not create the transfer fence, using the graphics queue only");
+				transferContext.Release();
+			}
+		}
+
+		NENE_LOG_INFO("DiligentDX12Adapter: created shared D3D12 device (validation={}, transfer queue={})",
+		              kEnableGpuValidation, static_cast<bool>(transferContext));
 		return true;
+	}
+
+	bool DiligentDX12SharedDevice::UsesTransferQueue() const
+	{
+		return device && transferContext && transferEnabled.load(std::memory_order_relaxed);
+	}
+
+	void DiligentDX12SharedDevice::RunOnTransferQueue(const eastl::function<void()>& record)
+	{
+		NENE_PROFILE_PLOT("Transfer Uploads In Flight", transferUploadsInFlight.fetch_add(1) + 1);
+		uint64_t value = 0;
+		{
+			NENE_PROFILE_SCOPE("Transfer Queue Submit");
+			std::scoped_lock lock(transferMutex);
+			record();
+			value = nextTransferFenceValue++;
+			transferContext->EnqueueSignal(transferFence, value);
+			transferContext->Flush();
+			transferContext->FinishFrame();
+		}
+		{
+			NENE_PROFILE_SCOPE("Transfer Fence Wait");
+			transferFence->Wait(value);
+		}
+		NENE_PROFILE_PLOT("Transfer Uploads In Flight", transferUploadsInFlight.fetch_sub(1) - 1);
 	}
 
 	bool DiligentDX12SharedDevice::InitializePipelines(TEXTURE_FORMAT colorFormat, TEXTURE_FORMAT depthFormat)
@@ -568,6 +662,22 @@ namespace NeneEngine
 		return reinterpret_cast<uintptr_t>(m_shared.get());
 	}
 
+	bool DiligentDX12Adapter::HasTransferQueue() const
+	{
+		return static_cast<bool>(m_shared->transferContext);
+	}
+
+	bool DiligentDX12Adapter::IsTransferQueueEnabled() const
+	{
+		return m_shared->UsesTransferQueue();
+	}
+
+	void DiligentDX12Adapter::SetTransferQueueEnabled(bool enabled)
+	{
+		m_shared->transferEnabled.store(enabled, std::memory_order_relaxed);
+		NENE_LOG_INFO("DiligentDX12Adapter: transfer queue uploads {}", enabled ? "enabled" : "disabled");
+	}
+
 	bool DiligentDX12Adapter::IsDeviceReady(const char* operation) const
 	{
 		if (m_shared->device) return true;
@@ -579,18 +689,11 @@ namespace NeneEngine
 	GPUBufferId DiligentDX12Adapter::CreateImmutableBuffer(const char* name, Diligent::BIND_FLAGS bindFlags,
 	                                                       const void* data, uint64_t sizeBytes)
 	{
-		BufferDesc bufferDesc{};
-		bufferDesc.Name = name;
-		bufferDesc.BindFlags = bindFlags;
-		bufferDesc.Usage = USAGE_IMMUTABLE;
-		bufferDesc.Size = sizeBytes;
+		return RegisterBuffer(CreateBufferWithData(*m_shared->device, name, bindFlags, data, sizeBytes));
+	}
 
-		BufferData bufferData{};
-		bufferData.pData = data;
-		bufferData.DataSize = sizeBytes;
-
-		RefCntAutoPtr<IBuffer> buffer;
-		m_shared->device->CreateBuffer(bufferDesc, &bufferData, &buffer);
+	GPUBufferId DiligentDX12Adapter::RegisterBuffer(RefCntAutoPtr<IBuffer> buffer)
+	{
 		if (!buffer) return {};
 
 		const GPUBufferId bufferId{m_shared->nextBufferId++};
@@ -658,9 +761,64 @@ namespace NeneEngine
 		const GPUBuffer indexBuffer = CreateIndexBuffer(meshData.indices.data(), indexCount);
 		if (!vertexBuffer.IsValid() || !indexBuffer.IsValid()) return {};
 
+		return RegisterMesh(vertexBuffer.bufferId, indexBuffer.bufferId, vertexCount, indexCount);
+	}
+
+	eastl::shared_ptr<IMeshUploadData> DiligentDX12Adapter::PrepareMesh(const MeshData& meshData) const
+	{
+		if (meshData.vertices.empty() || meshData.indices.empty())
+			throw std::runtime_error("Mesh has no vertices or indices");
+
+		auto prepared = eastl::make_shared<DiligentMeshUploadData>();
+		prepared->vertexCount = static_cast<uint32_t>(meshData.vertices.size());
+		prepared->indexCount = static_cast<uint32_t>(meshData.indices.size());
+		if (!m_shared->UsesTransferQueue())
+		{
+			prepared->meshData = meshData;
+			return prepared;
+		}
+
+		{
+			NENE_PROFILE_SCOPE("Mesh Transfer Upload");
+			m_shared->RunOnTransferQueue(
+			    [&]()
+			    {
+				    prepared->vertexBuffer = CreateBufferWithData(
+				        *m_shared->device, "Mesh Vertex Buffer", BIND_VERTEX_BUFFER, meshData.vertices.data(),
+				        meshData.vertices.size() * sizeof(Vertex), m_shared->transferContext,
+				        kGraphicsAndTransferContexts);
+				    prepared->indexBuffer = CreateBufferWithData(
+				        *m_shared->device, "Mesh Index Buffer", BIND_INDEX_BUFFER, meshData.indices.data(),
+				        meshData.indices.size() * sizeof(uint32_t), m_shared->transferContext,
+				        kGraphicsAndTransferContexts);
+			    });
+		}
+		if (!prepared->vertexBuffer || !prepared->indexBuffer)
+			throw std::runtime_error("Could not upload mesh buffers");
+		prepared->vertexBuffer->SetState(RESOURCE_STATE_COMMON);
+		prepared->indexBuffer->SetState(RESOURCE_STATE_COMMON);
+		return prepared;
+	}
+
+	GPUMesh DiligentDX12Adapter::UploadMesh(const IMeshUploadData& data)
+	{
+		NENE_PROFILE_SCOPE("Mesh Create");
+		if (!IsDeviceReady("UploadMesh")) return {};
+		const auto* prepared = dynamic_cast<const DiligentMeshUploadData*>(&data);
+		if (!prepared) return {};
+		if (!prepared->vertexBuffer) return UploadMesh(prepared->meshData);
+
+		const GPUBufferId vertexBufferId = RegisterBuffer(prepared->vertexBuffer);
+		const GPUBufferId indexBufferId = RegisterBuffer(prepared->indexBuffer);
+		return RegisterMesh(vertexBufferId, indexBufferId, prepared->vertexCount, prepared->indexCount);
+	}
+
+	GPUMesh DiligentDX12Adapter::RegisterMesh(GPUBufferId vertexBufferId, GPUBufferId indexBufferId,
+	                                          uint32_t vertexCount, uint32_t indexCount)
+	{
 		UploadedMesh uploadedMesh{};
-		uploadedMesh.vertexBuffer = *FindUploaded(m_shared->uploadedBuffers, vertexBuffer.bufferId.value);
-		uploadedMesh.indexBuffer = *FindUploaded(m_shared->uploadedBuffers, indexBuffer.bufferId.value);
+		uploadedMesh.vertexBuffer = *FindUploaded(m_shared->uploadedBuffers, vertexBufferId.value);
+		uploadedMesh.indexBuffer = *FindUploaded(m_shared->uploadedBuffers, indexBufferId.value);
 		uploadedMesh.indexCount = indexCount;
 
 		const MeshId meshId{m_shared->nextMeshId++};
@@ -669,7 +827,7 @@ namespace NeneEngine
 		NENE_LOG_INFO("DiligentDX12Adapter: uploaded mesh {} (vertices={}, indices={})", meshId.value, vertexCount,
 		              indexCount);
 
-		return GPUMesh{meshId, vertexBuffer.bufferId, indexBuffer.bufferId, vertexCount, indexCount};
+		return GPUMesh{meshId, vertexBufferId, indexBufferId, vertexCount, indexCount};
 	}
 
 	namespace
@@ -678,6 +836,7 @@ namespace NeneEngine
 		{
 		  public:
 			RefCntAutoPtr<ITextureLoader> loader;
+			RefCntAutoPtr<ITexture> texture;
 		};
 
 		class DiligentShaderProgramUploadData final : public IShaderProgramUploadData
@@ -696,6 +855,21 @@ namespace NeneEngine
 		auto prepared = eastl::make_shared<DiligentTextureUploadData>();
 		CreateTextureLoaderFromFile(texture.path.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &prepared->loader);
 		if (!prepared->loader) throw std::runtime_error("Could not decode texture: " + texture.path);
+		if (!m_shared->UsesTransferQueue()) return prepared;
+
+		auto storageDesc = prepared->loader->GetTextureDesc();
+		storageDesc.Format = ColorStorageFormat(storageDesc.Format);
+		storageDesc.ImmediateContextMask = kGraphicsAndTransferContexts;
+		auto textureData = prepared->loader->GetTextureData();
+		textureData.pContext = m_shared->transferContext;
+		{
+			NENE_PROFILE_SCOPE("Texture Transfer Upload");
+			NENE_PROFILE_ZONE_TEXT(texture.path.data(), texture.path.size());
+			m_shared->RunOnTransferQueue(
+			    [&]() { m_shared->device->CreateTexture(storageDesc, &textureData, &prepared->texture); });
+		}
+		if (!prepared->texture) throw std::runtime_error("Could not upload texture: " + texture.path);
+		prepared->texture->SetState(RESOURCE_STATE_COMMON);
 		return prepared;
 	}
 
@@ -716,11 +890,13 @@ namespace NeneEngine
 
 		DiligentDX12SharedDevice::UploadedTexture uploadedTexture{};
 		const auto sourceFormat = textureLoader->GetTextureDesc().Format;
-		auto storageDesc = textureLoader->GetTextureDesc();
-		storageDesc.Format = ColorStorageFormat(sourceFormat);
-		const auto textureData = textureLoader->GetTextureData();
+		uploadedTexture.texture = prepared->texture;
+		if (!uploadedTexture.texture)
 		{
 			NENE_PROFILE_SCOPE("Texture Upload");
+			auto storageDesc = textureLoader->GetTextureDesc();
+			storageDesc.Format = ColorStorageFormat(sourceFormat);
+			const auto textureData = textureLoader->GetTextureData();
 			m_shared->device->CreateTexture(storageDesc, &textureData, &uploadedTexture.texture);
 		}
 		if (!uploadedTexture.texture)

@@ -8,6 +8,7 @@
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
+#include "Graphics/Backend/IRenderAdapter.h"
 
 #include <algorithm>
 #include <format>
@@ -93,6 +94,19 @@ namespace NeneEngine
 				ImGui::EndTable();
 			}
 		}
+
+		void DrawResourceUploads(EditorContext& context)
+		{
+			if (context.renderer == nullptr) return;
+
+			ImGui::SeparatorText("Resource uploads");
+			bool enabled = context.renderer->IsTransferQueueEnabled();
+			ImGui::BeginDisabled(!context.renderer->HasTransferQueue());
+			if (ImGui::Checkbox("Use transfer queue", &enabled)) context.renderer->SetTransferQueueEnabled(enabled);
+			ImGui::EndDisabled();
+			ImGui::SetItemTooltip("Upload textures and meshes on the GPU copy queue from streaming workers instead of "
+			                      "the main thread");
+		}
 	} // namespace
 
 	void StatisticsPanel::Update(EditorContext& /*context*/)
@@ -149,6 +163,7 @@ namespace NeneEngine
 
 		DrawRenderPreparation(context);
 		DrawPhysicsSimulation(context);
+		DrawResourceUploads(context);
 	}
 
 	void StatisticsPanel::Reset()
