@@ -15,6 +15,7 @@
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Texture.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/TextureView.h"
 
+#include <EASTL/functional.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
@@ -69,6 +70,7 @@ namespace NeneEngine
 
 		bool InitializeDevice(Diligent::IEngineFactoryD3D12& factory);
 		bool InitializePipelines(Diligent::TEXTURE_FORMAT colorFormat, Diligent::TEXTURE_FORMAT depthFormat);
+		void RunOnTransferQueue(const eastl::function<void()>& record);
 
 		Diligent::RefCntAutoPtr<Diligent::IRenderDevice> device;
 		Diligent::RefCntAutoPtr<Diligent::IDeviceContext> immediateContext;

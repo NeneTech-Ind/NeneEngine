@@ -31,6 +31,7 @@ namespace NeneEngine
 #endif
 		constexpr Uint8 kGraphicsQueueId = 0;
 		constexpr Uint8 kTransferQueueId = 2;
+		constexpr Uint64 kGraphicsAndTransferContexts = 0b11;
 
 		struct DrawConstants
 		{
@@ -451,6 +452,22 @@ namespace NeneEngine
 		return true;
 	}
 
+	void DiligentDX12SharedDevice::RunOnTransferQueue(const eastl::function<void()>& record)
+	{
+		uint64_t value = 0;
+		{
+			std::scoped_lock lock(transferMutex);
+			record();
+			value = nextTransferFenceValue++;
+			transferContext->EnqueueSignal(transferFence, value);
+			transferContext->Flush();
+			transferContext->FinishFrame();
+		}
+
+		NENE_PROFILE_SCOPE("Transfer Fence Wait");
+		transferFence->Wait(value);
+	}
+
 	bool DiligentDX12SharedDevice::InitializePipelines(TEXTURE_FORMAT colorFormat, TEXTURE_FORMAT depthFormat)
 	{
 		if (pipelinesCreated)
@@ -714,6 +731,7 @@ namespace NeneEngine
 		{
 		  public:
 			RefCntAutoPtr<ITextureLoader> loader;
+			RefCntAutoPtr<ITexture> texture;
 		};
 
 		class DiligentShaderProgramUploadData final : public IShaderProgramUploadData
@@ -732,6 +750,20 @@ namespace NeneEngine
 		auto prepared = eastl::make_shared<DiligentTextureUploadData>();
 		CreateTextureLoaderFromFile(texture.path.c_str(), IMAGE_FILE_FORMAT_UNKNOWN, loadInfo, &prepared->loader);
 		if (!prepared->loader) throw std::runtime_error("Could not decode texture: " + texture.path);
+		if (!m_shared->device || !m_shared->transferContext) return prepared;
+
+		auto storageDesc = prepared->loader->GetTextureDesc();
+		storageDesc.Format = ColorStorageFormat(storageDesc.Format);
+		storageDesc.ImmediateContextMask = kGraphicsAndTransferContexts;
+		auto textureData = prepared->loader->GetTextureData();
+		textureData.pContext = m_shared->transferContext;
+		{
+			NENE_PROFILE_SCOPE("Texture Transfer Upload");
+			m_shared->RunOnTransferQueue(
+			    [&]() { m_shared->device->CreateTexture(storageDesc, &textureData, &prepared->texture); });
+		}
+		if (!prepared->texture) throw std::runtime_error("Could not upload texture: " + texture.path);
+		prepared->texture->SetState(RESOURCE_STATE_COMMON);
 		return prepared;
 	}
 
@@ -752,11 +784,13 @@ namespace NeneEngine
 
 		DiligentDX12SharedDevice::UploadedTexture uploadedTexture{};
 		const auto sourceFormat = textureLoader->GetTextureDesc().Format;
-		auto storageDesc = textureLoader->GetTextureDesc();
-		storageDesc.Format = ColorStorageFormat(sourceFormat);
-		const auto textureData = textureLoader->GetTextureData();
+		uploadedTexture.texture = prepared->texture;
+		if (!uploadedTexture.texture)
 		{
 			NENE_PROFILE_SCOPE("Texture Upload");
+			auto storageDesc = textureLoader->GetTextureDesc();
+			storageDesc.Format = ColorStorageFormat(sourceFormat);
+			const auto textureData = textureLoader->GetTextureData();
 			m_shared->device->CreateTexture(storageDesc, &textureData, &uploadedTexture.texture);
 		}
 		if (!uploadedTexture.texture)
