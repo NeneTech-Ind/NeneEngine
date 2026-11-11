@@ -78,7 +78,7 @@ namespace NeneEngine
 		                              [&app]() { app.RequestExit(); }};
 		gameStateMachine.PushState(eastl::make_unique<PlayState>(stateContext));
 
-		world.AddSystem(eastl::make_unique<ECS::MovementSystem>());
+		world.AddSystem(eastl::make_unique<ECS::MovementSystem>(jobSystem));
 		world.AddSystem(eastl::make_unique<ECS::PlayerControllerSystem>(app.GetInputManager()));
 		world.AddSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(app.GetInputManager()));
 		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>(jobSystem));
