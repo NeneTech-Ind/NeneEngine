@@ -24,6 +24,8 @@ namespace NeneEngine
 		virtual GPUBuffer CreateVertexBuffer(const void* vertexData, uint64_t sizeBytes, uint32_t vertexCount) = 0;
 		virtual GPUBuffer CreateIndexBuffer(const uint32_t* indices, uint32_t indexCount) = 0;
 		virtual GPUMesh UploadMesh(const MeshData& meshData) = 0;
+		virtual eastl::shared_ptr<IMeshUploadData> PrepareMesh(const MeshData& meshData) const = 0;
+		virtual GPUMesh UploadMesh(const IMeshUploadData& data) = 0;
 		virtual GPUTexture CreateTexture2D(const TextureResource& texture) = 0;
 		virtual eastl::shared_ptr<ITextureUploadData> PrepareTexture2D(const TextureResource& texture) const = 0;
 		virtual GPUTexture CreateTexture2D(const TextureResource& texture, const ITextureUploadData& data) = 0;

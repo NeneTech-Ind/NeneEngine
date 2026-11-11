@@ -113,6 +113,8 @@ namespace NeneEngine
 		GPUBuffer CreateVertexBuffer(const void* vertexData, uint64_t sizeBytes, uint32_t vertexCount) override;
 		GPUBuffer CreateIndexBuffer(const uint32_t* indices, uint32_t indexCount) override;
 		GPUMesh UploadMesh(const MeshData& meshData) override;
+		eastl::shared_ptr<IMeshUploadData> PrepareMesh(const MeshData& meshData) const override;
+		GPUMesh UploadMesh(const IMeshUploadData& data) override;
 		GPUTexture CreateTexture2D(const TextureResource& texture) override;
 		eastl::shared_ptr<ITextureUploadData> PrepareTexture2D(const TextureResource& texture) const override;
 		GPUTexture CreateTexture2D(const TextureResource& texture, const ITextureUploadData& data) override;
@@ -148,6 +150,9 @@ namespace NeneEngine
 		[[nodiscard]] bool IsDeviceReady(const char* operation) const;
 		[[nodiscard]] GPUBufferId CreateImmutableBuffer(const char* name, Diligent::BIND_FLAGS bindFlags,
 		                                                const void* data, uint64_t sizeBytes);
+		[[nodiscard]] GPUBufferId RegisterBuffer(Diligent::RefCntAutoPtr<Diligent::IBuffer> buffer);
+		[[nodiscard]] GPUMesh RegisterMesh(GPUBufferId vertexBufferId, GPUBufferId indexBufferId, uint32_t vertexCount,
+		                                   uint32_t indexCount);
 		void DrawMesh(const RenderItem& item, const UploadedMesh& mesh);
 		void DrawPrimitive(const RenderItem& item);
 		[[nodiscard]] bool WriteDrawConstants(Diligent::IBuffer* constantBuffer, const RenderItem& item);

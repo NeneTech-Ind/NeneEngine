@@ -385,6 +385,38 @@ namespace NeneEngine
 			}
 		}
 
+		RefCntAutoPtr<IBuffer> CreateBufferWithData(IRenderDevice& device, const char* name, BIND_FLAGS bindFlags,
+		                                            const void* data, uint64_t sizeBytes,
+		                                            IDeviceContext* context = nullptr,
+		                                            Uint64 contextMask = BufferDesc{}.ImmediateContextMask)
+		{
+			BufferDesc bufferDesc{};
+			bufferDesc.Name = name;
+			bufferDesc.BindFlags = bindFlags;
+			bufferDesc.Usage = USAGE_IMMUTABLE;
+			bufferDesc.Size = sizeBytes;
+			bufferDesc.ImmediateContextMask = contextMask;
+
+			BufferData bufferData{};
+			bufferData.pData = data;
+			bufferData.DataSize = sizeBytes;
+			bufferData.pContext = context;
+
+			RefCntAutoPtr<IBuffer> buffer;
+			device.CreateBuffer(bufferDesc, &bufferData, &buffer);
+			return buffer;
+		}
+
+		class DiligentMeshUploadData final : public IMeshUploadData
+		{
+		  public:
+			MeshData meshData;
+			RefCntAutoPtr<IBuffer> vertexBuffer;
+			RefCntAutoPtr<IBuffer> indexBuffer;
+			uint32_t vertexCount = 0;
+			uint32_t indexCount = 0;
+		};
+
 		template <typename Map> auto* FindUploaded(Map& resources, uint32_t id)
 		{
 			const auto it = id != 0 ? resources.find(id) : resources.end();
@@ -632,18 +664,11 @@ namespace NeneEngine
 	GPUBufferId DiligentDX12Adapter::CreateImmutableBuffer(const char* name, Diligent::BIND_FLAGS bindFlags,
 	                                                       const void* data, uint64_t sizeBytes)
 	{
-		BufferDesc bufferDesc{};
-		bufferDesc.Name = name;
-		bufferDesc.BindFlags = bindFlags;
-		bufferDesc.Usage = USAGE_IMMUTABLE;
-		bufferDesc.Size = sizeBytes;
+		return RegisterBuffer(CreateBufferWithData(*m_shared->device, name, bindFlags, data, sizeBytes));
+	}
 
-		BufferData bufferData{};
-		bufferData.pData = data;
-		bufferData.DataSize = sizeBytes;
-
-		RefCntAutoPtr<IBuffer> buffer;
-		m_shared->device->CreateBuffer(bufferDesc, &bufferData, &buffer);
+	GPUBufferId DiligentDX12Adapter::RegisterBuffer(RefCntAutoPtr<IBuffer> buffer)
+	{
 		if (!buffer) return {};
 
 		const GPUBufferId bufferId{m_shared->nextBufferId++};
@@ -711,9 +736,64 @@ namespace NeneEngine
 		const GPUBuffer indexBuffer = CreateIndexBuffer(meshData.indices.data(), indexCount);
 		if (!vertexBuffer.IsValid() || !indexBuffer.IsValid()) return {};
 
+		return RegisterMesh(vertexBuffer.bufferId, indexBuffer.bufferId, vertexCount, indexCount);
+	}
+
+	eastl::shared_ptr<IMeshUploadData> DiligentDX12Adapter::PrepareMesh(const MeshData& meshData) const
+	{
+		if (meshData.vertices.empty() || meshData.indices.empty())
+			throw std::runtime_error("Mesh has no vertices or indices");
+
+		auto prepared = eastl::make_shared<DiligentMeshUploadData>();
+		prepared->vertexCount = static_cast<uint32_t>(meshData.vertices.size());
+		prepared->indexCount = static_cast<uint32_t>(meshData.indices.size());
+		if (!m_shared->device || !m_shared->transferContext)
+		{
+			prepared->meshData = meshData;
+			return prepared;
+		}
+
+		{
+			NENE_PROFILE_SCOPE("Mesh Transfer Upload");
+			m_shared->RunOnTransferQueue(
+			    [&]()
+			    {
+				    prepared->vertexBuffer = CreateBufferWithData(
+				        *m_shared->device, "Mesh Vertex Buffer", BIND_VERTEX_BUFFER, meshData.vertices.data(),
+				        meshData.vertices.size() * sizeof(Vertex), m_shared->transferContext,
+				        kGraphicsAndTransferContexts);
+				    prepared->indexBuffer = CreateBufferWithData(
+				        *m_shared->device, "Mesh Index Buffer", BIND_INDEX_BUFFER, meshData.indices.data(),
+				        meshData.indices.size() * sizeof(uint32_t), m_shared->transferContext,
+				        kGraphicsAndTransferContexts);
+			    });
+		}
+		if (!prepared->vertexBuffer || !prepared->indexBuffer)
+			throw std::runtime_error("Could not upload mesh buffers");
+		prepared->vertexBuffer->SetState(RESOURCE_STATE_COMMON);
+		prepared->indexBuffer->SetState(RESOURCE_STATE_COMMON);
+		return prepared;
+	}
+
+	GPUMesh DiligentDX12Adapter::UploadMesh(const IMeshUploadData& data)
+	{
+		NENE_PROFILE_SCOPE("Mesh Create");
+		if (!IsDeviceReady("UploadMesh")) return {};
+		const auto* prepared = dynamic_cast<const DiligentMeshUploadData*>(&data);
+		if (!prepared) return {};
+		if (!prepared->vertexBuffer) return UploadMesh(prepared->meshData);
+
+		const GPUBufferId vertexBufferId = RegisterBuffer(prepared->vertexBuffer);
+		const GPUBufferId indexBufferId = RegisterBuffer(prepared->indexBuffer);
+		return RegisterMesh(vertexBufferId, indexBufferId, prepared->vertexCount, prepared->indexCount);
+	}
+
+	GPUMesh DiligentDX12Adapter::RegisterMesh(GPUBufferId vertexBufferId, GPUBufferId indexBufferId,
+	                                          uint32_t vertexCount, uint32_t indexCount)
+	{
 		UploadedMesh uploadedMesh{};
-		uploadedMesh.vertexBuffer = *FindUploaded(m_shared->uploadedBuffers, vertexBuffer.bufferId.value);
-		uploadedMesh.indexBuffer = *FindUploaded(m_shared->uploadedBuffers, indexBuffer.bufferId.value);
+		uploadedMesh.vertexBuffer = *FindUploaded(m_shared->uploadedBuffers, vertexBufferId.value);
+		uploadedMesh.indexBuffer = *FindUploaded(m_shared->uploadedBuffers, indexBufferId.value);
 		uploadedMesh.indexCount = indexCount;
 
 		const MeshId meshId{m_shared->nextMeshId++};
@@ -722,7 +802,7 @@ namespace NeneEngine
 		NENE_LOG_INFO("DiligentDX12Adapter: uploaded mesh {} (vertices={}, indices={})", meshId.value, vertexCount,
 		              indexCount);
 
-		return GPUMesh{meshId, vertexBuffer.bufferId, indexBuffer.bufferId, vertexCount, indexCount};
+		return GPUMesh{meshId, vertexBufferId, indexBufferId, vertexCount, indexCount};
 	}
 
 	namespace
