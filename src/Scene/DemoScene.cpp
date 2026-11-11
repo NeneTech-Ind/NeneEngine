@@ -169,14 +169,14 @@ namespace NeneEngine::DemoScene
 		    {
 			    const auto path = ResolveFromExecutionRoots(GetDefaultScenePath(), true);
 			    const auto config = LoadSceneConfig(ResolveFromExecutionRoots(GetDefaultSceneConfigPath(), true));
-			    nlohmann::json scene;
+			    PreparedScene scene;
 			    std::string error;
 			    const bool exists = !path.empty() && std::filesystem::exists(path);
 			    if (exists)
 			    {
 				    try
 				    {
-					    scene = SceneSerializer::ReadFromFile(path);
+					    scene = SceneSerializer::Prepare(SceneSerializer::ReadFromFile(path));
 				    }
 				    catch (const std::exception& exception)
 				    {
@@ -192,7 +192,7 @@ namespace NeneEngine::DemoScene
 					    try
 					    {
 						    if (!error.empty()) throw std::runtime_error(error);
-						    SceneSerializer::Deserialize(scene, world);
+						    SceneSerializer::Apply(scene, world);
 					    }
 					    catch (const std::exception& exception)
 					    {
