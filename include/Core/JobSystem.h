@@ -62,6 +62,10 @@ namespace NeneEngine
 		JobHandle ScheduleStreaming(const char* name, JobFunction function, JobPriority priority = JobPriority::Normal);
 		JobHandle ParallelFor(const char* name, uint32_t itemCount, uint32_t minRange, RangeFunction function,
 		                      JobPriority priority = JobPriority::Normal);
+		JobHandle CreateParallelFor(const char* name, uint32_t itemCount, uint32_t minRange, RangeFunction function,
+		                            JobPriority priority = JobPriority::Normal);
+		bool AddDependency(const JobHandle& job, const JobHandle& dependency);
+		bool Submit(const JobHandle& handle);
 		void Wait(const JobHandle& handle);
 
 		[[nodiscard]] enki::TaskScheduler& GetScheduler();
@@ -70,8 +74,6 @@ namespace NeneEngine
 
 	  private:
 		struct Impl;
-
-		JobHandle Submit(eastl::shared_ptr<JobTaskSet> job);
 
 		eastl::unique_ptr<Impl> m_impl;
 	};
