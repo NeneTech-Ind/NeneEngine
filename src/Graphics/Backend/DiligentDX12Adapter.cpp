@@ -385,8 +385,8 @@ namespace NeneEngine
 			}
 		}
 
-		RefCntAutoPtr<IBuffer> CreateBufferWithData(IRenderDevice& device, const char* name, BIND_FLAGS bindFlags,
-		                                            const void* data, uint64_t sizeBytes,
+		RefCntAutoPtr<IBuffer> CreateBufferWithData(IRenderDevice& device, const char* name,
+		                                            Diligent::BIND_FLAGS bindFlags, const void* data, uint64_t sizeBytes,
 		                                            IDeviceContext* context = nullptr,
 		                                            Uint64 contextMask = BufferDesc{}.ImmediateContextMask)
 		{
@@ -491,8 +491,10 @@ namespace NeneEngine
 
 	void DiligentDX12SharedDevice::RunOnTransferQueue(const eastl::function<void()>& record)
 	{
+		NENE_PROFILE_PLOT("Transfer Uploads In Flight", transferUploadsInFlight.fetch_add(1) + 1);
 		uint64_t value = 0;
 		{
+			NENE_PROFILE_SCOPE("Transfer Queue Submit");
 			std::scoped_lock lock(transferMutex);
 			record();
 			value = nextTransferFenceValue++;
@@ -500,9 +502,11 @@ namespace NeneEngine
 			transferContext->Flush();
 			transferContext->FinishFrame();
 		}
-
-		NENE_PROFILE_SCOPE("Transfer Fence Wait");
-		transferFence->Wait(value);
+		{
+			NENE_PROFILE_SCOPE("Transfer Fence Wait");
+			transferFence->Wait(value);
+		}
+		NENE_PROFILE_PLOT("Transfer Uploads In Flight", transferUploadsInFlight.fetch_sub(1) - 1);
 	}
 
 	bool DiligentDX12SharedDevice::InitializePipelines(TEXTURE_FORMAT colorFormat, TEXTURE_FORMAT depthFormat)
@@ -860,6 +864,7 @@ namespace NeneEngine
 		textureData.pContext = m_shared->transferContext;
 		{
 			NENE_PROFILE_SCOPE("Texture Transfer Upload");
+			NENE_PROFILE_ZONE_TEXT(texture.path.data(), texture.path.size());
 			m_shared->RunOnTransferQueue(
 			    [&]() { m_shared->device->CreateTexture(storageDesc, &textureData, &prepared->texture); });
 		}

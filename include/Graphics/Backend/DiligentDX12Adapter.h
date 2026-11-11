@@ -81,6 +81,7 @@ namespace NeneEngine
 		uint64_t nextTransferFenceValue = 1;
 		std::mutex transferMutex;
 		std::atomic<bool> transferEnabled{true};
+		std::atomic<uint32_t> transferUploadsInFlight{0};
 
 		Diligent::TEXTURE_FORMAT colorBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
 		Diligent::TEXTURE_FORMAT depthBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
