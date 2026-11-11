@@ -7,6 +7,7 @@
 #include "../external/DiligentEngine/DiligentCore/Common/interface/RefCntAutoPtr.hpp"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Buffer.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/DeviceContext.h"
+#include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Fence.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/PipelineState.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/RenderDevice.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/ShaderResourceBinding.h"
@@ -19,6 +20,7 @@
 #include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
 #include <array>
+#include <mutex>
 
 namespace Diligent
 {
@@ -70,6 +72,10 @@ namespace NeneEngine
 
 		Diligent::RefCntAutoPtr<Diligent::IRenderDevice> device;
 		Diligent::RefCntAutoPtr<Diligent::IDeviceContext> immediateContext;
+		Diligent::RefCntAutoPtr<Diligent::IDeviceContext> transferContext;
+		Diligent::RefCntAutoPtr<Diligent::IFence> transferFence;
+		uint64_t nextTransferFenceValue = 1;
+		std::mutex transferMutex;
 
 		Diligent::TEXTURE_FORMAT colorBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
 		Diligent::TEXTURE_FORMAT depthBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;

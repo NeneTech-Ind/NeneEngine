@@ -29,6 +29,8 @@ namespace NeneEngine
 		constexpr bool kEnableGpuValidation = true;
 		constexpr DRAW_FLAGS kDrawVerifyFlags = DRAW_FLAG_VERIFY_ALL;
 #endif
+		constexpr Uint8 kGraphicsQueueId = 0;
+		constexpr Uint8 kTransferQueueId = 2;
 
 		struct DrawConstants
 		{
@@ -391,6 +393,7 @@ namespace NeneEngine
 
 	DiligentDX12SharedDevice::~DiligentDX12SharedDevice()
 	{
+		if (transferContext) transferContext->Flush();
 		if (immediateContext) immediateContext->Flush();
 		if (device) device->IdleGPU();
 	}
@@ -402,7 +405,26 @@ namespace NeneEngine
 		EngineD3D12CreateInfo engineCreateInfo{};
 		engineCreateInfo.EnableValidation = kEnableGpuValidation;
 
-		factory.CreateDeviceAndContextsD3D12(engineCreateInfo, &device, &immediateContext);
+		const ImmediateContextCreateInfo contextInfos[] = {{"Graphics", kGraphicsQueueId},
+		                                                   {"Transfer", kTransferQueueId}};
+		engineCreateInfo.NumImmediateContexts = _countof(contextInfos);
+		engineCreateInfo.pImmediateContextInfo = contextInfos;
+		IDeviceContext* contexts[_countof(contextInfos)] = {};
+		factory.CreateDeviceAndContextsD3D12(engineCreateInfo, &device, contexts);
+		immediateContext.Attach(contexts[0]);
+		transferContext.Attach(contexts[1]);
+
+		if (!device || !immediateContext)
+		{
+			NENE_LOG_WARN("DiligentDX12Adapter: could not create a transfer queue, using the graphics queue only");
+			transferContext.Release();
+			immediateContext.Release();
+			device.Release();
+			engineCreateInfo.NumImmediateContexts = 0;
+			engineCreateInfo.pImmediateContextInfo = nullptr;
+			factory.CreateDeviceAndContextsD3D12(engineCreateInfo, &device, &immediateContext);
+		}
+
 		if (!device || !immediateContext)
 		{
 			NENE_LOG_ERROR("Failed to create D3D12 device and immediate context");
@@ -411,7 +433,21 @@ namespace NeneEngine
 			return false;
 		}
 
-		NENE_LOG_INFO("DiligentDX12Adapter: created shared D3D12 device (validation={})", kEnableGpuValidation);
+		if (transferContext)
+		{
+			FenceDesc fenceDesc{};
+			fenceDesc.Name = "Transfer Upload Fence";
+			fenceDesc.Type = FENCE_TYPE_CPU_WAIT_ONLY;
+			device->CreateFence(fenceDesc, &transferFence);
+			if (!transferFence)
+			{
+				NENE_LOG_WARN("DiligentDX12Adapter: could not create the transfer fence, using the graphics queue only");
+				transferContext.Release();
+			}
+		}
+
+		NENE_LOG_INFO("DiligentDX12Adapter: created shared D3D12 device (validation={}, transfer queue={})",
+		              kEnableGpuValidation, static_cast<bool>(transferContext));
 		return true;
 	}
 
