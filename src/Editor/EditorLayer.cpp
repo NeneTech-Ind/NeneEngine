@@ -386,6 +386,7 @@ namespace NeneEngine
 		const auto generation = ++m_sceneLoadGeneration;
 		m_context->SetStatus(EditorStatusKind::Muted, "Loading scene...");
 		m_context->isSceneLoading = true;
+		const auto cameras = SceneSerializer::CaptureCameras(m_context->world);
 		const auto fail = [this, generation](const std::string& error)
 		{
 			if (generation != m_sceneLoadGeneration || !m_context) return;
@@ -395,9 +396,9 @@ namespace NeneEngine
 		};
 		if (!m_resourceLoads->Request(
 		        path.generic_string(),
-		        [this, generation, path]() -> ResourceLoadQueue::Completion
+		        [this, generation, path, cameras]() -> ResourceLoadQueue::Completion
 		        {
-			        auto scene = SceneSerializer::ReadFromFile(path);
+			        auto scene = SceneSerializer::Prepare(SceneSerializer::ReadFromFile(path), cameras);
 			        return [this, generation, path, scene = std::move(scene)]()
 			        {
 				        if (generation != m_sceneLoadGeneration || !m_context) return;
@@ -405,7 +406,7 @@ namespace NeneEngine
 				        {
 					        if (generation != m_sceneLoadGeneration || !m_context) return;
 					        m_context->isSceneLoading = false;
-					        SceneSerializer::Deserialize(scene, m_context->world, true);
+					        SceneSerializer::Apply(scene, m_context->world);
 					        ++m_context->sceneGeneration;
 					        m_context->pendingAssets.clear();
 					        m_history.Clear();

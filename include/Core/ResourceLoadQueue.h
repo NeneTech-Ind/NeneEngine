@@ -22,6 +22,7 @@ namespace NeneEngine
 	{
 	  public:
 		using Completion = eastl::function<void()>;
+		using Step = eastl::function<bool()>;
 		using PrepareFunction = eastl::function<Completion()>;
 		using ErrorFunction = eastl::function<void(const std::string&)>;
 
@@ -32,6 +33,7 @@ namespace NeneEngine
 
 		bool Request(std::string name, PrepareFunction prepare, ErrorFunction onError,
 		             JobPriority priority = JobPriority::Normal);
+		void Continue(Step step);
 		void Pump(size_t maxFinalizations = 2, double budgetMilliseconds = 2.0);
 		void Shutdown();
 		[[nodiscard]] size_t GetPendingCount() const;

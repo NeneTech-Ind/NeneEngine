@@ -477,66 +477,81 @@ namespace NeneEngine
 	namespace
 	{
 		template <typename... Components>
-		void CopyComponents(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to)
+		void CopyComponents(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to,
+		                    bool replace)
 		{
 			(
 			    [&]
 			    {
-				    if (const auto* component = source.try_get<Components>(from))
+				    const auto* component = source.try_get<Components>(from);
+				    if (component && (replace || !target.all_of<Components>(to)))
 					    target.emplace_or_replace<Components>(to, *component);
 			    }(),
 			    ...);
 		}
 
-		void CopyEntity(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to)
+		void CopyEntity(const entt::registry& source, entt::registry& target, ECS::Entity from, ECS::Entity to,
+		                bool replace = true)
 		{
 			CopyComponents<ECS::TagComponent, ECS::TransformComponent, ECS::CameraComponent,
 			               ECS::CameraControllerComponent, ECS::MeshRendererComponent, ECS::MovementComponent,
 			               ECS::PlayerControllerComponent, ECS::PrimitiveControlComponent, ECS::RigidbodyComponent,
-			               ECS::ColliderComponent>(source, target, from, to);
+			               ECS::ColliderComponent>(source, target, from, to, replace);
 		}
 	} // namespace
 
 	void SceneSerializer::Deserialize(const nlohmann::json& sceneJson, ECS::World& world, bool preserveCameras)
 	{
-		// Parse and validate in isolation so a malformed file cannot erase the current scene.
+		Apply(Prepare(sceneJson, preserveCameras ? CaptureCameras(world) : std::vector<SceneCamera>{}), world);
+	}
+
+	std::vector<SceneCamera> SceneSerializer::CaptureCameras(const ECS::World& world)
+	{
+		std::vector<SceneCamera> cameras;
+		const auto& registry = world.GetRegistry();
+		for (const auto [entity, camera] : registry.view<const ECS::CameraComponent>().each())
+		{
+			const auto* tag = registry.try_get<ECS::TagComponent>(entity);
+			cameras.push_back({entity, tag ? std::optional<std::string>(tag->name) : std::nullopt, camera.isPrimary});
+		}
+		return cameras;
+	}
+
+	PreparedScene SceneSerializer::Prepare(const nlohmann::json& sceneJson, const std::vector<SceneCamera>& cameras)
+	{
+		NENE_PROFILE_SCOPE("Scene Prepare");
 		ECS::World parsed;
 		DeserializeUnchecked(sceneJson, parsed);
-		ECS::World replacement;
+		PreparedScene prepared{eastl::make_shared<ECS::World>(), {}};
 		auto& source = parsed.GetRegistry();
-		auto& target = replacement.GetRegistry();
+		auto& target = prepared.world->GetRegistry();
 		std::unordered_map<ECS::Entity, ECS::Entity> remap;
 		std::unordered_set<ECS::Entity> usedCameras;
-		if (preserveCameras)
+		for (const auto& camera : cameras)
 		{
-			for (const auto camera : world.GetRegistry().view<ECS::CameraComponent>())
+			if (target.create(camera.entity) != camera.entity)
+				throw std::runtime_error("Could not preserve application camera");
+			prepared.cameras.push_back(camera.entity);
+		}
+		for (const auto entity : source.view<ECS::CameraComponent>())
+		{
+			const auto* tag = source.try_get<ECS::TagComponent>(entity);
+			const bool isPrimary = source.get<ECS::CameraComponent>(entity).isPrimary;
+			ECS::Entity match = ECS::NullEntity;
+			for (const auto& camera : cameras)
 			{
-				if (target.create(camera) != camera) throw std::runtime_error("Could not preserve application camera");
-				CopyEntity(world.GetRegistry(), target, camera, camera);
+				if (usedCameras.contains(camera.entity) || camera.isPrimary != isPrimary) continue;
+				if (match == ECS::NullEntity) match = camera.entity;
+				if (tag && camera.name && tag->name == *camera.name)
+				{
+					match = camera.entity;
+					break;
+				}
 			}
-			for (const auto entity : source.view<ECS::CameraComponent>())
+			if (match != ECS::NullEntity)
 			{
-				const auto* tag = source.try_get<ECS::TagComponent>(entity);
-				ECS::Entity match = ECS::NullEntity;
-				for (const auto camera : world.GetRegistry().view<ECS::CameraComponent>())
-				{
-					if (usedCameras.contains(camera)) continue;
-					const auto* oldTag = world.GetRegistry().try_get<ECS::TagComponent>(camera);
-					if (source.get<ECS::CameraComponent>(entity).isPrimary !=
-					    target.get<ECS::CameraComponent>(camera).isPrimary)
-						continue;
-					if (match == ECS::NullEntity) match = camera;
-					if (tag && oldTag && tag->name == oldTag->name)
-					{
-						match = camera;
-						break;
-					}
-				}
-				if (match != ECS::NullEntity)
-				{
-					remap.emplace(entity, match);
-					usedCameras.insert(match);
-				}
+				remap.emplace(entity, match);
+				usedCameras.insert(match);
 			}
 		}
 		for (const auto entity : source.view<entt::entity>())
@@ -551,13 +566,23 @@ namespace NeneEngine
 			for (auto& child : copy.children) child = remap.at(child);
 			target.emplace<ECS::HierarchyComponent>(remap.at(entity), std::move(copy));
 		}
-		if (const auto* settings = world.GetRegistry().ctx().find<ECS::DebugDrawSettings>())
+		return prepared;
+	}
+
+	void SceneSerializer::Apply(const PreparedScene& scene, ECS::World& world)
+	{
+		NENE_PROFILE_SCOPE("Scene Apply");
+		auto& source = world.GetRegistry();
+		auto& target = scene.world->GetRegistry();
+		for (const auto camera : scene.cameras)
+			if (source.valid(camera)) CopyEntity(source, target, camera, camera, false);
+		if (const auto* settings = source.ctx().find<ECS::DebugDrawSettings>())
 			target.ctx().emplace<ECS::DebugDrawSettings>(*settings);
-		if (const auto* settings = world.GetRegistry().ctx().find<ECS::RenderSettings>())
+		if (const auto* settings = source.ctx().find<ECS::RenderSettings>())
 			target.ctx().emplace<ECS::RenderSettings>(*settings);
-		if (const auto* settings = world.GetRegistry().ctx().find<ECS::PhysicsSettings>())
+		if (const auto* settings = source.ctx().find<ECS::PhysicsSettings>())
 			target.ctx().emplace<ECS::PhysicsSettings>(*settings);
-		world.GetRegistry().swap(target);
+		source.swap(target);
 		world.GetEventBus().Publish(ECS::SceneRestoredEvent{});
 	}
 
