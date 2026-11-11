@@ -17,6 +17,7 @@
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 
 #include <algorithm>
+#include <atomic>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
 #include <sstream>
@@ -149,9 +150,9 @@ namespace NeneEngine
 			return prepared;
 		}
 
-		void RequestModel(ECS::World& world, ResourceLoadQueue& loads, const eastl::shared_ptr<bool>& cancelled,
-		                  ModelSpawnEntryConfig model, const std::filesystem::path& shaderPath,
-		                  const std::filesystem::path& manifestPath)
+		void RequestModel(ECS::World& world, ResourceLoadQueue& loads,
+		                  const eastl::shared_ptr<std::atomic<bool>>& cancelled, ModelSpawnEntryConfig model,
+		                  const std::filesystem::path& shaderPath, const std::filesystem::path& manifestPath)
 		{
 			const std::string name = model.entityName;
 			loads.Request(
@@ -198,7 +199,7 @@ namespace NeneEngine
 	void SpawnModelsFromManifest(ECS::World& world, ResourceLoadQueue& loads, const std::filesystem::path& shaderPath,
 	                             const std::filesystem::path& manifestPath)
 	{
-		auto cancelled = eastl::make_shared<bool>(false);
+		auto cancelled = eastl::make_shared<std::atomic<bool>>(false);
 		world.GetEventBus().Subscribe<ECS::SceneRestoredEvent>([cancelled](const auto&) { *cancelled = true; });
 		loads.Request(
 		    "Model Manifest",
