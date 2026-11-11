@@ -16,6 +16,7 @@
 #include "Scene/Instantiation/ModelInstanceConfig.h"
 #include "Scene/Instantiation/ModelSpawnManifest.h"
 
+#include <algorithm>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
 #include <sstream>
@@ -25,6 +26,8 @@ namespace NeneEngine
 {
 	namespace
 	{
+		constexpr size_t kSpawnBatchSize = 256;
+
 		std::filesystem::path FindDiffuseTextureFromObjMaterial(const std::filesystem::path& objPath)
 		{
 			std::ifstream objFile(objPath);
@@ -153,30 +156,39 @@ namespace NeneEngine
 			const std::string name = model.entityName;
 			loads.Request(
 			    name,
-			    [&world, cancelled, model = std::move(model), shaderPath,
+			    [&world, &loads, cancelled, model = std::move(model), shaderPath,
 			     manifestPath]() -> ResourceLoadQueue::Completion
 			    {
 				    if (*cancelled) return {};
-				    auto prepared = PrepareModel(model, shaderPath, manifestPath);
-				    return [&world, cancelled, prepared = std::move(prepared)]()
+				    auto prepared = eastl::make_shared<PreparedModel>(PrepareModel(model, shaderPath, manifestPath));
+				    return [&world, &loads, cancelled, prepared]()
 				    {
 					    if (*cancelled) return;
 					    ECS::Entity root = ECS::NullEntity;
-					    if (prepared.hasRoot)
+					    if (prepared->hasRoot)
 					    {
-						    root = world.CreateEntity(prepared.name);
-						    world.AddComponent<ECS::TransformComponent>(root) = prepared.rootTransform;
+						    root = world.CreateEntity(prepared->name);
+						    world.AddComponent<ECS::TransformComponent>(root) = prepared->rootTransform;
 						    world.AddComponent<ECS::HierarchyComponent>(root);
 					    }
-					    for (const auto& source : prepared.parts)
-					    {
-						    const auto entity = world.CreateEntity(source.name);
-						    world.AddComponent<ECS::TransformComponent>(entity) = source.transform;
-						    world.AddComponent<ECS::MeshRendererComponent>(entity) = source.renderer;
-						    if (root == ECS::NullEntity) continue;
-						    world.AddComponent<ECS::HierarchyComponent>(entity).parent = root;
-						    world.GetComponent<ECS::HierarchyComponent>(root)->children.push_back(entity);
-					    }
+					    loads.Continue(
+					        [&world, cancelled, prepared, root, next = size_t{0}]() mutable
+					        {
+						        if (*cancelled) return true;
+						        if (root != ECS::NullEntity && !world.GetRegistry().valid(root)) return true;
+						        const size_t end = (std::min)(next + kSpawnBatchSize, prepared->parts.size());
+						        for (; next < end; ++next)
+						        {
+							        const auto& source = prepared->parts[next];
+							        const auto entity = world.CreateEntity(source.name);
+							        world.AddComponent<ECS::TransformComponent>(entity) = source.transform;
+							        world.AddComponent<ECS::MeshRendererComponent>(entity) = source.renderer;
+							        if (root == ECS::NullEntity) continue;
+							        world.AddComponent<ECS::HierarchyComponent>(entity).parent = root;
+							        world.GetComponent<ECS::HierarchyComponent>(root)->children.push_back(entity);
+						        }
+						        return next == prepared->parts.size();
+					        });
 				    };
 			    },
 			    [name](const std::string& error) { NENE_LOG_ERROR("Model '{}' failed to load: {}", name, error); });

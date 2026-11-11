@@ -33,6 +33,7 @@ namespace NeneEngine
 
 		std::deque<Request> pending;
 		std::deque<Result> finished;
+		std::deque<Step> steps;
 		std::mutex mutex;
 		std::atomic<bool> stopping{false};
 		size_t inFlight = 0;
@@ -59,6 +60,14 @@ namespace NeneEngine
 		return true;
 	}
 
+	void ResourceLoadQueue::Continue(Step step)
+	{
+		if (m_impl->stopping || !step) return;
+		if (std::this_thread::get_id() != m_impl->mainThread)
+			throw std::logic_error("Resource finalization steps must be added on the main thread");
+		m_impl->steps.push_back(std::move(step));
+	}
+
 	void ResourceLoadQueue::Pump(size_t maxFinalizations, double budgetMilliseconds)
 	{
 		NENE_PROFILE_SCOPE("Resource Pump");
@@ -71,6 +80,22 @@ namespace NeneEngine
 			if (std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() >=
 			    budgetMilliseconds)
 				break;
+			if (!m_impl->steps.empty())
+			{
+				bool done = true;
+				try
+				{
+					NENE_PROFILE_SCOPE("Resource Finalize Step");
+					done = m_impl->steps.front()();
+				}
+				catch (const std::exception& exception)
+				{
+					NENE_LOG_ERROR("Resource finalization step failed: {}", exception.what());
+				}
+				if (m_impl->stopping) return;
+				if (done) m_impl->steps.pop_front();
+				continue;
+			}
 			Impl::Result result;
 			{
 				std::scoped_lock lock(m_impl->mutex);
@@ -148,13 +173,14 @@ namespace NeneEngine
 		}
 		NENE_PROFILE_PLOT("Resource Loads Queued", m_impl->pending.size());
 		NENE_PROFILE_PLOT("Resource Loads Running", m_impl->inFlight - waiting);
-		NENE_PROFILE_PLOT("Resource Loads Awaiting Main Thread", waiting);
+		NENE_PROFILE_PLOT("Resource Loads Awaiting Main Thread", waiting + m_impl->steps.size());
 	}
 
 	void ResourceLoadQueue::Shutdown()
 	{
 		m_impl->stopping = true;
 		m_impl->pending.clear();
+		m_impl->steps.clear();
 		m_impl->inFlight = 0;
 		std::scoped_lock lock(m_impl->mutex);
 		m_impl->finished.clear();
@@ -162,6 +188,6 @@ namespace NeneEngine
 
 	size_t ResourceLoadQueue::GetPendingCount() const
 	{
-		return m_impl->pending.size() + m_impl->inFlight;
+		return m_impl->pending.size() + m_impl->inFlight + m_impl->steps.size();
 	}
 } // namespace NeneEngine
