@@ -529,13 +529,6 @@ namespace NeneEngine
 		if (isPlaying) ImGui::PopStyleColor(4);
 
 		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
-
-		if (isPlaying)
-		{
-			ImGui::SameLine();
-			const EditorThemeColorsConfig& colors = m_themeService.GetColors();
-			StatusPill(NENE_ICON_PLAY " Playing", colors.accentPlay, colors.background);
-		}
 	}
 
 	void EditorLayer::SetMode(EditorMode mode)
