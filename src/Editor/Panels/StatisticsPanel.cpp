@@ -2,6 +2,7 @@
 
 #include "Editor/Panels/StatisticsPanel.h"
 
+#include "ECS/MovementSettings.h"
 #include "ECS/PhysicsSettings.h"
 #include "ECS/RenderSettings.h"
 #include "ECS/World.h"
@@ -95,6 +96,27 @@ namespace NeneEngine
 			}
 		}
 
+		void DrawMovement(EditorContext& context)
+		{
+			auto& registryContext = context.world.GetRegistry().ctx();
+			auto& settings = registryContext.emplace<ECS::MovementSettings>();
+
+			ImGui::SeparatorText("Movement");
+			ImGui::Checkbox("Use job system##Movement", &settings.useJobSystem);
+			ImGui::SetItemTooltip("Update moving entities in parallel on the job system workers");
+
+			const auto* stats = registryContext.find<ECS::MovementStats>();
+			if (stats == nullptr) return;
+
+			if (ImGui::BeginTable("##MovementStats", 2, ImGuiTableFlags_SizingStretchProp))
+			{
+				DrawStatRow(context, stats->usedJobSystem ? "Update time (parallel)" : "Update time (serial)",
+				            stats->updateMs);
+				DrawCountRow(context, "Moving entities", stats->entityCount);
+				ImGui::EndTable();
+			}
+		}
+
 		void DrawResourceUploads(EditorContext& context)
 		{
 			if (context.renderer == nullptr) return;
@@ -163,6 +185,7 @@ namespace NeneEngine
 
 		DrawRenderPreparation(context);
 		DrawPhysicsSimulation(context);
+		DrawMovement(context);
 		DrawResourceUploads(context);
 	}
 

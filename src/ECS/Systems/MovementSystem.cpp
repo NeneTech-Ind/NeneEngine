@@ -5,8 +5,10 @@
 #include "Core/Profiler.h"
 #include "ECS/Components/MovementComponent.h"
 #include "ECS/Components/TransformComponent.h"
+#include "ECS/MovementSettings.h"
 #include "ECS/World.h"
 
+#include <chrono>
 #include <cmath>
 
 namespace NeneEngine::ECS
@@ -15,6 +17,7 @@ namespace NeneEngine::ECS
 	namespace
 	{
 		constexpr uint32_t kMinJobRange = 256;
+		constexpr float kStatsSmoothing = 0.1f;
 
 		void UpdateEntity(TransformComponent& transform, MovementComponent& movement, float deltaTime)
 		{
@@ -43,7 +46,11 @@ namespace NeneEngine::ECS
 	void MovementSystem::Update(World& world, float deltaTime)
 	{
 		NENE_PROFILE_SCOPE("Movement");
-		auto view = world.GetRegistry().view<TransformComponent, MovementComponent>();
+		const auto startTime = std::chrono::steady_clock::now();
+		auto& registry = world.GetRegistry();
+		const auto* settings = registry.ctx().find<MovementSettings>();
+		const bool useJobs = settings == nullptr || settings->useJobSystem;
+		auto view = registry.view<TransformComponent, MovementComponent>();
 
 		m_entities.clear();
 		for (auto [entity, transform, movement] : view.each())
@@ -56,17 +63,26 @@ namespace NeneEngine::ECS
 				UpdateEntity(*m_entities[index].transform, *m_entities[index].movement, deltaTime);
 		};
 
-		if (count > kMinJobRange)
+		bool usedJobs = false;
+		if (useJobs && count > kMinJobRange)
 		{
 			const JobHandle job = m_jobSystem.ParallelFor("Movement", count, kMinJobRange, function);
 			if (job.IsValid())
 			{
 				m_jobSystem.Wait(job);
-				return;
+				usedJobs = true;
 			}
 		}
+		if (!usedJobs) function(0, count);
 
-		function(0, count);
+		const float elapsedMs =
+		    std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - startTime).count();
+		auto& stats = registry.ctx().emplace<MovementStats>();
+		stats.updateMs = stats.usedJobSystem == useJobs && stats.updateMs > 0.0f
+		                     ? stats.updateMs + (elapsedMs - stats.updateMs) * kStatsSmoothing
+		                     : elapsedMs;
+		stats.entityCount = count;
+		stats.usedJobSystem = useJobs;
 	}
 
 } // namespace NeneEngine::ECS
