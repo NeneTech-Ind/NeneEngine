@@ -1,24 +1,31 @@
-![NeneEngine Banner](assets/readme/banner.png)
+![NeneEngine](assets/readme/banner.png)
 
 <p align="center">
-  <a href="LICENSE.txt"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-6B3FC4"></a>
-  <a href="#getting-started"><img alt="platform: windows" src="https://img.shields.io/badge/platform-windows-6B3FC4"></a>
-  <a href="https://en.cppreference.com/w/cpp/20"><img alt="C++: 20" src="https://img.shields.io/badge/C%2B%2B-20-6B3FC4?logo=cplusplus&logoColor=white"></a>
-  <a href="https://github.com/NeneTech-Ind/NeneEngine/commits/master"><img alt="last commit" src="https://img.shields.io/github/last-commit/NeneTech-Ind/NeneEngine/master?color=6B3FC4&label=last%20commit"></a>
+  <a href="LICENSE.txt"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-6B3FC4?labelColor=1E1A24"></a>
+  <a href="#getting-started"><img alt="platform: windows" src="https://img.shields.io/badge/platform-windows-6B3FC4?labelColor=1E1A24"></a>
+  <a href="https://en.cppreference.com/w/cpp/20"><img alt="C++: 20" src="https://img.shields.io/badge/C%2B%2B-20-6B3FC4?logo=cplusplus&logoColor=F4EDF2&labelColor=1E1A24"></a>
+  <a href="https://github.com/NeneTech-Ind/NeneEngine/commits/master"><img alt="last commit" src="https://img.shields.io/github/last-commit/NeneTech-Ind/NeneEngine/master?color=6B3FC4&labelColor=1E1A24&label=last%20commit"></a>
 </p>
 
 <p align="center"><b>A small C++20 game engine for Windows with a built-in editor</b></p>
 
+<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_happy_128.png">
+
 NeneEngine renders with DirectX 12 and keeps its world in an Entity-Component-System, with Jolt for physics and an editor. Engine settings, scenes and asset descriptions are plain JSON files, so you can change them without recompiling.
 
 Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine), [EnTT](https://github.com/skypjack/entt), [Jolt Physics](https://github.com/jrouwe/JoltPhysics), [Dear ImGui](https://github.com/ocornut/imgui), [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo), [Assimp](https://github.com/assimp/assimp), [EASTL](https://github.com/electronicarts/EASTL), [enkiTS](https://github.com/dougbinks/enkiTS), [spdlog](https://github.com/gabime/spdlog) and [Tracy](https://github.com/wolfpld/tracy).
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="assets/readme/screenshots/main-day.png">
+  <img alt="NeneEngine editor with the demo scene" src="assets/readme/screenshots/main-evening.png">
+</picture>
 
 ## Features
 
 ### Editor
 
 - Dockable Hierarchy, Inspector, Viewport, Asset Browser and Statistics panels
-- Frame time graph and percentiles in the Statistics panel, with switches for the job system in rendering and physics
+- Frame time graph and percentiles in the Statistics panel, with job system switches for render preparation, movement and physics
 - Edit and Play modes: Play snapshots the scene, Stop restores it
 - Undo and redo for component changes
 - Transform gizmo for moving, rotating and scaling in local or world space
@@ -42,6 +49,8 @@ Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 - CPU profiling with Tracy in Debug and Release builds
 
 ## Getting started
+
+<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_search_128.png">
 
 ### Requirements
 
@@ -115,5 +124,7 @@ Read the [Git conventions](docs/conventions/git-convention.md) and [naming conve
 - [AmuroVP](https://github.com/AmuroVP) (Ivan Korotikhin)
 
 ## License
+
+<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_sleep_128.png">
 
 NeneEngine is released under the [MIT License](LICENSE.txt). Third-party libraries, fonts, icons and models keep their own licenses, listed in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
