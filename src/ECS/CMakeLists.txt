@@ -2,6 +2,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/EventBus.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/DebugDrawSettings.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Entity.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/MovementSettings.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/PhysicsSettings.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/RenderSettings.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Events/CollisionEvent.h"

@@ -4,6 +4,7 @@
 
 #include "App/AppInputBindings.h"
 #include "Core/NeneLogger.h"
+#include "Core/Profiler.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Systems/CameraControllerSystem.h"
 #include "ECS/Systems/DebugDrawControlSystem.h"
@@ -257,7 +258,10 @@ namespace NeneEngine
 			windowContext.renderSystem->Render(*m_world);
 			windowContext.renderer->EndFrame();
 			if (windowContext.imguiBackend) windowContext.imguiBackend->Render();
-			windowContext.renderer->Present(m_vsync && index == lastRenderedIndex ? 1u : 0u);
+			{
+				NENE_PROFILE_SCOPE("Present");
+				windowContext.renderer->Present(m_vsync && index == lastRenderedIndex ? 1u : 0u);
+			}
 		}
 	}
 
