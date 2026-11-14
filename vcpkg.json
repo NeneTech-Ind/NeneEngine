@@ -12,7 +12,9 @@
       "name": "tracy",
       "features": [ "on-demand" ]
     },
-    "joltphysics"
+    "joltphysics",
+    "lua",
+    "sol2"
   ],
   "overrides": [
     {
