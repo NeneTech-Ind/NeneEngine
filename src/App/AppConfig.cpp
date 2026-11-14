@@ -217,7 +217,7 @@ namespace NeneEngine
 				return config;
 			}
 
-			config.actions.clear();
+			size_t overriddenCount = 0;
 			for (const auto& [actionName, actionValue] : actionsIt->items())
 			{
 				eastl::vector<KeyCode> bindings;
@@ -265,14 +265,14 @@ namespace NeneEngine
 					              actionName);
 				}
 
-				if (!bindings.empty()) config.actions[actionName] = std::move(bindings);
+				if (bindings.empty()) continue;
+
+				config.actions[actionName] = std::move(bindings);
+				++overriddenCount;
 			}
 
-			if (config.actions.empty())
-			{
-				NENE_LOG_WARN("App config: no valid input bindings found, using default input bindings");
-				return DefaultInputConfig();
-			}
+			if (overriddenCount == 0 && !actionsIt->empty())
+				NENE_LOG_WARN("App config: no valid input bindings found in 'input.actions', keeping default bindings");
 
 			return config;
 		}
