@@ -1,6 +1,7 @@
 // World.cpp
 
 #include "ECS/World.h"
+#include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
 
@@ -27,7 +28,43 @@ namespace NeneEngine::ECS
 
 	void World::DestroyEntity(Entity entity)
 	{
-		if (m_registry.valid(entity)) m_registry.destroy(entity);
+		if (!m_registry.valid(entity)) return;
+
+		DetachFromParent(entity);
+
+		eastl::vector<Entity> subtree{entity};
+		for (size_t index = 0; index < subtree.size(); ++index)
+		{
+			const Entity current = subtree[index];
+			const auto* hierarchy = m_registry.try_get<HierarchyComponent>(current);
+			if (hierarchy == nullptr) continue;
+
+			for (const Entity child : hierarchy->children)
+			{
+				if (!m_registry.valid(child)) continue;
+
+				const auto* childHierarchy = m_registry.try_get<HierarchyComponent>(child);
+				if (childHierarchy != nullptr && childHierarchy->parent == current) subtree.push_back(child);
+			}
+		}
+
+		for (auto it = subtree.rbegin(); it != subtree.rend(); ++it)
+		{
+			if (m_registry.valid(*it)) m_registry.destroy(*it);
+		}
+	}
+
+	void World::DetachFromParent(Entity entity)
+	{
+		auto* hierarchy = m_registry.try_get<HierarchyComponent>(entity);
+		if (hierarchy == nullptr) return;
+
+		const Entity parent = hierarchy->parent;
+		hierarchy->parent = NullEntity;
+		if (!m_registry.valid(parent)) return;
+
+		if (auto* parentHierarchy = m_registry.try_get<HierarchyComponent>(parent))
+			eastl::erase(parentHierarchy->children, entity);
 	}
 
 	void World::AddSystem(eastl::unique_ptr<ISystem> system)
