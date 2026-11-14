@@ -13,7 +13,7 @@
 
 NeneEngine renders with DirectX 12 and keeps its world in an Entity-Component-System, with Jolt for physics and an editor. Engine settings, scenes and asset descriptions are plain JSON files, so you can change them without recompiling.
 
-Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine), [EnTT](https://github.com/skypjack/entt), [Jolt Physics](https://github.com/jrouwe/JoltPhysics), [Dear ImGui](https://github.com/ocornut/imgui), [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo), [Assimp](https://github.com/assimp/assimp), [EASTL](https://github.com/electronicarts/EASTL), [enkiTS](https://github.com/dougbinks/enkiTS), [spdlog](https://github.com/gabime/spdlog) and [Tracy](https://github.com/wolfpld/tracy).
+Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine), [EnTT](https://github.com/skypjack/entt), [Jolt Physics](https://github.com/jrouwe/JoltPhysics), [Dear ImGui](https://github.com/ocornut/imgui), [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo), [Assimp](https://github.com/assimp/assimp), [EASTL](https://github.com/electronicarts/EASTL), [enkiTS](https://github.com/dougbinks/enkiTS), [spdlog](https://github.com/gabime/spdlog), [Tracy](https://github.com/wolfpld/tracy), [Lua](https://www.lua.org/) and [sol2](https://github.com/ThePhD/sol2).
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="assets/readme/screenshots/main-day.png">

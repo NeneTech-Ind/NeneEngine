@@ -173,6 +173,24 @@ INCLUDED COMPONENTS
    external/imguizmo/LICENSE
 
 
+19. Lua
+   Purpose:
+   Embedded scripting runtime
+   License:
+   MIT
+   Local license file:
+   out/build/x64-debug/vcpkg_installed/x64-windows/share/lua/copyright
+
+
+20. sol2
+   Purpose:
+   C++ bindings for Lua
+   License:
+   MIT
+   Local license file:
+   out/build/x64-debug/vcpkg_installed/x64-windows/share/sol2/copyright
+
+
 NOTES
 =====
 
