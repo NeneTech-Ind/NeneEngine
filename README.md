@@ -4,7 +4,7 @@
   <a href="LICENSE.txt"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-6B3FC4?labelColor=1E1A24"></a>
   <a href="#getting-started"><img alt="platform: windows" src="https://img.shields.io/badge/platform-windows-6B3FC4?labelColor=1E1A24"></a>
   <a href="https://en.cppreference.com/w/cpp/20"><img alt="C++: 20" src="https://img.shields.io/badge/C%2B%2B-20-6B3FC4?logo=cplusplus&logoColor=F4EDF2&labelColor=1E1A24"></a>
-  <a href="https://github.com/NeneTech-Ind/NeneEngine/commits/master"><img alt="last commit" src="https://img.shields.io/github/last-commit/NeneTech-Ind/NeneEngine/master?color=6B3FC4&labelColor=1E1A24&label=last%20commit"></a>
+  <a href="https://github.com/NeneTech-Ind/NeneEngine/commits/main"><img alt="last commit" src="https://img.shields.io/github/last-commit/NeneTech-Ind/NeneEngine/main?color=6B3FC4&labelColor=1E1A24&label=last%20commit"></a>
 </p>
 
 <p align="center"><b>A small C++20 game engine for Windows with a built-in editor</b></p>
