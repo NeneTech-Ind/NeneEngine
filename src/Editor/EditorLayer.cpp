@@ -541,9 +541,11 @@ namespace NeneEngine
 		if (mode == EditorMode::Play)
 		{
 			m_sceneSnapshot.Capture(world);
+			world.NotifyPlayStarted();
 		}
 		else
 		{
+			world.NotifyPlayStopping();
 			m_sceneSnapshot.Restore(world);
 			if (!world.GetRegistry().valid(m_context->selectedEntity)) m_context->selectedEntity = ECS::NullEntity;
 		}
