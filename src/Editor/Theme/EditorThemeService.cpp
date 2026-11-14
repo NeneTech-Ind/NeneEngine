@@ -83,6 +83,8 @@ namespace NeneEngine
 		iconConfig.GlyphOffset.y = fonts.size * kIconGlyphOffsetRatio;
 		if (const std::filesystem::path iconFontPath = FindFontFile(fonts.iconFontPath); !iconFontPath.empty())
 			AddFont(iconFontPath, fonts.size, iconConfig);
+		if (const std::filesystem::path logoFontPath = FindFontFile(fonts.logoFontPath); !logoFontPath.empty())
+			AddFont(logoFontPath, fonts.size, iconConfig);
 		ImGui::GetIO().FontDefault = m_uiFont;
 
 		if (const std::filesystem::path monospaceFontPath = FindFontFile(fonts.monospaceFontPath);

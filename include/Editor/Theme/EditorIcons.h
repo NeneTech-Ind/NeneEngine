@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NENE_ICON_LOGO "\xee\x8b\x93"
+#define NENE_ICON_LOGO "\xef\x84\x80"
 #define NENE_ICON_PLAY "\xee\x85\x80"
 #define NENE_ICON_STOP "\xee\x85\xab"
 #define NENE_ICON_UNDO "\xee\x8a\xa1"
