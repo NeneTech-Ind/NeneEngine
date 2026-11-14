@@ -58,6 +58,8 @@ find_package(enkiTS         CONFIG REQUIRED)
 find_package(glm            CONFIG REQUIRED)
 find_package(Stb            MODULE REQUIRED)
 find_package(Jolt           CONFIG REQUIRED)
+find_package(unofficial-lua CONFIG REQUIRED)
+find_package(sol2           CONFIG REQUIRED)
 
 target_compile_definitions(NeneEngine PRIVATE NENEENGINE_VERSION="${PROJECT_VERSION}")
 
@@ -88,6 +90,8 @@ target_link_libraries(NeneEngine
         enkiTS::enkiTS
         glm::glm
         Jolt::Jolt
+        unofficial::lua::lua
+        sol2::sol2
         Diligent-Win32Platform
         Diligent-GraphicsEngineD3D12-shared
         Diligent-TextureLoader
@@ -95,8 +99,22 @@ target_link_libraries(NeneEngine
 		comdlg32
 )
 
+get_target_property(NENEENGINE_LUA_LIBRARY_TYPE unofficial::lua::lua TYPE)
+if(WIN32 AND NENEENGINE_LUA_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+    add_custom_command(TARGET NeneEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:unofficial::lua::lua>"
+            "$<TARGET_FILE_DIR:NeneEngine>"
+        VERBATIM
+    )
+    install(FILES "$<TARGET_FILE:unofficial::lua::lua>" DESTINATION bin COMPONENT Runtime)
+endif()
+
 file(GLOB NENEENGINE_VCPKG_DEBUG_DLLS   "${NENEENGINE_VCPKG_ROOT_DIR}/debug/bin/*.dll")
 file(GLOB NENEENGINE_VCPKG_RELEASE_DLLS "${NENEENGINE_VCPKG_ROOT_DIR}/bin/*.dll")
+# Lua is deployed from its imported target, which selects the active build configuration.
+list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/lua[.]dll$")
+list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/lua[.]dll$")
 
 set(NENEENGINE_VCPKG_RUNTIME_DLLS "${NENEENGINE_VCPKG_RELEASE_DLLS}")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
