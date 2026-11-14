@@ -40,4 +40,14 @@ namespace NeneEngine::ECS
 		for (auto& system : m_systems) system->Update(*this, deltaTime);
 	}
 
+	void World::NotifyPlayStarted()
+	{
+		for (auto& system : m_systems) system->OnPlayStarted(*this);
+	}
+
+	void World::NotifyPlayStopping()
+	{
+		for (auto& system : m_systems) system->OnPlayStopping(*this);
+	}
+
 } // namespace NeneEngine::ECS
