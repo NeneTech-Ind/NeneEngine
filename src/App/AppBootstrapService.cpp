@@ -66,7 +66,7 @@ namespace NeneEngine
 	                                     uint32_t width, uint32_t height)
 	{
 		if (!NeneLogger::GetInstance().Initialize(logFilePath, spdlog::level::info, true)) return false;
-		NENE_LOG_INFO("===== NeneEngine v0.4 starting =====");
+		NENE_LOG_INFO("===== NeneEngine v{} starting =====", NENEENGINE_VERSION);
 		jobSystem.Initialize();
 		RegisterGraphicsResourceLoaders(ResourceManager::GetInstance());
 		RunStartupLibraryChecks(jobSystem);
