@@ -5,6 +5,10 @@ add_executable(NeneEngine WIN32
     "${CMAKE_CURRENT_SOURCE_DIR}/NeneEngine.rc"
 )
 
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/NeneEngine.rc" PROPERTIES
+    OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/assets/icons/app.ico"
+)
+
 target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../include/Win32ResourceIds.h"
 )
