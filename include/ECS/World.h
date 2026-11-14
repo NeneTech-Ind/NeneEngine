@@ -54,6 +54,10 @@ namespace NeneEngine::ECS
 		// ===== Update =====
 		void Update(float deltaTime);
 
+		// ===== Play =====
+		void NotifyPlayStarted();
+		void NotifyPlayStopping();
+
 		EventBus& GetEventBus() { return m_eventBus; }
 		const EventBus& GetEventBus() const { return m_eventBus; }
 
