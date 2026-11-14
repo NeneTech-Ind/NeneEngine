@@ -65,6 +65,8 @@ namespace NeneEngine::ECS
 		const entt::registry& GetRegistry() const { return m_registry; }
 
 	  private:
+		void DetachFromParent(Entity entity);
+
 		EventBus m_eventBus;
 		entt::registry m_registry;
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
