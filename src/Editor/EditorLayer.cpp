@@ -272,7 +272,9 @@ namespace NeneEngine
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
 		if (!ImGui::BeginMainMenuBar()) return;
 
-		ImGui::PushStyleColor(ImGuiCol_Text, colors.accent);
+		const ImVec4& logoColor =
+		    m_context->mode == EditorMode::Play ? colors.accentPlay : ImGui::GetStyleColorVec4(ImGuiCol_Button);
+		ImGui::PushStyleColor(ImGuiCol_Text, logoColor);
 		ImGui::TextUnformatted(NENE_ICON_LOGO);
 		ImGui::PopStyleColor();
 		ImGui::TextUnformatted(kProductName);
