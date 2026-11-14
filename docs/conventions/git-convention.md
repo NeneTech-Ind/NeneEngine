@@ -1,36 +1,57 @@
 # Git Conventions
 
-NeneEngine is developed by a small team that works on trust. There are no pull requests or merge requests: each developer merges their own branch into `master` and is responsible for the result. Nothing checks these rules automatically, so they depend on the author.
+NeneEngine is developed by a small team that works on trust. There are no pull requests or merge requests: each developer merges their own branch into the current release branch and is responsible for the result. Only the release maintainer merges a release into `main`. Apart from the protection of `main` on GitHub, nothing checks these rules automatically, so they depend on the author.
 
 ## Summary
 
-1. No pull requests or merge requests. The author of a branch merges it into `master`.
-2. A branch lands in `master` through a merge commit, `git merge --no-ff`, with Git's default subject and a short body.
-3. Branch names, commit messages and tags are written in English. Branch names use lower case `kebab-case`.
-4. Branches, commits and tags never mention labs, assignments or their tasks. The history reads like the history of a regular engine, not a study project.
-5. A commit is a small logical unit: one local change or one indivisible new feature.
-6. Whoever merges resolves the conflicts, and involves other developers only in critical cases.
-7. `master` is updated with `--ff-only`. Keep your own branch current with rebase, a shared one with merge.
-8. Releases are marked with annotated `vMAJOR.MINOR.PATCH` tags on `master`.
+1. `main` holds released versions only. Every commit on it is a release merge or a hotfix merge, and each of them is tagged `vMAJOR.MINOR.PATCH`.
+2. Each release is assembled in its own `release/MAJOR.MINOR.PATCH` branch, created from `main` and deleted after it is merged back.
+3. Work happens in `<type>/<topic>` branches created from the current release branch. The author merges their branch into that release branch with `git merge --no-ff`.
+4. No pull requests or merge requests. Whoever merges a branch keeps Git's default merge subject and adds a short body.
+5. A release ends with one version bump commit in `CMakeLists.txt`, a `git merge --no-ff` into `main` and an annotated tag on that merge.
+6. Branch names, commit messages and tags are written in English. Branch names use lower case `kebab-case`.
+7. Branches, commits and tags never mention labs, assignments or their tasks. The history reads like the history of a regular engine, not a study project.
+8. A commit is a small logical unit: one local change or one indivisible new feature.
+9. Whoever merges resolves the conflicts, and involves other developers only in critical cases.
+10. Local `main` and release branches are updated with `--ff-only`. Keep your own branch current with rebase, a shared one with merge.
 
 ## Branches
 
 ### Branch Model
 
-| Branch           | Lives        | Purpose                                                                                                    |
-| ---------------- | ------------ | ---------------------------------------------------------------------------------------------------------- |
-| `master`         | Permanently  | The latest working state. Every commit on it builds in Debug and Release and runs.                         |
-| `<type>/<topic>` | Until merged | One goal: a feature, a fix, a refactoring. Created from `master`, merged back into `master`, then deleted. |
+| Branch                    | Lives          | Created from | Merged into            | Purpose                                                                     |
+| ------------------------- | -------------- | ------------ | ---------------------- | --------------------------------------------------------------------------- |
+| `main`                    | Permanently    | -            | -                      | Released versions. Every commit on it builds in Debug and Release and runs. |
+| `release/<version>`       | Until released | `main`       | `main`                 | Collects the work of one release. Every merge into it builds and runs.      |
+| `<type>/<topic>`          | Until merged   | `release/*`  | The same `release/*`   | One goal: a feature, a fix, a refactoring.                                  |
+| `fix/<topic>` from `main` | Until merged   | `main`       | `main`, then `release/*` | A hotfix for a released version, see [Hotfixes](#hotfixes).               |
 
-- Do not commit to `master` directly. The only exception is a typo fix in documentation.
+```text
+main            ●──────────────────────────────────●  v1.1.0
+                 \                                /
+release/1.1.0     ●───────●───────────●──────●───●  chore(release): bump version to 1.1.0
+                   \     /   \       /      /
+feat/lua-runtime    ●──●      \     /      /
+feat/prefab-api                ●──●───●   /
+fix/...                                ●─●
+```
+
+- Nobody commits to `main` directly, and only the release maintainer merges into it.
+- Do not commit to a release branch directly. The exceptions are the version bump commit and a typo fix in documentation.
+- There is one open release branch at a time. Start new work from it, not from `main`.
 - Keep one goal per branch. Fix an unrelated bug found along the way in its own branch or its own commit.
 - Branch from another topic branch only when your work depends on its unmerged commits.
 - Prefer branches that live days, not weeks. The longer a branch lives, the harder its conflicts become.
+
+### Release Maintainer
+
+One developer is the release maintainer for each release. They create the release branch, announce it to the team, make the version bump commit, merge the release into `main`, tag it and delete the release branch. Everyone else only merges their own topic branches into the release branch.
 
 ### Branch Names
 
 ```text
 <type>/<topic>
+release/<MAJOR>.<MINOR>.<PATCH>
 ```
 
 ```text
@@ -39,11 +60,13 @@ feat/editor-ui-consistency
 fix/inspector-read-only-in-play
 refactor/inspector-material-section
 build/tracy-0.14
+release/1.1.0
 ```
 
-- `<type>` is a commit type from [Type](#type), chosen by the main purpose of the branch. 
+- `<type>` is a commit type from [Type](#type), chosen by the main purpose of the branch. `release` is reserved for release branches.
 - `<topic>` names what the branch delivers in two to five English words: `enkits-job-system`, not `my-changes`.
-- Use only `a-z`, `0-9`, `-` and one `/` after the type. No upper case, `_`, spaces or nested folders.
+- A release branch is named after the version it will produce, without the `v`: `release/1.1.0`.
+- Use only `a-z`, `0-9`, `-` and one `/` after the type, plus `.` in release versions. No upper case, `_`, spaces or nested folders.
 - Do not add the author's name, a date or suffixes such as `-v2`, `-final` or `-new`.
 
 | Avoid                      | Prefer                        |
@@ -53,6 +76,8 @@ build/tracy-0.14
 | `danii/fixes`              | `fix/mouse-delta-after-focus` |
 | `feat/ui-v2-final`         | `feat/editor-ui-consistency`  |
 | `feat/lab-5`, `lab5-task3` | `feat/scene-hierarchy-panel`  |
+| `release-candidate`, `rc`  | `release/1.1.0`               |
+| `release/lab-2`            | `release/1.1.0`               |
 
 ## Commits
 
@@ -90,7 +115,7 @@ Use exactly one type. If a commit seems to need two, split it.
 | `style`    | Formatting only                                                                    | `style(app): sort includes in AppWindowContextFactory`       |
 | `docs`     | Documentation                                                                      | `docs(architecture): describe module dependencies`           |
 | `build`    | CMake, dependencies, submodules, developer tooling and CI, including fixes to them | `build(cmake): fix Python3 interpreter lookup on Windows`    |
-| `chore`    | Small maintenance that fits no other type                                          | `chore(app): update startup log version to v0.4`             |
+| `chore`    | Small maintenance that fits no other type, including the version bump             | `chore(release): bump version to 1.1.0`                      |
 
 ### Scope
 
@@ -110,6 +135,7 @@ Name the area that changed, in lower case. Prefer these scopes:
 | `platform`                                                   | `Platform`: `IWindow`, Win32                                    |
 | `scene`                                                      | `Scene`: loading, serialization, demo scene                     |
 | `assets`                                                     | Files under `assets/`                                           |
+| `release`                                                    | With `chore`: the version bump that closes a release            |
 | `cmake`, `deps`, `submodules`, `tooling`, `ci`               | With `build`                                                    |
 | `architecture`, `contributing`, `readme`, `tasks`, `reports` | With `docs`                                                     |
 
@@ -170,6 +196,9 @@ Describe what changed in the engine instead:
 | `feat(core): add job system for lab 1`                       | `feat(core): add enkiTS job system`            |
 | `fix(editor): fix task 3 from lab 5`                         | `fix(editor): keep gizmo selection after undo` |
 | `build(cmake): enable Tracy in Release for lab requirements` | `build(cmake): enable Tracy in Release builds` |
+| `release/lab-2`, `v1.1.0-lab2`                               | `release/1.1.0`, `v1.1.0`                      |
+
+A release may match a lab in practice, but only its version number appears in Git.
 
 The only exception is commits that change nothing but the files in `docs/tasks/` and `docs/reports/`, which hold the assignments and reports themselves. They use the `tasks` and `reports` scopes and should still be worded neutrally: `docs(tasks): add second semester assignments`.
 
@@ -177,61 +206,66 @@ Existing history is not rewritten.
 
 ## Daily Workflow
 
-### Starting a Branch
+### One-Time Setup
 
 ```shell
-git switch master
+git config --global pull.ff only
+git config --global rerere.enabled true
+```
+
+`pull.ff only` makes `git pull` refuse to create merge commits, and `rerere` makes Git remember how you resolved a conflict and reapply it on the next rebase.
+
+### Starting a Branch
+
+Branch from the current release branch. The release maintainer announces its name, and `git branch -r --list "origin/release/*"` shows it.
+
+```shell
+git fetch origin
+git switch release/1.1.0
 git pull --ff-only
-git switch -c feat/job-system
-git push -u origin feat/job-system
+git switch -c feat/lua-runtime
+git push -u origin feat/lua-runtime
 ```
 
 Push the branch right away and then at least at the end of each working day. A branch that exists only on one computer is lost with it, and without pull requests the remote is the only place where the team sees who works on what.
 
-This applies to every branch meant to reach `master`. A short experiment that nobody will merge may stay local.
+This applies to every branch meant to reach a release. A short experiment that nobody will merge may stay local.
 
-### Updating `master`
+### Updating `main` and the Release Branch
 
-Local `master` is updated only by fast-forward:
+Local `main` and release branches are updated only by fast-forward:
 
 ```shell
-git switch master
+git switch release/1.1.0
 git pull --ff-only
 ```
 
-Run once to make this the default:
-
-```shell
-git config --global pull.ff only
-```
-
-If `--ff-only` fails, local `master` has commits of its own. Move them to a branch and reset `master` to the remote:
+If `--ff-only` fails, the local branch has commits of its own. Move them to a branch and reset the local branch to the remote:
 
 ```shell
 git switch -c fix/whatever-it-was
-git switch master
-git reset --hard origin/master
+git switch release/1.1.0
+git reset --hard origin/release/1.1.0
 ```
 
-### Syncing a Branch with `master`
+### Syncing a Branch with the Release Branch
 
-Sync when you need changes from `master` and right before merging, not after every change to `master`.
+Sync when you need changes from the release branch and right before merging, not after every change to it.
 
-| Branch                                 | Method                                                                             |
-| -------------------------------------- | ---------------------------------------------------------------------------------- |
-| Own: only you commit to it             | `git rebase origin/master`, then `git push --force-with-lease --force-if-includes` |
-| Shared: someone else commits to it too | `git merge origin/master`, then `git push`                                         |
+| Branch                                 | Method                                                                                    |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Own: only you commit to it             | `git rebase origin/release/1.1.0`, then `git push --force-with-lease --force-if-includes` |
+| Shared: someone else commits to it too | `git merge origin/release/1.1.0`, then `git push`                                         |
 
 ```shell
 git fetch origin
-git rebase origin/master
+git rebase origin/release/1.1.0
 git push --force-with-lease --force-if-includes
 ```
 
-- Never force push to `master`.
+- Never force push to `main` or a release branch.
 - Do not force push to a shared branch without the agreement of everyone working on it.
 - Use `--force-with-lease --force-if-includes`, never plain `--force`. `--force-with-lease` alone stops protecting you once a Git client such as Fork or an IDE has fetched in the background; `--force-if-includes` (Git 2.30+) closes that gap.
-- Enable `git config --global rerere.enabled true` so Git remembers how you resolved a conflict and reapplies it on the next rebase.
 
 #### When an Own Branch Becomes Shared
 
@@ -243,29 +277,29 @@ After a rebase and force push from one computer, `git pull` on the other fails b
 
 ```shell
 git fetch origin
-git reset --hard origin/feat/job-system
+git reset --hard origin/feat/lua-runtime
 ```
 
 Commit and push everything on the second computer before rebasing on the first, or that work is lost.
 
 #### Branch on Top of Another Branch
 
-If `feat/b` was created from `feat/a` and `feat/a` was rebased or merged into `master`, move only the commits of `feat/b`:
+If `feat/b` was created from `feat/a` and `feat/a` was rebased or merged into the release branch, move only the commits of `feat/b`:
 
 ```shell
 git fetch origin
-git rebase --onto origin/master <old-base> feat/b
+git rebase --onto origin/release/1.1.0 <old-base> feat/b
 ```
 
 `<old-base>` is the commit of `feat/a` that `feat/b` started from. Find it with `git log --oneline --graph feat/b`.
 
-## Merging into `master`
+## Merging into the Release Branch
 
 The author merges the branch when the work is ready.
 
 ### Before Merging
 
-- The branch is synced with the current `master`.
+- The branch is synced with the current release branch.
 - The project builds in Debug and Release and starts without new errors in the log.
 - Commits follow this convention, and `wip` commits are squashed.
 - For a risky change (architecture, build system, shared interfaces), consider asking a teammate to look at the branch. It is not required, but welcome.
@@ -274,39 +308,39 @@ The author merges the branch when the work is ready.
 
 ```shell
 git fetch origin
-git switch master
+git switch release/1.1.0
 git pull --ff-only
-git merge --no-ff feat/job-system
-git push origin master
+git merge --no-ff feat/lua-runtime
+git push origin release/1.1.0
 ```
 
-- `--no-ff` is required. After a rebase the branch is ahead of `master`, and a plain `git merge` would fast-forward `master` without a merge commit.
+- `--no-ff` is required. After a rebase the branch is ahead of the release branch, and a plain `git merge` would fast-forward it without a merge commit.
 - Write the merge commit message as described in [Merge Commit Message](#merge-commit-message).
 
-If `git push` is rejected, someone has updated `master` in the meantime. Do not run `git pull` on top of your merge commit. Redo the merge on the fresh `master`:
+If `git push` is rejected, someone has updated the release branch in the meantime. Do not run `git pull` on top of your merge commit. Redo the merge on the fresh release branch:
 
 ```shell
 git fetch origin
-git reset --hard origin/master
-git switch feat/job-system
-git rebase origin/master
-git switch master
-git merge --no-ff feat/job-system
-git push origin master
+git reset --hard origin/release/1.1.0
+git switch feat/lua-runtime
+git rebase origin/release/1.1.0
+git switch release/1.1.0
+git merge --no-ff feat/lua-runtime
+git push origin release/1.1.0
 ```
 
-For a shared branch, use `git merge origin/master` instead of `git rebase origin/master`. The reset drops your merge commit, so write its message again.
+For a shared branch, use `git merge origin/release/1.1.0` instead of `git rebase origin/release/1.1.0`. The reset drops your merge commit, so write its message again.
 
 ### Merge Commit Message
 
 ```text
-Merge branch '<branch>'
+<subject Git generates>
 
 <body>
 ```
 
 ```text
-Merge branch 'feat/enkits-job-system'
+Merge branch 'feat/enkits-job-system' into release/1.1.0
 
 Add a job system on top of enkiTS and move asset loading and physics
 stepping to worker threads
@@ -314,21 +348,21 @@ stepping to worker threads
 
 Subject:
 
-- Keep the subject Git generates: `Merge branch 'feat/job-system'`. Do not translate it, reword it or add a type and scope. The branch name already tells the type and topic, which is why branch names matter.
-- `master` never gets `Merge branch 'master' of https://github.com/...` or `Merge remote-tracking branch ...`. Such commits come from a pull without `--ff-only` and are removed before pushing, see [Updating `master`](#updating-master).
+- Keep the subject Git generates. A topic branch merged into a release branch gets `Merge branch 'feat/lua-runtime' into release/1.1.0`, and a release merged into `main` gets `Merge branch 'release/1.1.0'`. Do not translate it, reword it or add a type and scope. The branch name already tells the type and topic, which is why branch names matter.
+- `main` and release branches never get `Merge branch 'release/1.1.0' of https://github.com/...` or `Merge remote-tracking branch ...`. Such commits come from a pull without `--ff-only` and are removed before pushing, see [Updating `main` and the Release Branch](#updating-main-and-the-release-branch).
 
 Body:
 
 - Required when the branch has more than one commit. Optional for a branch with a single commit, whose subject already says everything.
 - One to three lines in English that describe what the branch delivers as a whole, the way a release note would. Follow the [Subject](#subject) rules: imperative mood, the result rather than the activity, lines within 72 characters.
 - Do not list the branch's commits. `git log <merge>^1..<merge>^2` shows them.
-- If you resolved a non-obvious conflict, add one line on how: `Keep the new material inspector layout from master`.
+- If you resolved a non-obvious conflict, add one line on how: `Keep the new material inspector layout from the release branch`.
 - No study context, see [No Study Context](#no-study-context).
 
-`git merge --no-ff feat/job-system` opens an editor with the subject already filled in: leave it and add the body after an empty line. Without an editor:
+`git merge --no-ff feat/lua-runtime` opens an editor with the subject already filled in: leave it and add the body after an empty line. Without an editor:
 
 ```shell
-git merge --no-ff feat/job-system -m "Merge branch 'feat/job-system'" -m "Add a job system on top of enkiTS"
+git merge --no-ff feat/lua-runtime -m "Merge branch 'feat/lua-runtime' into release/1.1.0" -m "Embed Lua through sol2 and run behaviour scripts as a world system"
 ```
 
 In Fork, choose **Create a merge commit** in the merge dialog and edit the message there.
@@ -336,18 +370,93 @@ In Fork, choose **Create a merge commit** in the merge dialog and edit the messa
 ### After Merging
 
 ```shell
-git branch -d feat/job-system
-git push origin --delete feat/job-system
+git branch -d feat/lua-runtime
+git push origin --delete feat/lua-runtime
 git fetch --prune
 ```
 
-`git branch -d` refuses to delete an unmerged branch, which is a useful check. Do not reuse a merged branch: new work starts in a new branch from `master`.
+`git branch -d` refuses to delete an unmerged branch, which is a useful check. Do not reuse a merged branch: new work starts in a new branch from the release branch.
+
+## Releases
+
+The release maintainer runs every step in this section.
+
+### Starting a Release
+
+Right after the previous release is tagged, create the next release branch from `main` and tell the team its name:
+
+```shell
+git fetch origin
+git switch main
+git pull --ff-only
+git switch -c release/1.2.0
+git push -u origin release/1.2.0
+```
+
+Choose the version by the rules in [Tags](#tags). The branch name is a plan: if the scope changes, finish the release under the planned version anyway.
+
+### Finishing a Release
+
+1. Every topic branch planned for the release is merged, and the release branch builds in Debug and Release and passes `--smoke-test`.
+2. Bump the version in the `project()` call of the top-level `CMakeLists.txt`. It is the only place that holds the version: the startup log line and the About window read it from `NENEENGINE_VERSION`.
+
+   ```cmake
+   project(
+       NeneEngine
+       VERSION 1.1.0
+   ```
+
+3. Commit the bump on the release branch, then merge the release into `main`, tag the merge and push both:
+
+   ```shell
+   git switch release/1.1.0
+   git pull --ff-only
+   git commit -am "chore(release): bump version to 1.1.0"
+   git push origin release/1.1.0
+
+   git switch main
+   git pull --ff-only
+   git merge --no-ff release/1.1.0
+   git tag -a v1.1.0 -m "NeneEngine v1.1.0"
+   git push origin main v1.1.0
+   ```
+
+   The body of the release merge is a short release note: one to three lines on what the release delivers as a whole.
+
+4. Delete the release branch and start the next one:
+
+   ```shell
+   git branch -d release/1.1.0
+   git push origin --delete release/1.1.0
+   git fetch --prune
+   ```
+
+`main` only ever receives merges, so `git merge --no-ff release/1.1.0` cannot conflict unless a hotfix landed on `main` and was not merged into the release branch.
+
+### Hotfixes
+
+A fix that cannot wait for the next release goes straight to `main`:
+
+```shell
+git switch main
+git pull --ff-only
+git switch -c fix/crash-on-empty-scene
+```
+
+The fix branch ends with its own bump commit that raises `PATCH`: `chore(release): bump version to 1.1.1`. The release maintainer merges it into `main` with `--no-ff`, tags the merge `v1.1.1`, pushes both and then merges `main` into the open release branch, so the fix is not lost:
+
+```shell
+git switch release/1.2.0
+git pull --ff-only
+git merge --no-ff main
+git push origin release/1.2.0
+```
 
 ## Conflicts
 
 Whoever merges or syncs a branch resolves its conflicts at their own discretion.
 
-1. Find out why the other side changed the code: `git log -p origin/master -- <file>`.
+1. Find out why the other side changed the code: `git log -p origin/release/1.1.0 -- <file>`.
 2. Keep both intents where possible. Take one side for a whole file only when the other is clearly obsolete.
 3. Build and run the project after resolving. Code that compiles can still be merged wrong.
 4. When rebasing, resolve each commit so that it builds. If it goes wrong, `git rebase --abort` or `git merge --abort` returns to the previous state.
@@ -364,24 +473,27 @@ To check in advance whether a branch will conflict:
 
 ```shell
 git fetch origin
-git merge-tree --write-tree origin/master HEAD
+git merge-tree --write-tree origin/release/1.1.0 HEAD
 ```
 
 ## Tags
 
-A tag marks a version of the engine on `master`.
+A tag marks a released version of the engine on `main`.
 
-- Use only annotated tags named `vMAJOR.MINOR.PATCH`: `v0.5.0`.
-- Put a tag on a merge commit in `master` that builds and runs.
-- Raise `MINOR` for notable new features and `PATCH` for a release with fixes only. `MAJOR` stays `0` until the engine is stable.
-- The version in code, the startup line in `AppBootstrapService`, matches the latest tag.
+- Use only annotated tags named `vMAJOR.MINOR.PATCH`: `v1.1.0`.
+- Put a tag only on a release or hotfix merge commit in `main`.
+- Raise `MINOR` for a release with new features and `PATCH` for a hotfix. Raise `MAJOR` only when the team agrees on an incompatible change, such as a new scene or asset format.
+- The version in `CMakeLists.txt` on `main` matches the latest tag.
 - Never move or delete a tag after it is pushed.
+- `v1.0.0` marks the commit that adopted this branch model and is the current state of the engine. Earlier history has no tags.
 
-```shell
-git switch master
-git pull --ff-only
-git tag -a v0.5.0 -m "NeneEngine v0.5.0"
-git push origin v0.5.0
-```
+Push a tag by name, never with `git push --tags`: it also pushes stray local tags.
 
-Do not use `git push --tags`: it also pushes stray local tags.
+## Protection on GitHub
+
+The repository settings back the rules that matter most:
+
+- `main` is the default branch.
+- A ruleset for `main` blocks deletion and force pushes and restricts updates, so only the release maintainer can push to it.
+- A ruleset for `release/*` blocks deletion and force pushes. Everyone on the team can push merges to it.
+- A tag ruleset for `v*` blocks updates and deletion of pushed tags.
