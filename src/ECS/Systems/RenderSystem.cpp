@@ -103,9 +103,11 @@ namespace NeneEngine::ECS
 
 		if (activeCameraEntity == NullEntity || activeCamera == nullptr)
 		{
-			NENE_LOG_WARN("RenderSystem: no primary camera found");
+			if (!m_reportedMissingCamera) NENE_LOG_WARN("RenderSystem: no primary camera found");
+			m_reportedMissingCamera = true;
 			return;
 		}
+		m_reportedMissingCamera = false;
 
 		BuildTransformSnapshot(world);
 		ComputeWorldMatrices();
