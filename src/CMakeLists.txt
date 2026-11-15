@@ -172,7 +172,8 @@ install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION . COMPONENT Ru
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
     DESTINATION .
     COMPONENT Runtime
-    PATTERN "readme/screenshots" EXCLUDE
+    PATTERN "readme" EXCLUDE
+    PATTERN "icons" EXCLUDE
     PATTERN "config/editor_theme.json" EXCLUDE
 )
 
