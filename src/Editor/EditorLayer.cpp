@@ -6,6 +6,7 @@
 #include "Core/PathResolver.h"
 #include "ECS/World.h"
 #include "Editor/Panels/AssetBrowserPanel.h"
+#include "Editor/Panels/ConsolePanel.h"
 #include "Editor/Panels/HierarchyPanel.h"
 #include "Editor/Panels/InspectorPanel.h"
 #include "Editor/Panels/StatisticsPanel.h"
@@ -162,6 +163,7 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
+		m_panels.push_back({eastl::make_unique<ConsolePanel>()});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
 
