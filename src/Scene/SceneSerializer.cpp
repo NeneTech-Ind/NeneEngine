@@ -12,22 +12,26 @@
 #include "ECS/Components/PlayerControllerComponent.h"
 #include "ECS/Components/PrimitiveControlComponent.h"
 #include "ECS/Components/RigidbodyComponent.h"
+#include "ECS/Components/ScriptComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/DebugDrawSettings.h"
+#include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/MovementSettings.h"
 #include "ECS/PhysicsSettings.h"
 #include "ECS/RenderSettings.h"
-#include "ECS/Events/SceneRestoredEvent.h"
 #include <Windows.h>
 #include <unordered_map>
 #include <unordered_set>
 
 #include <EASTL/unordered_map.h>
+#include <cmath>
 #include <fstream>
 #include <glm/gtc/quaternion.hpp>
+#include <limits>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 
 namespace NeneEngine
 {
@@ -64,6 +68,106 @@ namespace NeneEngine
 		{
 			return glm::quat(value.at("w").get<float>(), value.at("x").get<float>(), value.at("y").get<float>(),
 			                 value.at("z").get<float>());
+		}
+
+		float ReadScriptFloat(const nlohmann::json& value)
+		{
+			if (!value.is_number()) throw std::runtime_error("Expected a number");
+			const double number = value.get<double>();
+			if (!std::isfinite(number) || std::abs(number) > (std::numeric_limits<float>::max)())
+				throw std::runtime_error("Expected a finite float within range");
+			return static_cast<float>(number);
+		}
+
+		void ValidateScriptFloat(float value)
+		{
+			if (!std::isfinite(value)) throw std::runtime_error("Script fields must contain finite floats");
+		}
+
+		nlohmann::json SerializeScript(const ECS::ScriptComponent& script)
+		{
+			nlohmann::json fields = nlohmann::json::object();
+			for (const auto& [name, value] : script.fields)
+			{
+				fields[name] = std::visit(
+				    [](const auto& field) -> nlohmann::json
+				    {
+					    using T = std::decay_t<decltype(field)>;
+					    if constexpr (std::is_same_v<T, bool>)
+						    return {{"type", "bool"}, {"value", field}};
+					    else if constexpr (std::is_same_v<T, int>)
+						    return {{"type", "int"}, {"value", field}};
+					    else if constexpr (std::is_same_v<T, float>)
+					    {
+						    ValidateScriptFloat(field);
+						    return {{"type", "float"}, {"value", field}};
+					    }
+					    else if constexpr (std::is_same_v<T, std::string>)
+						    return {{"type", "string"}, {"value", field}};
+					    else
+					    {
+						    ValidateScriptFloat(field.x);
+						    ValidateScriptFloat(field.y);
+						    ValidateScriptFloat(field.z);
+						    return {{"type", "vec3"}, {"value", ToJson(field)}};
+					    }
+				    },
+				    value);
+			}
+			return {{"scriptPath", script.scriptPath}, {"fields", std::move(fields)}};
+		}
+
+		ECS::ScriptFieldValue ReadScriptField(const nlohmann::json& field)
+		{
+			const auto type = field.at("type").get<std::string>();
+			const auto& value = field.at("value");
+			if (type == "bool") return value.get<bool>();
+			if (type == "string") return value.get<std::string>();
+			if (type == "float") return ReadScriptFloat(value);
+			if (type == "int")
+			{
+				if (!value.is_number_integer()) throw std::runtime_error("Expected an integer");
+				if (value.is_number_unsigned())
+				{
+					if (value.get<uint64_t>() > static_cast<uint64_t>((std::numeric_limits<int>::max)()))
+						throw std::runtime_error("Integer is outside the supported range");
+				}
+				else
+				{
+					const auto number = value.get<int64_t>();
+					if (number < (std::numeric_limits<int>::min)() || number > (std::numeric_limits<int>::max)())
+						throw std::runtime_error("Integer is outside the supported range");
+				}
+				return value.get<int>();
+			}
+			if (type == "vec3")
+				return glm::vec3{ReadScriptFloat(value.at("x")), ReadScriptFloat(value.at("y")),
+				                 ReadScriptFloat(value.at("z"))};
+			throw std::runtime_error("Unknown script field type: " + type);
+		}
+
+		void DeserializeScript(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			ECS::ScriptComponent script;
+			script.scriptPath = value.at("scriptPath").get<std::string>();
+			if (value.contains("fields"))
+			{
+				const auto& fields = value.at("fields");
+				if (!fields.is_object()) throw std::runtime_error("ScriptComponent.fields must be an object");
+				for (const auto& [name, field] : fields.items())
+				{
+					try
+					{
+						script.fields.emplace(name, ReadScriptField(field));
+					}
+					catch (const std::exception& exception)
+					{
+						throw std::runtime_error("ScriptComponent '" + script.scriptPath + "', field '" + name +
+						                         "': " + exception.what());
+					}
+				}
+			}
+			world.AddComponent<ECS::ScriptComponent>(entity, std::move(script));
 		}
 
 		std::string ToString(PrimitiveType primitiveType)
@@ -418,6 +522,9 @@ namespace NeneEngine
 			if (playerController != nullptr)
 				entityJson["components"]["PlayerControllerComponent"] = SerializePlayerController(*playerController);
 
+			const auto* script = world.GetRegistry().try_get<ECS::ScriptComponent>(entity);
+			if (script != nullptr) entityJson["components"]["ScriptComponent"] = SerializeScript(*script);
+
 			sceneJson["entities"].push_back(std::move(entityJson));
 		}
 
@@ -472,6 +579,8 @@ namespace NeneEngine
 				DeserializeCollider(components.at("ColliderComponent"), world, entity);
 			if (components.contains("PlayerControllerComponent"))
 				DeserializePlayerController(components.at("PlayerControllerComponent"), world, entity);
+			if (components.contains("ScriptComponent"))
+				DeserializeScript(components.at("ScriptComponent"), world, entity);
 		}
 	}
 
@@ -497,7 +606,7 @@ namespace NeneEngine
 			CopyComponents<ECS::TagComponent, ECS::TransformComponent, ECS::CameraComponent,
 			               ECS::CameraControllerComponent, ECS::MeshRendererComponent, ECS::MovementComponent,
 			               ECS::PlayerControllerComponent, ECS::PrimitiveControlComponent, ECS::RigidbodyComponent,
-			               ECS::ColliderComponent>(source, target, from, to, replace);
+			               ECS::ColliderComponent, ECS::ScriptComponent>(source, target, from, to, replace);
 		}
 	} // namespace
 

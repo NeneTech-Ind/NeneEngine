@@ -10,6 +10,7 @@
 #include "ECS/Components/PlayerControllerComponent.h"
 #include "ECS/Components/PrimitiveControlComponent.h"
 #include "ECS/Components/RigidbodyComponent.h"
+#include "ECS/Components/ScriptComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Entity.h"
@@ -46,8 +47,8 @@ namespace NeneEngine
 		                 ComponentStore<ECS::HierarchyComponent>, ComponentStore<ECS::MeshRendererComponent>,
 		                 ComponentStore<ECS::ColliderComponent>, ComponentStore<ECS::RigidbodyComponent>,
 		                 ComponentStore<ECS::ContactStateComponent>, ComponentStore<ECS::MovementComponent>,
-		                 ComponentStore<ECS::PlayerControllerComponent>,
-		                 ComponentStore<ECS::PrimitiveControlComponent>>;
+		                 ComponentStore<ECS::PlayerControllerComponent>, ComponentStore<ECS::PrimitiveControlComponent>,
+		                 ComponentStore<ECS::ScriptComponent>>;
 
 		[[nodiscard]] bool WasCaptured(ECS::Entity entity) const;
 
