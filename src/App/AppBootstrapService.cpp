@@ -50,7 +50,7 @@ namespace NeneEngine
 			world.GetEventBus().Subscribe<ECS::CollisionEvent>(
 			    [&world](const ECS::CollisionEvent& event)
 			    {
-				    NENE_LOG_INFO(
+				    NENE_LOG_DEBUG(
 				        "Collision: '{}' <-> '{}' at ({:.2f}, {:.2f}, {:.2f}), normal ({:.2f}, {:.2f}, {:.2f})",
 				        DescribeEntity(world, event.entityA), DescribeEntity(world, event.entityB),
 				        event.contactPoint.x, event.contactPoint.y, event.contactPoint.z, event.normal.x,
