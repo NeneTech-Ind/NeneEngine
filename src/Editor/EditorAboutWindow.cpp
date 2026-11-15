@@ -21,7 +21,7 @@ namespace NeneEngine
 	{
 		constexpr const char* kWindowTitle = NENE_ICON_LOGO " About NeneEngine###AboutWindow";
 		constexpr const char* kVersion = NENEENGINE_VERSION;
-		constexpr const char* kBannerPath = "assets/readme/banner.png";
+		constexpr const char* kBannerPath = "assets/editor/about_banner.jpg";
 		constexpr const char* kNoticesPath = "THIRD_PARTY_NOTICES.txt";
 		constexpr const char* kAuthors[] = {"BennySpace (Vlasov Daniil)", "Wesdmond (Timofey Shabanov)"};
 		constexpr std::string_view kNoticesSectionEnd = "NOTES";

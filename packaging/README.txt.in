@@ -1,0 +1,59 @@
+NeneEngine @PROJECT_VERSION@
+====================
+
+A C++20 game engine with a DirectX 12 renderer, an ECS world, Jolt physics
+and an editor.
+
+Source code: https://github.com/NeneTech-Ind/NeneEngine
+
+
+Requirements
+------------
+
+- Windows 10 or 11, 64-bit
+- A graphics card with DirectX 12 support
+
+No installation is needed: everything the engine uses is in this folder.
+
+
+Run
+---
+
+Start NeneEngine.exe. The editor opens the demo scene in Edit mode.
+A stress scene with ten thousand cubes, assets/scenes/stress_scene.json,
+can be opened from the File menu.
+
+The log is written to logs/nene_engine.log in this folder.
+
+On the first start Windows may ask whether NeneEngine can use the network.
+The engine opens a port only for the Tracy profiler, so access can be denied.
+
+Command line options:
+
+  --smoke-test          Initialize the engine, load the scene and exit
+  --wait-for-profiler   Wait up to 30 seconds for a Tracy profiler to connect
+
+
+Controls
+--------
+
+  Right mouse + move     Look around
+  W, A, S, D             Move the camera
+  Space, Ctrl            Move the camera up, down
+  Shift                  Move faster
+
+  Ctrl+P                 Enter or leave Play mode
+  Ctrl+Z, Ctrl+Y         Undo, redo
+  Ctrl+S, Ctrl+Shift+S   Save scene, save scene as
+  Ctrl+O                 Load scene
+  W, E, R                Move, rotate, scale gizmo
+  X                      Switch gizmo between local and world space
+  F3                     Show or hide colliders
+
+
+License
+-------
+
+NeneEngine is released under the MIT License, see LICENSE.txt.
+Third-party libraries, fonts, icons and models keep their own licenses,
+listed in THIRD_PARTY_NOTICES.txt.

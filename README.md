@@ -74,10 +74,16 @@ cmake --build out/build/x64-debug --config Debug
 
 Use the `x64-release` preset and `out/build/x64-release` for a Release build. vcpkg installs the remaining dependencies during configure.
 
-To get a self-contained folder with the executable, DLLs and assets in `out/install/x64-debug/bin/`:
+To get a self-contained folder with the executable, DLLs and assets in `out/install/x64-debug/`:
 
 ```bash
 cmake --install out/build/x64-debug --config Debug --component Runtime
+```
+
+To pack a Release build into `out/package/NeneEngine-<version>-win64.zip`:
+
+```bash
+cpack --config out/build/x64-release/CPackConfig.cmake
 ```
 
 ### Run
