@@ -11,6 +11,8 @@
 namespace NeneEngine
 {
 
+	class LogHistorySink;
+
 	class NeneLogger final
 	{
 	  public:
@@ -25,6 +27,8 @@ namespace NeneEngine
 		                spdlog::level::level_enum logLevel = spdlog::level::level_enum::info,
 		                bool consoleWithColor = true);
 		void Shutdown();
+
+		[[nodiscard]] LogHistorySink* GetHistory() const { return m_history.get(); }
 
 		template <typename... Args> void Trace(std::string_view fmt, Args&&... args) const
 		{
@@ -56,6 +60,7 @@ namespace NeneEngine
 		~NeneLogger() = default;
 
 		std::shared_ptr<spdlog::logger> m_logger;
+		std::shared_ptr<LogHistorySink> m_history;
 	};
 
 } // namespace NeneEngine

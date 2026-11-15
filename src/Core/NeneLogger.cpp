@@ -2,6 +2,8 @@
 
 #include "Core/NeneLogger.h"
 
+#include "Core/LogHistorySink.h"
+
 #include <EASTL/vector.h>
 #include <algorithm>
 #include <chrono>
@@ -12,6 +14,10 @@
 
 namespace NeneEngine
 {
+	namespace
+	{
+		constexpr size_t kHistoryCapacity = 2000;
+	} // namespace
 
 	NeneLogger& NeneLogger::GetInstance()
 	{
@@ -31,6 +37,9 @@ namespace NeneEngine
 			console->set_pattern(consoleWithColor ? "[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v"
 			                                      : "[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
 			sinks.push_back(console);
+
+			m_history = std::make_shared<LogHistorySink>(kHistoryCapacity);
+			sinks.push_back(m_history);
 
 			if (!logFileName.empty())
 			{
@@ -81,6 +90,7 @@ namespace NeneEngine
 			spdlog::drop(m_logger->name());
 			m_logger.reset();
 		}
+		m_history.reset();
 	}
 
 } // namespace NeneEngine
