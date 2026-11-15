@@ -75,7 +75,7 @@ if(NENEENGINE_ENABLE_TRACY)
             $<TARGET_FILE:Tracy::TracyClient>
             $<TARGET_FILE_DIR:NeneEngine>
     )
-    install(FILES $<TARGET_FILE:Tracy::TracyClient> DESTINATION bin COMPONENT Runtime)
+    install(FILES $<TARGET_FILE:Tracy::TracyClient> DESTINATION . COMPONENT Runtime)
 endif()
 
 target_include_directories(NeneEngine PRIVATE ${Stb_INCLUDE_DIR})
@@ -107,7 +107,7 @@ if(WIN32 AND NENEENGINE_LUA_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
             "$<TARGET_FILE_DIR:NeneEngine>"
         VERBATIM
     )
-    install(FILES "$<TARGET_FILE:unofficial::lua::lua>" DESTINATION bin COMPONENT Runtime)
+    install(FILES "$<TARGET_FILE:unofficial::lua::lua>" DESTINATION . COMPONENT Runtime)
 endif()
 
 file(GLOB NENEENGINE_VCPKG_DEBUG_DLLS   "${NENEENGINE_VCPKG_ROOT_DIR}/debug/bin/*.dll")
@@ -134,14 +134,14 @@ install(TARGETS
     NeneEngine
     Diligent-GraphicsEngineD3D12-shared
     Diligent-Archiver-shared
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION .
     COMPONENT Runtime
 )
 
 if(NENEENGINE_VCPKG_DEBUG_DLLS)
     install(FILES ${NENEENGINE_VCPKG_DEBUG_DLLS}
         CONFIGURATIONS Debug
-        DESTINATION bin
+        DESTINATION .
         COMPONENT Runtime
     )
 endif()
@@ -149,25 +149,25 @@ endif()
 if(NENEENGINE_VCPKG_RELEASE_DLLS)
     install(FILES ${NENEENGINE_VCPKG_RELEASE_DLLS}
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
-        DESTINATION bin
+        DESTINATION .
         COMPONENT Runtime
     )
 endif()
 
 if(D3D_COMPILER_PATH)
-    install(FILES "${D3D_COMPILER_PATH}" DESTINATION bin COMPONENT Runtime)
+    install(FILES "${D3D_COMPILER_PATH}" DESTINATION . COMPONENT Runtime)
 endif()
 
 if(DXC_COMPILER_PATH AND DXIL_SIGNER_PATH)
     install(FILES
         "${DXC_COMPILER_PATH}"
         "${DXIL_SIGNER_PATH}"
-        DESTINATION bin
+        DESTINATION .
         COMPONENT Runtime
     )
 endif()
 
-set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION bin)
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION .)
 set(CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT Runtime)
 include(InstallRequiredSystemLibraries)
 
