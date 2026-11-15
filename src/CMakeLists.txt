@@ -115,6 +115,8 @@ file(GLOB NENEENGINE_VCPKG_RELEASE_DLLS "${NENEENGINE_VCPKG_ROOT_DIR}/bin/*.dll"
 # Lua is deployed from its imported target, which selects the active build configuration.
 list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/lua[.]dll$")
 list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/lua[.]dll$")
+list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/draco[.]dll$")
+list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/draco[.]dll$")
 
 set(NENEENGINE_VCPKG_RUNTIME_DLLS "${NENEENGINE_VCPKG_RELEASE_DLLS}")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -133,7 +135,6 @@ endif()
 install(TARGETS
     NeneEngine
     Diligent-GraphicsEngineD3D12-shared
-    Diligent-Archiver-shared
     RUNTIME DESTINATION .
     COMPONENT Runtime
 )
@@ -154,19 +155,6 @@ if(NENEENGINE_VCPKG_RELEASE_DLLS)
     )
 endif()
 
-if(D3D_COMPILER_PATH)
-    install(FILES "${D3D_COMPILER_PATH}" DESTINATION . COMPONENT Runtime)
-endif()
-
-if(DXC_COMPILER_PATH AND DXIL_SIGNER_PATH)
-    install(FILES
-        "${DXC_COMPILER_PATH}"
-        "${DXIL_SIGNER_PATH}"
-        DESTINATION .
-        COMPONENT Runtime
-    )
-endif()
-
 configure_file("${CMAKE_SOURCE_DIR}/packaging/README.txt.in" "${CMAKE_CURRENT_BINARY_DIR}/README.txt" @ONLY NEWLINE_STYLE CRLF)
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/README.txt"
@@ -176,9 +164,10 @@ install(FILES
     COMPONENT Runtime
 )
 
-set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION .)
-set(CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT Runtime)
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
 include(InstallRequiredSystemLibraries)
+list(FILTER CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS INCLUDE REGEX "/(msvcp140|vcruntime140|vcruntime140_1)[.]dll$")
+install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION . COMPONENT Runtime)
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
     DESTINATION .
