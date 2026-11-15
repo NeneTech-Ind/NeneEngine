@@ -80,6 +80,12 @@ To get a self-contained folder with the executable, DLLs and assets in `out/inst
 cmake --install out/build/x64-debug --config Debug --component Runtime
 ```
 
+To pack a Release build into `out/package/NeneEngine-<version>-win64.zip`:
+
+```bash
+cpack --config out/build/x64-release/CPackConfig.cmake
+```
+
 ### Run
 
 Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. The log goes to `logs/nene_engine.log` next to the executable.
