@@ -167,7 +167,16 @@ if(DXC_COMPILER_PATH AND DXIL_SIGNER_PATH)
     )
 endif()
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../assets" DESTINATION . COMPONENT Runtime)
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION bin)
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT Runtime)
+include(InstallRequiredSystemLibraries)
+
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
+    DESTINATION .
+    COMPONENT Runtime
+    PATTERN "readme/screenshots" EXCLUDE
+    PATTERN "config/editor_theme.json" EXCLUDE
+)
 
 if(COMMAND copy_required_dlls)
     copy_required_dlls(NeneEngine)
