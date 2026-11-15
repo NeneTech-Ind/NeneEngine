@@ -65,6 +65,7 @@ namespace NeneEngine::ECS
 		JobSystem* m_jobs = nullptr;
 		Entity m_cameraEntity = NullEntity;
 		bool m_useJobs = true;
+		bool m_reportedMissingCamera = false;
 
 		eastl::vector<Entity> m_entities;
 		eastl::vector<const TransformComponent*> m_transforms;
