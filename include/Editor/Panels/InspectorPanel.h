@@ -4,11 +4,13 @@
 
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Entity.h"
+#include "Editor/Commands/IEditorCommand.h"
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 
 #include <EASTL/functional.h>
+#include <EASTL/unique_ptr.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <string>
@@ -52,8 +54,12 @@ namespace NeneEngine
 		template <typename Component, typename DrawFields>
 		void DrawComponent(EditorContext& context, const char* icon, const char* label, DrawFields&& drawFields);
 
+		template <typename Component> void DrawRemoveMenu(EditorContext& context, const char* label);
+		template <typename Component> bool DrawAddItem(EditorContext& context, const char* icon, const char* label);
+
 		void DrawEntityHeader(EditorContext& context);
 		void DrawComponents(EditorContext& context);
+		void DrawAddComponent(EditorContext& context);
 		void DrawTransformFields(ECS::Entity entity, ECS::TransformComponent& transform, FieldEdits& edits);
 		void DrawMaterial(EditorContext& context);
 		void DrawMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, bool texture);
@@ -63,6 +69,7 @@ namespace NeneEngine
 
 		PendingEditCommit m_commitPendingEdit;
 		const char* m_pendingEditLabel = nullptr;
+		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 
 		ECS::Entity m_eulerEntity = ECS::NullEntity;
 		glm::quat m_eulerSource = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);

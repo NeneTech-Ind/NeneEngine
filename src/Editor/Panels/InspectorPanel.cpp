@@ -15,6 +15,7 @@
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
+#include "Editor/Commands/ComponentPresenceCommand.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
 #include "Editor/Theme/EditorIcons.h"
@@ -45,6 +46,15 @@ namespace NeneEngine
 		constexpr const char* kPrimitiveTypeNames[] = {"Line", "Triangle", "Quad", "Cube"};
 		constexpr const char* kColliderTypeNames[] = {"Box", "Sphere"};
 		constexpr float kMaterialPreviewMaxWidth = 128.0f;
+		constexpr const char* kAddComponentPopup = "##AddComponent";
+
+		template <typename Component> constexpr bool kRemovable = false;
+		template <> constexpr bool kRemovable<ECS::MeshRendererComponent> = true;
+		template <> constexpr bool kRemovable<ECS::ColliderComponent> = true;
+		template <> constexpr bool kRemovable<ECS::RigidbodyComponent> = true;
+		template <> constexpr bool kRemovable<ECS::MovementComponent> = true;
+		template <> constexpr bool kRemovable<ECS::PlayerControllerComponent> = true;
+		template <> constexpr bool kRemovable<ECS::PrimitiveControlComponent> = true;
 
 		void TrackItem(FieldEdits& edits)
 		{
@@ -174,7 +184,11 @@ namespace NeneEngine
 	{
 		const ECS::Entity entity = context.selectedEntity;
 		Component* component = context.world.GetComponent<Component>(entity);
-		if (component == nullptr || !ComponentHeader(icon, label)) return;
+		if (component == nullptr) return;
+
+		const bool isOpen = ComponentHeader(icon, label);
+		if constexpr (kRemovable<Component>) DrawRemoveMenu<Component>(context, label);
+		if (!isOpen) return;
 
 		const bool isEditMode = context.CanEdit();
 		const Component before = *component;
@@ -213,6 +227,54 @@ namespace NeneEngine
 		}
 	}
 
+	template <typename Component> void InspectorPanel::DrawRemoveMenu(EditorContext& context, const char* label)
+	{
+		if (!ImGui::BeginPopupContextItem()) return;
+
+		using Command = ComponentPresenceCommand<Component>;
+		const std::string itemLabel = std::string(NENE_ICON_CLOSE " Remove ") + label;
+		if (ImGui::MenuItem(itemLabel.c_str(), nullptr, false, context.CanEdit()))
+			m_pendingCommand = eastl::make_unique<Command>(std::string("Remove ") + label, context.selectedEntity,
+			                                               Command::Action::Remove, Component{});
+		ImGui::EndPopup();
+	}
+
+	template <typename Component>
+	bool InspectorPanel::DrawAddItem(EditorContext& context, const char* icon, const char* label)
+	{
+		if (context.world.HasComponent<Component>(context.selectedEntity)) return false;
+
+		using Command = ComponentPresenceCommand<Component>;
+		const std::string itemLabel = std::string(icon) + " " + label;
+		if (ImGui::Selectable(itemLabel.c_str()))
+			m_pendingCommand = eastl::make_unique<Command>(std::string("Add ") + label, context.selectedEntity,
+			                                               Command::Action::Add, Component{});
+		return true;
+	}
+
+	void InspectorPanel::DrawAddComponent(EditorContext& context)
+	{
+		ImGui::Spacing();
+		ImGui::BeginDisabled(!context.CanEdit());
+		if (PillButton("Add Component", ImVec2(-FLT_MIN, 0.0f))) ImGui::OpenPopup(kAddComponentPopup);
+		ImGui::EndDisabled();
+		ImGui::SetItemTooltip("Right-click a component header to remove it");
+
+		if (!ImGui::BeginPopup(kAddComponentPopup)) return;
+
+		bool hasChoices = false;
+		hasChoices |= DrawAddItem<ECS::TagComponent>(context, NENE_ICON_TAG, "Tag");
+		hasChoices |= DrawAddItem<ECS::TransformComponent>(context, NENE_ICON_TRANSFORM, "Transform");
+		hasChoices |= DrawAddItem<ECS::MeshRendererComponent>(context, NENE_ICON_MESH, "Mesh Renderer");
+		hasChoices |= DrawAddItem<ECS::ColliderComponent>(context, NENE_ICON_COLLIDER, "Collider");
+		hasChoices |= DrawAddItem<ECS::RigidbodyComponent>(context, NENE_ICON_RIGIDBODY, "Rigidbody");
+		hasChoices |= DrawAddItem<ECS::MovementComponent>(context, NENE_ICON_MOVEMENT, "Movement");
+		hasChoices |= DrawAddItem<ECS::PlayerControllerComponent>(context, NENE_ICON_CONTROLLER, "Player Controller");
+		hasChoices |= DrawAddItem<ECS::PrimitiveControlComponent>(context, NENE_ICON_CONTROLLER, "Primitive Control");
+		if (!hasChoices) ImGui::TextDisabled("Every component is already added");
+		ImGui::EndPopup();
+	}
+
 	void InspectorPanel::Draw(EditorContext& context)
 	{
 		if (context.selectedEntity != ECS::NullEntity && !context.world.GetRegistry().valid(context.selectedEntity))
@@ -231,6 +293,10 @@ namespace NeneEngine
 		DrawEntityHeader(context);
 		ImGui::Separator();
 		DrawComponents(context);
+		DrawAddComponent(context);
+
+		if (m_pendingCommand && context.CanEdit()) context.history.Execute(std::move(m_pendingCommand), context.world);
+		m_pendingCommand.reset();
 	}
 
 	void InspectorPanel::DrawEntityHeader(EditorContext& context)
