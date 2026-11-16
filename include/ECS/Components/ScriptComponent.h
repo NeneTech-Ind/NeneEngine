@@ -1,14 +1,14 @@
 #pragma once
 
-#include <glm/vec3.hpp>
+#include "Scripting/ScriptFieldSchema.h"
+
 #include <map>
 #include <string>
-#include <variant>
 
 namespace NeneEngine::ECS
 {
 
-	using ScriptFieldValue = std::variant<bool, int, float, std::string, glm::vec3>;
+	using ScriptFieldValue = NeneEngine::ScriptFieldValue;
 
 	struct ScriptComponent
 	{
