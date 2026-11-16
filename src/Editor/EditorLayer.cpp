@@ -290,6 +290,13 @@ namespace NeneEngine
 		m_titleBar.min = ImGui::GetWindowPos();
 		m_titleBar.max = ImVec2(m_titleBar.min.x + ImGui::GetWindowWidth(), m_titleBar.min.y + ImGui::GetWindowHeight());
 		m_titleBarInteractiveRects.clear();
+		if (m_window != nullptr && !m_window->IsWindowMaximized())
+		{
+			const float borderThickness = (std::max)(1.0f, ImFloor(m_themeService.GetDpiScale()));
+			ImGui::GetForegroundDrawList()->AddRectFilled(
+			    m_titleBar.min, ImVec2(m_titleBar.max.x, m_titleBar.min.y + borderThickness),
+			    ImGui::GetColorU32(colors.border));
+		}
 
 		const ImVec4& logoColor =
 		    m_context->mode == EditorMode::Play ? colors.accentPlay : ImGui::GetStyleColorVec4(ImGuiCol_Button);
@@ -592,8 +599,10 @@ namespace NeneEngine
 			ImGui::PushID(index);
 			const bool isClicked = ImGui::InvisibleButton("##WindowButton", ImVec2(width, height));
 			ImGui::PopID();
-			const bool isHovered = ImGui::IsItemHovered();
-			const bool isHeld = ImGui::IsItemActive();
+			const bool isMaximizeButton = button == WindowButton::Maximize;
+			if (isMaximizeButton) m_maximizeButtonRect = {min, max};
+			const bool isHovered = ImGui::IsItemHovered() || (isMaximizeButton && m_window->IsMaximizeButtonHovered());
+			const bool isHeld = ImGui::IsItemActive() || (isMaximizeButton && m_window->IsMaximizeButtonPressed());
 
 			const bool isHighlighted = isHovered || isHeld;
 			const bool isCloseHighlighted = button == WindowButton::Close && isHighlighted;
@@ -659,6 +668,7 @@ namespace NeneEngine
 		{ return point.x >= rect.min.x && point.x < rect.max.x && point.y >= rect.min.y && point.y < rect.max.y; };
 
 		if (!contains(m_titleBar)) return WindowHitArea::Client;
+		if (contains(m_maximizeButtonRect)) return WindowHitArea::MaximizeButton;
 		for (const TitleBarRect& rect : m_titleBarInteractiveRects)
 		{
 			if (contains(rect)) return WindowHitArea::Client;

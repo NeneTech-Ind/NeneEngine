@@ -33,6 +33,8 @@ namespace NeneEngine
 		void Minimize() override;
 		void ToggleMaximize() override;
 		bool IsWindowMaximized() const override;
+		bool IsMaximizeButtonHovered() const override { return m_isMaximizeButtonHovered; }
+		bool IsMaximizeButtonPressed() const override { return m_isMaximizeButtonPressed; }
 		void RequestClose() override;
 		uint32_t GetWidth() const override { return m_width; }
 		uint32_t GetHeight() const override { return m_height; }
@@ -45,6 +47,7 @@ namespace NeneEngine
 	  private:
 		LRESULT HandleMessage(UINT message, WPARAM wParam, LPARAM lParam);
 		void BeginMouseLeaveTracking();
+		void BeginNonClientMouseLeaveTracking();
 		LRESULT CalcCustomFrameClientRect(WPARAM wParam, LPARAM lParam);
 		LRESULT HitTestCustomFrame(WPARAM wParam, LPARAM lParam);
 		static KeyCode TranslateKey(WPARAM wParam, LPARAM lParam);
@@ -57,6 +60,9 @@ namespace NeneEngine
 		bool m_shouldClose = false;
 		bool m_isMinimized = false;
 		bool m_isTrackingMouseLeave = false;
+		bool m_isTrackingNonClientMouseLeave = false;
+		bool m_isMaximizeButtonHovered = false;
+		bool m_isMaximizeButtonPressed = false;
 		InputDevice m_input;
 		MulticastDelegate<uint32_t, uint32_t> m_resized;
 		MessageHook m_messageHook;

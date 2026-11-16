@@ -16,7 +16,8 @@ namespace NeneEngine
 	enum class WindowHitArea
 	{
 		Client,
-		Caption
+		Caption,
+		MaximizeButton
 	};
 
 	class IWindow
@@ -46,6 +47,8 @@ namespace NeneEngine
 		virtual void Minimize() = 0;
 		virtual void ToggleMaximize() = 0;
 		virtual bool IsWindowMaximized() const = 0;
+		virtual bool IsMaximizeButtonHovered() const = 0;
+		virtual bool IsMaximizeButtonPressed() const = 0;
 		virtual void RequestClose() = 0;
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;

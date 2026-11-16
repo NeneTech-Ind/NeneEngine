@@ -84,6 +84,7 @@ namespace NeneEngine
 		InputDevice* m_uiInput = nullptr;
 		IWindow* m_window = nullptr;
 		TitleBarRect m_titleBar;
+		TitleBarRect m_maximizeButtonRect;
 		eastl::vector<TitleBarRect> m_titleBarInteractiveRects;
 		RequestShutdownCallback m_requestShutdown;
 		ModeChangedCallback m_onModeChanged;

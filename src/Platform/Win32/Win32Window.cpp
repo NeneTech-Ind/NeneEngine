@@ -237,6 +237,32 @@ namespace NeneEngine
 			if (m_titleBarHitTest) return HitTestCustomFrame(wParam, lParam);
 			break;
 
+		case WM_NCMOUSEMOVE:
+			if (!m_titleBarHitTest) break;
+			m_isMaximizeButtonHovered = wParam == HTMAXBUTTON;
+			if (!m_isMaximizeButtonHovered) m_isMaximizeButtonPressed = false;
+			BeginNonClientMouseLeaveTracking();
+			if (m_isMaximizeButtonHovered) return 0;
+			break;
+
+		case WM_NCMOUSELEAVE:
+			m_isTrackingNonClientMouseLeave = false;
+			m_isMaximizeButtonHovered = false;
+			m_isMaximizeButtonPressed = false;
+			break;
+
+		case WM_NCLBUTTONDOWN:
+		case WM_NCLBUTTONDBLCLK:
+			if (!m_titleBarHitTest || wParam != HTMAXBUTTON) break;
+			m_isMaximizeButtonPressed = true;
+			return 0;
+
+		case WM_NCLBUTTONUP:
+			if (!m_titleBarHitTest || wParam != HTMAXBUTTON) break;
+			if (m_isMaximizeButtonPressed) ToggleMaximize();
+			m_isMaximizeButtonPressed = false;
+			return 0;
+
 		case WM_DPICHANGED:
 		{
 			const RECT* suggestedRect = reinterpret_cast<const RECT*>(lParam);
@@ -247,6 +273,9 @@ namespace NeneEngine
 		}
 
 		case WM_MOUSEMOVE:
+			m_isMaximizeButtonHovered = false;
+			m_isMaximizeButtonPressed = false;
+			m_isTrackingNonClientMouseLeave = false;
 			BeginMouseLeaveTracking();
 			m_input.NotifyMouseMove(
 			    {static_cast<float>(GET_X_LPARAM(lParam)), static_cast<float>(GET_Y_LPARAM(lParam))});
@@ -357,7 +386,15 @@ namespace NeneEngine
 		if (hit != HTCLIENT) return hit;
 		if (isOnTopEdge) return HTTOP;
 
-		return m_titleBarHitTest(point.x, point.y) == WindowHitArea::Caption ? HTCAPTION : HTCLIENT;
+		switch (m_titleBarHitTest(point.x, point.y))
+		{
+		case WindowHitArea::Caption:
+			return HTCAPTION;
+		case WindowHitArea::MaximizeButton:
+			return HTMAXBUTTON;
+		default:
+			return HTCLIENT;
+		}
 	}
 
 	void Win32Window::BeginMouseLeaveTracking()
@@ -369,6 +406,17 @@ namespace NeneEngine
 		trackMouseEvent.dwFlags = TME_LEAVE;
 		trackMouseEvent.hwndTrack = m_hwnd;
 		m_isTrackingMouseLeave = TrackMouseEvent(&trackMouseEvent) == TRUE;
+	}
+
+	void Win32Window::BeginNonClientMouseLeaveTracking()
+	{
+		if (m_isTrackingNonClientMouseLeave || !m_hwnd) return;
+
+		TRACKMOUSEEVENT trackMouseEvent{};
+		trackMouseEvent.cbSize = sizeof(trackMouseEvent);
+		trackMouseEvent.dwFlags = TME_LEAVE | TME_NONCLIENT;
+		trackMouseEvent.hwndTrack = m_hwnd;
+		m_isTrackingNonClientMouseLeave = TrackMouseEvent(&trackMouseEvent) == TRUE;
 	}
 
 	KeyCode Win32Window::TranslateMouseButton(UINT message, WPARAM wParam)
