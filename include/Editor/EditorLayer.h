@@ -8,11 +8,13 @@
 #include "Editor/EditorSceneSnapshot.h"
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorThemeService.h"
+#include "Platform/IWindow.h"
 
 #include <EASTL/functional.h>
 #include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
+#include <string>
 
 namespace NeneEngine
 {
@@ -31,11 +33,12 @@ namespace NeneEngine
 		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput, ECS::Entity cameraEntity,
 		                RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged);
 		void SetRenderer(IRenderAdapter* renderer);
+		void SetWindow(IWindow* window);
 		void SetResourceLoading(ResourceLoadQueue& loads, const SceneAssetResolver& assets);
 		void Shutdown();
 
 		void Update();
-		[[nodiscard]] bool ConfirmDiscardChanges();
+		[[nodiscard]] bool HandleWindowCloseRequest();
 		void RequestExit() { m_exitRequested = true; }
 
 		[[nodiscard]] bool IsGameplayRunning() const
@@ -44,6 +47,19 @@ namespace NeneEngine
 		}
 
 	  private:
+		enum class SceneAction
+		{
+			None,
+			Load,
+			Exit
+		};
+
+		struct TitleBarRect
+		{
+			ImVec2 min;
+			ImVec2 max;
+		};
+
 		struct PanelEntry
 		{
 			eastl::unique_ptr<IEditorPanel> panel;
@@ -54,12 +70,18 @@ namespace NeneEngine
 		void HandleShortcuts();
 		void DrawMainMenuBar();
 		void DrawStatusBar();
-		void SaveScene(bool saveAs);
+		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
+		void RequestSceneAction(SceneAction action);
+		void RunSceneAction(SceneAction action);
+		void DrawSaveChangesDialog();
 		void LoadScene();
 		void DrawHistoryMenuItems();
 		void DrawThemeMenu();
 		void SetTheme(EditorThemeVariant variant);
 		void DrawPlayControls();
+		void DrawWindowButtons();
+		void AddTitleBarInteractiveRect(const ImVec2& min, const ImVec2& max);
+		[[nodiscard]] WindowHitArea HitTestTitleBar(int32_t x, int32_t y) const;
 		void SetMode(EditorMode mode);
 		void DrawDockSpace();
 		void BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size);
@@ -71,6 +93,10 @@ namespace NeneEngine
 
 		IImGuiBackend* m_imguiBackend = nullptr;
 		InputDevice* m_uiInput = nullptr;
+		IWindow* m_window = nullptr;
+		TitleBarRect m_titleBar;
+		TitleBarRect m_maximizeButtonRect;
+		eastl::vector<TitleBarRect> m_titleBarInteractiveRects;
 		RequestShutdownCallback m_requestShutdown;
 		ModeChangedCallback m_onModeChanged;
 		EditorHistory m_history;
@@ -84,6 +110,8 @@ namespace NeneEngine
 		uint64_t m_sceneLoadGeneration = 0;
 		bool m_layoutInitialized = false;
 		bool m_exitRequested = false;
+		SceneAction m_pendingSceneAction = SceneAction::None;
+		std::string m_saveChangesError;
 	};
 
 } // namespace NeneEngine

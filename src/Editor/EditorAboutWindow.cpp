@@ -23,7 +23,8 @@ namespace NeneEngine
 		constexpr const char* kVersion = NENEENGINE_VERSION;
 		constexpr const char* kBannerPath = "assets/editor/about_banner.jpg";
 		constexpr const char* kNoticesPath = "THIRD_PARTY_NOTICES.txt";
-		constexpr const char* kAuthors[] = {"BennySpace (Vlasov Daniil)", "Wesdmond (Timofey Shabanov)"};
+		constexpr const char* kAuthors[] = {"BennySpace (Vlasov Daniil)", "Wesdmond (Timofey Shabanov)",
+		                                    "AmuroVP (Ivan Korotikhin)"};
 		constexpr std::string_view kNoticesSectionEnd = "NOTES";
 		constexpr std::string_view kLicenseField = "License:";
 		constexpr std::string_view kCreditField = "Author / uploader credit:";

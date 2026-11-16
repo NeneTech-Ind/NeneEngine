@@ -43,6 +43,18 @@ namespace NeneEngine
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
+		constexpr float kWindowButtonAspect = 1.4f;
+		constexpr float kWindowButtonGlyphScale = 0.3f;
+		constexpr float kWindowButtonRestoreOffset = 0.4f;
+		constexpr ImVec4 kWindowCloseGlyphHovered{1.0f, 1.0f, 1.0f, 1.0f};
+
+		enum class WindowButton
+		{
+			Minimize,
+			Maximize,
+			Close,
+			Count
+		};
 		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png", "mascot_happy_256.png",
 		                                        "mascot_scared_256.png"};
 		static_assert(std::size(kMascotFiles) == static_cast<size_t>(EditorMascotPose::Count));
@@ -52,6 +64,8 @@ namespace NeneEngine
 		                                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavFocus;
 		constexpr double kStatusHoldSeconds = 5.0;
 		constexpr float kStatusBarBorderSize = 1.0f;
+		constexpr const char* kSaveChangesDialog = "Save changes?";
+		constexpr float kSaveChangesTextWidth = 320.0f;
 
 		constexpr int kCornerMaskSegments = 8;
 
@@ -184,11 +198,15 @@ namespace NeneEngine
 			m_uiInput->SetKeyboardCaptured(false);
 		}
 
+		SetWindow(nullptr);
 		ReleaseMascots();
 		if (m_imguiBackend != nullptr) m_aboutWindow.Shutdown(*m_imguiBackend);
 		m_panels.clear();
 		m_scenePath.clear();
 		m_layoutInitialized = false;
+		m_exitRequested = false;
+		m_pendingSceneAction = SceneAction::None;
+		m_saveChangesError.clear();
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
 		m_context.reset();
@@ -231,7 +249,7 @@ namespace NeneEngine
 		if (m_exitRequested)
 		{
 			m_exitRequested = false;
-			if (ConfirmDiscardChanges() && m_requestShutdown) m_requestShutdown();
+			RequestSceneAction(SceneAction::Exit);
 		}
 
 		if (m_imguiBackend == nullptr) return;
@@ -259,12 +277,13 @@ namespace NeneEngine
 		m_context->isViewportHovered = false;
 		m_context->isViewportFocused = false;
 
-		HandleShortcuts();
+		if (m_pendingSceneAction == SceneAction::None) HandleShortcuts();
 		DrawMainMenuBar();
 		DrawStatusBar();
 		DrawDockSpace();
 		DrawPanels();
 		m_aboutWindow.Draw(*m_context);
+		DrawSaveChangesDialog();
 
 		ApplyInputCapture();
 	}
@@ -274,6 +293,17 @@ namespace NeneEngine
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
 		if (!ImGui::BeginMainMenuBar()) return;
 
+		m_titleBar.min = ImGui::GetWindowPos();
+		m_titleBar.max = ImVec2(m_titleBar.min.x + ImGui::GetWindowWidth(), m_titleBar.min.y + ImGui::GetWindowHeight());
+		m_titleBarInteractiveRects.clear();
+		if (m_window != nullptr && !m_window->IsWindowMaximized())
+		{
+			const float borderThickness = (std::max)(1.0f, ImFloor(m_themeService.GetDpiScale()));
+			ImGui::GetForegroundDrawList()->AddRectFilled(
+			    m_titleBar.min, ImVec2(m_titleBar.max.x, m_titleBar.min.y + borderThickness),
+			    ImGui::GetColorU32(colors.border));
+		}
+
 		const ImVec4& logoColor =
 		    m_context->mode == EditorMode::Play ? colors.accentPlay : ImGui::GetStyleColorVec4(ImGuiCol_Button);
 		ImGui::PushStyleColor(ImGuiCol_Text, logoColor);
@@ -281,15 +311,16 @@ namespace NeneEngine
 		ImGui::PopStyleColor();
 		ImGui::TextUnformatted(kProductName);
 
+		const float menusStartX = ImGui::GetCursorScreenPos().x;
 		if (ImGui::BeginMenu("File"))
 		{
 			const bool canEdit = m_context->CanEdit();
 			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
 			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
-			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
+			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit))
+				RequestSceneAction(SceneAction::Load);
 			ImGui::Separator();
-			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit") && m_requestShutdown && ConfirmDiscardChanges())
-				m_requestShutdown();
+			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit")) RequestSceneAction(SceneAction::Exit);
 			ImGui::EndMenu();
 		}
 
@@ -318,8 +349,11 @@ namespace NeneEngine
 			if (ImGui::MenuItem(NENE_ICON_LOGO " About NeneEngine")) m_aboutWindow.Open();
 			ImGui::EndMenu();
 		}
+		AddTitleBarInteractiveRect(ImVec2(menusStartX, m_titleBar.min.y),
+		                           ImVec2(ImGui::GetCursorScreenPos().x, m_titleBar.max.y));
 
 		DrawPlayControls();
+		DrawWindowButtons();
 		ImGui::EndMainMenuBar();
 	}
 
@@ -343,48 +377,107 @@ namespace NeneEngine
 		SaveEditorThemeVariant(GetDefaultEditorThemeConfigPath(), variant);
 	}
 
-	void EditorLayer::SaveScene(bool saveAs)
+	bool EditorLayer::SaveScene(bool saveAs, std::string* errorMessage)
 	{
 		try
 		{
 			const auto path = saveAs || m_scenePath.empty() ? ChooseSceneFile(true, m_scenePath) : m_scenePath;
-			if (path.empty()) return;
+			if (path.empty()) return false;
 			SceneSerializer::SaveToFile(m_context->world, path);
 			m_scenePath = path;
 			m_history.MarkSaved();
 			m_context->SetStatus(EditorStatusKind::Success, "Saved: " + ToUtf8(path.filename()));
 			NENE_LOG_INFO("Saved: {}", ToUtf8(path));
+			return true;
 		}
 		catch (const std::exception& e)
 		{
+			if (errorMessage != nullptr) *errorMessage = e.what();
 			m_context->SetStatus(EditorStatusKind::Danger, e.what());
 			NENE_LOG_ERROR("Save scene: {}", e.what());
-		}
-	}
-
-	bool EditorLayer::ConfirmDiscardChanges()
-	{
-		if (m_context == nullptr || !m_history.IsDirty()) return true;
-
-		const std::wstring sceneName =
-		    m_scenePath.empty() ? std::wstring(L"Untitled") : m_scenePath.filename().wstring();
-		const std::wstring message = L"Save changes to " + sceneName + L"?";
-		switch (MessageBoxW(GetActiveWindow(), message.c_str(), L"NeneEngine", MB_YESNOCANCEL | MB_ICONWARNING))
-		{
-		case IDYES:
-			SetMode(EditorMode::Edit);
-			SaveScene(false);
-			return !m_history.IsDirty();
-		case IDNO:
-			return true;
-		default:
 			return false;
 		}
 	}
 
+	bool EditorLayer::HandleWindowCloseRequest()
+	{
+		if (m_context == nullptr) return true;
+		if (m_pendingSceneAction == SceneAction::None && !m_history.IsDirty()) return true;
+		if (m_window != nullptr && m_window->IsMinimized()) ShowWindow(m_window->GetHWND(), SW_RESTORE);
+		RequestExit();
+		return false;
+	}
+
+	void EditorLayer::RequestSceneAction(SceneAction action)
+	{
+		if (m_context == nullptr || m_pendingSceneAction != SceneAction::None) return;
+		if (action == SceneAction::Load && m_resourceLoads == nullptr) return;
+		if (m_history.IsDirty())
+			m_pendingSceneAction = action;
+		else
+			RunSceneAction(action);
+	}
+
+	void EditorLayer::RunSceneAction(SceneAction action)
+	{
+		if (action == SceneAction::Load)
+			LoadScene();
+		else if (action == SceneAction::Exit && m_requestShutdown)
+			m_requestShutdown();
+	}
+
+	void EditorLayer::DrawSaveChangesDialog()
+	{
+		if (m_pendingSceneAction == SceneAction::None) return;
+		if (!ImGui::IsPopupOpen(kSaveChangesDialog)) ImGui::OpenPopup(kSaveChangesDialog);
+
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		constexpr ImGuiWindowFlags flags =
+		    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove;
+		if (!ImGui::BeginPopupModal(kSaveChangesDialog, nullptr, flags)) return;
+
+		const std::string sceneName = m_scenePath.empty() ? "Untitled" : ToUtf8(m_scenePath.filename());
+		ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ScaledSize(kSaveChangesTextWidth));
+		ImGui::Text("Save changes to %s?", sceneName.c_str());
+		if (!m_saveChangesError.empty())
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, m_themeService.GetColors().danger);
+			ImGui::TextUnformatted(m_saveChangesError.c_str());
+			ImGui::PopStyleColor();
+		}
+		ImGui::PopTextWrapPos();
+		ImGui::Spacing();
+
+		const bool save = ImGui::Button("Save");
+		ImGui::SameLine();
+		const bool discard = ImGui::Button("Don't Save");
+		ImGui::SameLine();
+		const bool cancel = ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+		ImGui::SetItemDefaultFocus();
+
+		bool saved = false;
+		if (save && !cancel)
+		{
+			SetMode(EditorMode::Edit);
+			m_saveChangesError.clear();
+			saved = SaveScene(false, &m_saveChangesError);
+		}
+
+		if (saved || discard || cancel) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+		if (!saved && !discard && !cancel) return;
+
+		const SceneAction action = m_pendingSceneAction;
+		m_pendingSceneAction = SceneAction::None;
+		m_saveChangesError.clear();
+		m_exitRequested = false;
+		if (!cancel) RunSceneAction(action);
+	}
+
 	void EditorLayer::LoadScene()
 	{
-		if (!m_resourceLoads || !ConfirmDiscardChanges()) return;
+		if (!m_resourceLoads) return;
 		const auto path = ChooseSceneFile(false, m_scenePath);
 		if (path.empty()) return;
 		const auto generation = ++m_sceneLoadGeneration;
@@ -532,7 +625,121 @@ namespace NeneEngine
 			SetMode(isPlaying ? EditorMode::Edit : EditorMode::Play);
 		if (isPlaying) ImGui::PopStyleColor(4);
 
+		AddTitleBarInteractiveRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+	}
+
+	void EditorLayer::SetWindow(IWindow* window)
+	{
+		if (m_window != nullptr) m_window->SetCustomTitleBar(nullptr);
+
+		m_window = m_context != nullptr ? window : nullptr;
+		if (m_window != nullptr)
+			m_window->SetCustomTitleBar([this](int32_t x, int32_t y) { return HitTestTitleBar(x, y); });
+	}
+
+	void EditorLayer::DrawWindowButtons()
+	{
+		if (m_window == nullptr) return;
+
+		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+		const float height = m_titleBar.max.y - m_titleBar.min.y;
+		const float width = ImFloor(height * kWindowButtonAspect);
+		const float halfGlyph = ImFloor(height * kWindowButtonGlyphScale * 0.5f);
+		const float thickness = (std::max)(1.0f, ImFloor(m_themeService.GetDpiScale()));
+		const bool isMaximized = m_window->IsWindowMaximized();
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+		constexpr int buttonCount = static_cast<int>(WindowButton::Count);
+		const ImVec2 buttonsMin(m_titleBar.max.x - width * buttonCount, m_titleBar.min.y);
+		AddTitleBarInteractiveRect(buttonsMin, m_titleBar.max);
+
+		for (int index = 0; index < buttonCount; ++index)
+		{
+			const auto button = static_cast<WindowButton>(index);
+			const ImVec2 min(buttonsMin.x + width * index, buttonsMin.y);
+			const ImVec2 max(min.x + width, m_titleBar.max.y);
+
+			ImGui::SetCursorScreenPos(min);
+			ImGui::PushID(index);
+			const bool isClicked = ImGui::InvisibleButton("##WindowButton", ImVec2(width, height));
+			ImGui::PopID();
+			const bool isMaximizeButton = button == WindowButton::Maximize;
+			if (isMaximizeButton) m_maximizeButtonRect = {min, max};
+			const bool isHovered = ImGui::IsItemHovered() || (isMaximizeButton && m_window->IsMaximizeButtonHovered());
+			const bool isHeld = ImGui::IsItemActive() || (isMaximizeButton && m_window->IsMaximizeButtonPressed());
+
+			const bool isHighlighted = isHovered || isHeld;
+			const bool isCloseHighlighted = button == WindowButton::Close && isHighlighted;
+			if (isCloseHighlighted)
+				drawList->AddRectFilled(min, max, ImGui::GetColorU32(colors.danger));
+			else if (isHighlighted)
+				drawList->AddRectFilled(min, max,
+				                        ImGui::GetColorU32(isHeld ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered));
+
+			const ImU32 glyphColor = ImGui::GetColorU32(isCloseHighlighted ? kWindowCloseGlyphHovered : colors.text);
+			const ImVec2 center(ImFloor((min.x + max.x) * 0.5f) + 0.5f, ImFloor((min.y + max.y) * 0.5f) + 0.5f);
+			const ImVec2 glyphMin(center.x - halfGlyph, center.y - halfGlyph);
+			const ImVec2 glyphMax(center.x + halfGlyph, center.y + halfGlyph);
+
+			switch (button)
+			{
+			case WindowButton::Minimize:
+				drawList->AddLine(ImVec2(glyphMin.x, center.y), ImVec2(glyphMax.x, center.y), glyphColor, thickness);
+				if (isClicked) m_window->Minimize();
+				break;
+
+			case WindowButton::Maximize:
+				if (isMaximized)
+				{
+					const float offset = ImFloor(halfGlyph * kWindowButtonRestoreOffset);
+					drawList->AddRect(ImVec2(glyphMin.x, glyphMin.y + offset), ImVec2(glyphMax.x - offset, glyphMax.y),
+					                  glyphColor, 0.0f, 0, thickness);
+					drawList->PathLineTo(ImVec2(glyphMin.x + offset, glyphMin.y + offset));
+					drawList->PathLineTo(ImVec2(glyphMin.x + offset, glyphMin.y));
+					drawList->PathLineTo(ImVec2(glyphMax.x, glyphMin.y));
+					drawList->PathLineTo(ImVec2(glyphMax.x, glyphMax.y - offset));
+					drawList->PathLineTo(ImVec2(glyphMax.x - offset, glyphMax.y - offset));
+					drawList->PathStroke(glyphColor, 0, thickness);
+				}
+				else
+				{
+					drawList->AddRect(glyphMin, glyphMax, glyphColor, 0.0f, 0, thickness);
+				}
+				if (isClicked) m_window->ToggleMaximize();
+				break;
+
+			case WindowButton::Close:
+				drawList->AddLine(glyphMin, glyphMax, glyphColor, thickness);
+				drawList->AddLine(ImVec2(glyphMin.x, glyphMax.y), ImVec2(glyphMax.x, glyphMin.y), glyphColor, thickness);
+				if (isClicked) m_window->RequestClose();
+				break;
+
+			default:
+				break;
+			}
+		}
+	}
+
+	void EditorLayer::AddTitleBarInteractiveRect(const ImVec2& min, const ImVec2& max)
+	{
+		m_titleBarInteractiveRects.push_back({min, max});
+	}
+
+	WindowHitArea EditorLayer::HitTestTitleBar(int32_t x, int32_t y) const
+	{
+		const ImVec2 point(static_cast<float>(x), static_cast<float>(y));
+		const auto contains = [&point](const TitleBarRect& rect)
+		{ return point.x >= rect.min.x && point.x < rect.max.x && point.y >= rect.min.y && point.y < rect.max.y; };
+
+		if (!contains(m_titleBar)) return WindowHitArea::Client;
+		if (contains(m_maximizeButtonRect)) return WindowHitArea::MaximizeButton;
+		for (const TitleBarRect& rect : m_titleBarInteractiveRects)
+		{
+			if (contains(rect)) return WindowHitArea::Client;
+		}
+
+		return WindowHitArea::Caption;
 	}
 
 	void EditorLayer::SetMode(EditorMode mode)
@@ -568,7 +775,8 @@ namespace NeneEngine
 			SaveScene(true);
 		else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
 			SaveScene(false);
-		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) LoadScene();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
+			RequestSceneAction(SceneAction::Load);
 
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) m_history.Undo(m_context->world);
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) ||
