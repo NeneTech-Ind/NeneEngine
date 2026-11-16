@@ -37,7 +37,7 @@ namespace NeneEngine
 		void Shutdown();
 
 		void Update();
-		[[nodiscard]] bool ConfirmDiscardChanges();
+		[[nodiscard]] bool HandleWindowCloseRequest();
 		void RequestExit() { m_exitRequested = true; }
 
 		[[nodiscard]] bool IsGameplayRunning() const
@@ -46,6 +46,13 @@ namespace NeneEngine
 		}
 
 	  private:
+		enum class SceneAction
+		{
+			None,
+			Load,
+			Exit
+		};
+
 		struct TitleBarRect
 		{
 			ImVec2 min;
@@ -63,6 +70,9 @@ namespace NeneEngine
 		void DrawMainMenuBar();
 		void DrawStatusBar();
 		void SaveScene(bool saveAs);
+		void RequestSceneAction(SceneAction action);
+		void RunSceneAction(SceneAction action);
+		void DrawSaveChangesDialog();
 		void LoadScene();
 		void DrawHistoryMenuItems();
 		void DrawThemeMenu();
@@ -99,6 +109,7 @@ namespace NeneEngine
 		uint64_t m_sceneLoadGeneration = 0;
 		bool m_layoutInitialized = false;
 		bool m_exitRequested = false;
+		SceneAction m_pendingSceneAction = SceneAction::None;
 	};
 
 } // namespace NeneEngine

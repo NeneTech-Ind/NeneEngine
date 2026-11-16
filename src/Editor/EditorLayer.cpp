@@ -64,6 +64,8 @@ namespace NeneEngine
 		                                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavFocus;
 		constexpr double kStatusHoldSeconds = 5.0;
 		constexpr float kStatusBarBorderSize = 1.0f;
+		constexpr const char* kSaveChangesDialog = "Save changes?";
+		constexpr float kSaveChangesTextWidth = 320.0f;
 
 		constexpr int kCornerMaskSegments = 8;
 
@@ -202,6 +204,8 @@ namespace NeneEngine
 		m_panels.clear();
 		m_scenePath.clear();
 		m_layoutInitialized = false;
+		m_exitRequested = false;
+		m_pendingSceneAction = SceneAction::None;
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
 		m_context.reset();
@@ -244,7 +248,7 @@ namespace NeneEngine
 		if (m_exitRequested)
 		{
 			m_exitRequested = false;
-			if (ConfirmDiscardChanges() && m_requestShutdown) m_requestShutdown();
+			RequestSceneAction(SceneAction::Exit);
 		}
 
 		if (m_imguiBackend == nullptr) return;
@@ -272,12 +276,13 @@ namespace NeneEngine
 		m_context->isViewportHovered = false;
 		m_context->isViewportFocused = false;
 
-		HandleShortcuts();
+		if (m_pendingSceneAction == SceneAction::None) HandleShortcuts();
 		DrawMainMenuBar();
 		DrawStatusBar();
 		DrawDockSpace();
 		DrawPanels();
 		m_aboutWindow.Draw(*m_context);
+		DrawSaveChangesDialog();
 
 		ApplyInputCapture();
 	}
@@ -311,10 +316,10 @@ namespace NeneEngine
 			const bool canEdit = m_context->CanEdit();
 			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene", "Ctrl+S", false, canEdit)) SaveScene(false);
 			if (ImGui::MenuItem(NENE_ICON_SAVE " Save Scene As...", "Ctrl+Shift+S", false, canEdit)) SaveScene(true);
-			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit)) LoadScene();
+			if (ImGui::MenuItem(NENE_ICON_FOLDER_OPEN " Load Scene...", "Ctrl+O", false, canEdit))
+				RequestSceneAction(SceneAction::Load);
 			ImGui::Separator();
-			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit") && m_requestShutdown && ConfirmDiscardChanges())
-				m_requestShutdown();
+			if (ImGui::MenuItem(NENE_ICON_EXIT " Exit")) RequestSceneAction(SceneAction::Exit);
 			ImGui::EndMenu();
 		}
 
@@ -390,29 +395,75 @@ namespace NeneEngine
 		}
 	}
 
-	bool EditorLayer::ConfirmDiscardChanges()
+	bool EditorLayer::HandleWindowCloseRequest()
 	{
-		if (m_context == nullptr || !m_history.IsDirty()) return true;
+		if (m_context == nullptr) return true;
+		if (m_pendingSceneAction == SceneAction::None && !m_history.IsDirty()) return true;
+		if (m_window != nullptr && m_window->IsMinimized()) ShowWindow(m_window->GetHWND(), SW_RESTORE);
+		RequestExit();
+		return false;
+	}
 
-		const std::wstring sceneName =
-		    m_scenePath.empty() ? std::wstring(L"Untitled") : m_scenePath.filename().wstring();
-		const std::wstring message = L"Save changes to " + sceneName + L"?";
-		switch (MessageBoxW(GetActiveWindow(), message.c_str(), L"NeneEngine", MB_YESNOCANCEL | MB_ICONWARNING))
+	void EditorLayer::RequestSceneAction(SceneAction action)
+	{
+		if (m_context == nullptr || m_pendingSceneAction != SceneAction::None) return;
+		if (action == SceneAction::Load && m_resourceLoads == nullptr) return;
+		if (m_history.IsDirty())
+			m_pendingSceneAction = action;
+		else
+			RunSceneAction(action);
+	}
+
+	void EditorLayer::RunSceneAction(SceneAction action)
+	{
+		if (action == SceneAction::Load)
+			LoadScene();
+		else if (action == SceneAction::Exit && m_requestShutdown)
+			m_requestShutdown();
+	}
+
+	void EditorLayer::DrawSaveChangesDialog()
+	{
+		if (m_pendingSceneAction == SceneAction::None) return;
+		if (!ImGui::IsPopupOpen(kSaveChangesDialog)) ImGui::OpenPopup(kSaveChangesDialog);
+
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		constexpr ImGuiWindowFlags flags =
+		    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove;
+		if (!ImGui::BeginPopupModal(kSaveChangesDialog, nullptr, flags)) return;
+
+		const std::string sceneName = m_scenePath.empty() ? "Untitled" : ToUtf8(m_scenePath.filename());
+		ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ScaledSize(kSaveChangesTextWidth));
+		ImGui::Text("Save changes to %s?", sceneName.c_str());
+		ImGui::PopTextWrapPos();
+		ImGui::Spacing();
+
+		const bool save = ImGui::Button("Save");
+		ImGui::SameLine();
+		const bool discard = ImGui::Button("Don't Save");
+		ImGui::SameLine();
+		const bool cancel = ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+		ImGui::SetItemDefaultFocus();
+		if (save || discard || cancel) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+
+		if (!save && !discard && !cancel) return;
+		if (save && !cancel)
 		{
-		case IDYES:
 			SetMode(EditorMode::Edit);
 			SaveScene(false);
-			return !m_history.IsDirty();
-		case IDNO:
-			return true;
-		default:
-			return false;
 		}
+
+		const SceneAction action = m_pendingSceneAction;
+		m_pendingSceneAction = SceneAction::None;
+		m_exitRequested = false;
+		if (!cancel && (discard || !m_history.IsDirty())) RunSceneAction(action);
 	}
 
 	void EditorLayer::LoadScene()
 	{
-		if (!m_resourceLoads || !ConfirmDiscardChanges()) return;
+		if (!m_resourceLoads) return;
 		const auto path = ChooseSceneFile(false, m_scenePath);
 		if (path.empty()) return;
 		const auto generation = ++m_sceneLoadGeneration;
@@ -710,7 +761,8 @@ namespace NeneEngine
 			SaveScene(true);
 		else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
 			SaveScene(false);
-		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) LoadScene();
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
+			RequestSceneAction(SceneAction::Load);
 
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) m_history.Undo(m_context->world);
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal) ||
