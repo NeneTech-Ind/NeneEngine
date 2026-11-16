@@ -30,8 +30,8 @@ namespace NeneEngine
 	{
 		if (m_running) RequestShutdown();
 		m_resourceLoads.Shutdown();
-		m_jobSystem.Shutdown();
 		m_editorLayer.Shutdown();
+		m_jobSystem.Shutdown();
 		m_gameStateMachine.Clear();
 		m_scriptEngine.Shutdown();
 		NeneLogger::GetInstance().Shutdown();

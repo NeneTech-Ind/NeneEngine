@@ -190,6 +190,12 @@ namespace NeneEngine
 
 	void EditorLayer::Shutdown()
 	{
+		if (m_context != nullptr && m_context->mode == EditorMode::Play)
+		{
+			m_context->mode = EditorMode::Edit;
+			m_context->world.NotifyPlayStopping();
+		}
+
 		++m_sceneLoadGeneration;
 		m_resourceLoads = nullptr;
 		if (m_uiInput != nullptr)
