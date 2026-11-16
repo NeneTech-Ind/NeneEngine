@@ -9,6 +9,10 @@
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 
+#ifndef NDEBUG
+#include "Scripting/ScriptFieldSchema.h"
+#endif
+
 #include <EASTL/functional.h>
 #include <EASTL/unique_ptr.h>
 #include <glm/glm.hpp>
@@ -37,6 +41,9 @@ namespace NeneEngine
 			m_eulerEntity = ECS::NullEntity;
 			m_colorEntity = ECS::NullEntity;
 			m_materialError.clear();
+#ifndef NDEBUG
+			m_scriptPreviewEntity = ECS::NullEntity;
+#endif
 		}
 
 		struct FieldEdits
@@ -67,8 +74,17 @@ namespace NeneEngine
 		void SetMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, const std::string& path,
 		                      bool texture);
 
+#ifndef NDEBUG
+		void DrawScriptFieldPreview(const EditorContext& context);
+#endif
+
 		PendingEditCommit m_commitPendingEdit;
 		const char* m_pendingEditLabel = nullptr;
+
+#ifndef NDEBUG
+		ECS::Entity m_scriptPreviewEntity = ECS::NullEntity;
+		eastl::vector<ScriptFieldValue> m_scriptPreviewValues;
+#endif
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 
 		ECS::Entity m_eulerEntity = ECS::NullEntity;

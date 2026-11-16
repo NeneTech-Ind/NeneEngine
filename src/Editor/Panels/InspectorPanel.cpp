@@ -28,6 +28,7 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 #include <string>
+#include <type_traits>
 
 namespace NeneEngine
 {
@@ -129,6 +130,29 @@ namespace NeneEngine
 			TrackItem(edits);
 			return changed;
 		}
+
+#ifndef NDEBUG
+		void DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
+		{
+			const char* label = field.name.c_str();
+			std::visit(
+			    [&](auto& current)
+			    {
+				    using Value = std::decay_t<decltype(current)>;
+				    if constexpr (std::is_same_v<Value, bool>)
+					    Checkbox(label, current, edits);
+				    else if constexpr (std::is_same_v<Value, int>)
+					    DrawValueField(label, edits, [&](const char* id) { return ImGui::DragInt(id, &current); });
+				    else if constexpr (std::is_same_v<Value, float>)
+					    DragFloat(label, current, 0.05f, edits);
+				    else if constexpr (std::is_same_v<Value, std::string>)
+					    DrawValueField(label, edits, [&](const char* id) { return ImGui::InputText(id, &current); });
+				    else if constexpr (std::is_same_v<Value, glm::vec3>)
+					    DragVec3(label, current, kPositionDragSpeed, edits);
+			    },
+			    value);
+		}
+#endif
 
 		template <typename Enum, size_t Count>
 		bool EnumCombo(const char* label, Enum& value, const char* const (&names)[Count], FieldEdits& edits)
@@ -286,6 +310,9 @@ namespace NeneEngine
 			m_pendingEditLabel = nullptr;
 			m_colorEntity = ECS::NullEntity;
 			m_materialError.clear();
+#ifndef NDEBUG
+			m_scriptPreviewEntity = ECS::NullEntity;
+#endif
 			DrawEmptyState(context.GetMascot(EditorMascotPose::Search), "Select an entity to inspect it");
 			return;
 		}
@@ -293,11 +320,48 @@ namespace NeneEngine
 		DrawEntityHeader(context);
 		ImGui::Separator();
 		DrawComponents(context);
+#ifndef NDEBUG
+		DrawScriptFieldPreview(context);
+#endif
 		DrawAddComponent(context);
 
 		if (m_pendingCommand && context.CanEdit()) context.history.Execute(std::move(m_pendingCommand), context.world);
 		m_pendingCommand.reset();
 	}
+
+#ifndef NDEBUG
+	void InspectorPanel::DrawScriptFieldPreview(const EditorContext& context)
+	{
+		static const ScriptFieldSchema schema = {
+		    {"enabled", true},
+		    {"wave_size", 3},
+		    {"spawn_interval", 1.5f},
+		    {"enemy_name", std::string("Enemy")},
+		    {"spawn_offset", glm::vec3(0.0f, 1.0f, 0.0f)},
+		};
+
+		if (m_scriptPreviewEntity != context.selectedEntity)
+		{
+			m_scriptPreviewEntity = context.selectedEntity;
+			m_scriptPreviewValues.clear();
+			for (const auto& field : schema) m_scriptPreviewValues.push_back(field.defaultValue);
+		}
+
+		ImGui::PushID("ScriptFieldPreview");
+		if (ComponentHeader(NENE_ICON_FILE_CODE, "Script Fields (Preview)"))
+		{
+			ComponentCardScope card;
+			FieldEdits edits{};
+			edits.valueFont = context.monospaceFont;
+			edits.colors = context.themeColors;
+			ImGui::BeginDisabled(!context.CanEdit());
+			for (size_t index = 0; index < schema.size(); ++index)
+				DrawScriptField(schema[index], m_scriptPreviewValues[index], edits);
+			ImGui::EndDisabled();
+		}
+		ImGui::PopID();
+	}
+#endif
 
 	void InspectorPanel::DrawEntityHeader(EditorContext& context)
 	{
