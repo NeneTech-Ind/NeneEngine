@@ -21,6 +21,7 @@ add_subdirectory(Graphics)
 add_subdirectory(Input)
 add_subdirectory(Platform)
 add_subdirectory(Scene)
+add_subdirectory(Scripting)
 add_subdirectory(GameStates)
 
 target_include_directories(NeneEngine
