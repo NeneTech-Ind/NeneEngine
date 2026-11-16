@@ -74,7 +74,7 @@ namespace NeneEngine
 
 			for (auto& listener : m_listeners)
 			{
-				if (listener.handle == handle)
+				if (listener.handle == handle && !listener.pendingRemove)
 				{
 					// Removal can be requested from inside a callback, so compaction is deferred until broadcast ends.
 					listener.pendingRemove = true;
@@ -97,21 +97,20 @@ namespace NeneEngine
 			++m_broadcastDepth;
 			const size_t listenerCount = m_listeners.size();
 
-			// Pending listeners become active after the outermost broadcast finishes.
-			for (size_t index = 0; index < listenerCount; ++index)
+			try
 			{
-				auto& listener = m_listeners[index];
-				if (!listener.pendingRemove && listener.callback) listener.callback(args...);
+				for (size_t index = 0; index < listenerCount; ++index)
+				{
+					auto& listener = m_listeners[index];
+					if (!listener.pendingRemove && listener.callback) listener.callback(args...);
+				}
 			}
-
-			--m_broadcastDepth;
-
-			if (!IsBroadcasting())
+			catch (...)
 			{
-				Compact();
-				for (auto& listener : m_pendingListeners) m_listeners.push_back(std::move(listener));
-				m_pendingListeners.clear();
+				FinishBroadcast();
+				throw;
 			}
+			FinishBroadcast();
 		}
 
 	  private:
@@ -123,6 +122,15 @@ namespace NeneEngine
 		};
 
 		[[nodiscard]] bool IsBroadcasting() const { return m_broadcastDepth > 0; }
+
+		void FinishBroadcast()
+		{
+			--m_broadcastDepth;
+			if (IsBroadcasting()) return;
+			Compact();
+			for (auto& listener : m_pendingListeners) m_listeners.push_back(std::move(listener));
+			m_pendingListeners.clear();
+		}
 
 		void Compact()
 		{
