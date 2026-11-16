@@ -9,13 +9,16 @@
 namespace NeneEngine
 {
 
+	class IInputHandler;
+
 	class ScriptEngine final
 	{
 	  public:
 		ScriptEngine();
 		~ScriptEngine();
 
-		void Initialize();
+		// The input handler must stay alive until Shutdown()
+		void Initialize(const IInputHandler& input);
 		void Shutdown();
 
 		// Load paths relative to assets/scripts and cache successful loads
