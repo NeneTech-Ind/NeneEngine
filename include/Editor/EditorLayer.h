@@ -37,6 +37,7 @@ namespace NeneEngine
 		void SetRenderer(IRenderAdapter* renderer);
 		void SetWindow(IWindow* window);
 		void SetResourceLoading(ResourceLoadQueue& loads, const SceneAssetResolver& assets);
+		void SetWindowCameras(eastl::vector<ECS::Entity> cameras);
 		void Shutdown();
 
 		void Update();

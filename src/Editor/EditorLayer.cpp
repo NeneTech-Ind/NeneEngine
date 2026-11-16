@@ -139,6 +139,11 @@ namespace NeneEngine
 		if (m_context) m_context->renderer = renderer;
 	}
 
+	void EditorLayer::SetWindowCameras(eastl::vector<ECS::Entity> cameras)
+	{
+		if (m_context) m_context->windowCameras = std::move(cameras);
+	}
+
 	EditorLayer::~EditorLayer()
 	{
 		Shutdown();
@@ -755,7 +760,7 @@ namespace NeneEngine
 		ECS::World& world = m_context->world;
 		if (mode == EditorMode::Play)
 		{
-			m_sceneSnapshot.Capture(world);
+			m_sceneSnapshot.Capture(world, m_context->windowCameras);
 			world.NotifyPlayStarted();
 		}
 		else
