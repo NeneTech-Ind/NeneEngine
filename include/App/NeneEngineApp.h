@@ -41,11 +41,11 @@ namespace NeneEngine
 		JobSystem m_jobSystem;
 		ResourceLoadQueue m_resourceLoads{m_jobSystem};
 		SceneAssetResolver m_sceneAssets{&m_resourceLoads};
+		InputManager m_inputManager;
 		ScriptEngine m_scriptEngine;
 		GameTimer m_timer;
 		GameStateMachine m_gameStateMachine;
 		ECS::World m_world;
-		InputManager m_inputManager;
 		AppBootstrapService m_bootstrapService;
 		AppFrameLoopService m_frameLoopService;
 		AppRuntimeConfigService m_runtimeConfigService;
