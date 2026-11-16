@@ -33,6 +33,7 @@ namespace NeneEngine
 		m_jobSystem.Shutdown();
 		m_editorLayer.Shutdown();
 		m_gameStateMachine.Clear();
+		m_scriptEngine.Shutdown();
 		NeneLogger::GetInstance().Shutdown();
 	}
 

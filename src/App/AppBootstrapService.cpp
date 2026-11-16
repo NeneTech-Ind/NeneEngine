@@ -67,6 +67,7 @@ namespace NeneEngine
 	{
 		if (!NeneLogger::GetInstance().Initialize(logFilePath, spdlog::level::info, true)) return false;
 		NENE_LOG_INFO("===== NeneEngine v{} starting =====", NENEENGINE_VERSION);
+		app.GetScriptEngine().Initialize();
 		jobSystem.Initialize();
 		RegisterGraphicsResourceLoaders(ResourceManager::GetInstance());
 		RunStartupLibraryChecks(jobSystem);
