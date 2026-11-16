@@ -43,6 +43,7 @@ namespace NeneEngine
 		[[nodiscard]] InputDevice* GetFocusedInput();
 		[[nodiscard]] const InputDevice* GetFocusedInput() const;
 		[[nodiscard]] IImGuiBackend* GetMainImGuiBackend();
+		[[nodiscard]] IWindow* GetMainWindow();
 		[[nodiscard]] IRenderAdapter* GetMainRenderer();
 		[[nodiscard]] InputDevice* GetMainWindowInput();
 		[[nodiscard]] ECS::Entity GetMainCameraEntity();

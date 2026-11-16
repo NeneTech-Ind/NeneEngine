@@ -68,6 +68,7 @@ namespace NeneEngine
 			    m_windowRuntimeService.GetMainCameraEntity(), [this]() { RequestShutdown(); },
 			    [this](EditorMode mode) { OnEditorModeChanged(mode); });
 			m_editorLayer.SetRenderer(m_windowRuntimeService.GetMainRenderer());
+			m_editorLayer.SetWindow(m_windowRuntimeService.GetMainWindow());
 			m_editorLayer.SetResourceLoading(m_resourceLoads, m_sceneAssets);
 			m_windowRuntimeService.SetMainWindowCloseRequestHandler(
 			    [this]() { return m_editorLayer.ConfirmDiscardChanges(); });

@@ -13,12 +13,19 @@ namespace NeneEngine
 {
 	class InputDevice;
 
+	enum class WindowHitArea
+	{
+		Client,
+		Caption
+	};
+
 	class IWindow
 	{
 	  public:
 		using MessageHook =
 		    eastl::function<bool(HWND hwnd, uint32_t message, uintptr_t wParam, intptr_t lParam, intptr_t& result)>;
 		using CloseRequestHandler = eastl::function<bool()>;
+		using TitleBarHitTest = eastl::function<WindowHitArea(int32_t x, int32_t y)>;
 
 		virtual ~IWindow() = default;
 
@@ -35,6 +42,11 @@ namespace NeneEngine
 		virtual void SetTitleSuffix(const std::string& suffix) = 0;
 		virtual void SetMessageHook(MessageHook hook) = 0;
 		virtual void SetCloseRequestHandler(CloseRequestHandler handler) = 0;
+		virtual void SetCustomTitleBar(TitleBarHitTest hitTest) = 0;
+		virtual void Minimize() = 0;
+		virtual void ToggleMaximize() = 0;
+		virtual bool IsWindowMaximized() const = 0;
+		virtual void RequestClose() = 0;
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;
 		virtual InputDevice& GetInput() = 0;

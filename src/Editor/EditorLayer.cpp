@@ -43,6 +43,18 @@ namespace NeneEngine
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
+		constexpr float kWindowButtonAspect = 1.4f;
+		constexpr float kWindowButtonGlyphScale = 0.3f;
+		constexpr float kWindowButtonRestoreOffset = 0.4f;
+		constexpr ImVec4 kWindowCloseGlyphHovered{1.0f, 1.0f, 1.0f, 1.0f};
+
+		enum class WindowButton
+		{
+			Minimize,
+			Maximize,
+			Close,
+			Count
+		};
 		constexpr const char* kMascotFiles[] = {"mascot_sleep_256.png", "mascot_search_256.png", "mascot_happy_256.png",
 		                                        "mascot_scared_256.png"};
 		static_assert(std::size(kMascotFiles) == static_cast<size_t>(EditorMascotPose::Count));
@@ -184,6 +196,7 @@ namespace NeneEngine
 			m_uiInput->SetKeyboardCaptured(false);
 		}
 
+		SetWindow(nullptr);
 		ReleaseMascots();
 		if (m_imguiBackend != nullptr) m_aboutWindow.Shutdown(*m_imguiBackend);
 		m_panels.clear();
@@ -274,6 +287,10 @@ namespace NeneEngine
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
 		if (!ImGui::BeginMainMenuBar()) return;
 
+		m_titleBar.min = ImGui::GetWindowPos();
+		m_titleBar.max = ImVec2(m_titleBar.min.x + ImGui::GetWindowWidth(), m_titleBar.min.y + ImGui::GetWindowHeight());
+		m_titleBarInteractiveRects.clear();
+
 		const ImVec4& logoColor =
 		    m_context->mode == EditorMode::Play ? colors.accentPlay : ImGui::GetStyleColorVec4(ImGuiCol_Button);
 		ImGui::PushStyleColor(ImGuiCol_Text, logoColor);
@@ -281,6 +298,7 @@ namespace NeneEngine
 		ImGui::PopStyleColor();
 		ImGui::TextUnformatted(kProductName);
 
+		const float menusStartX = ImGui::GetCursorScreenPos().x;
 		if (ImGui::BeginMenu("File"))
 		{
 			const bool canEdit = m_context->CanEdit();
@@ -318,8 +336,11 @@ namespace NeneEngine
 			if (ImGui::MenuItem(NENE_ICON_LOGO " About NeneEngine")) m_aboutWindow.Open();
 			ImGui::EndMenu();
 		}
+		AddTitleBarInteractiveRect(ImVec2(menusStartX, m_titleBar.min.y),
+		                           ImVec2(ImGui::GetCursorScreenPos().x, m_titleBar.max.y));
 
 		DrawPlayControls();
+		DrawWindowButtons();
 		ImGui::EndMainMenuBar();
 	}
 
@@ -532,7 +553,118 @@ namespace NeneEngine
 			SetMode(isPlaying ? EditorMode::Edit : EditorMode::Play);
 		if (isPlaying) ImGui::PopStyleColor(4);
 
+		AddTitleBarInteractiveRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+	}
+
+	void EditorLayer::SetWindow(IWindow* window)
+	{
+		if (m_window != nullptr) m_window->SetCustomTitleBar(nullptr);
+
+		m_window = m_context != nullptr ? window : nullptr;
+		if (m_window != nullptr)
+			m_window->SetCustomTitleBar([this](int32_t x, int32_t y) { return HitTestTitleBar(x, y); });
+	}
+
+	void EditorLayer::DrawWindowButtons()
+	{
+		if (m_window == nullptr) return;
+
+		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
+		const float height = m_titleBar.max.y - m_titleBar.min.y;
+		const float width = ImFloor(height * kWindowButtonAspect);
+		const float halfGlyph = ImFloor(height * kWindowButtonGlyphScale * 0.5f);
+		const float thickness = (std::max)(1.0f, ImFloor(m_themeService.GetDpiScale()));
+		const bool isMaximized = m_window->IsWindowMaximized();
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+		constexpr int buttonCount = static_cast<int>(WindowButton::Count);
+		const ImVec2 buttonsMin(m_titleBar.max.x - width * buttonCount, m_titleBar.min.y);
+		AddTitleBarInteractiveRect(buttonsMin, m_titleBar.max);
+
+		for (int index = 0; index < buttonCount; ++index)
+		{
+			const auto button = static_cast<WindowButton>(index);
+			const ImVec2 min(buttonsMin.x + width * index, buttonsMin.y);
+			const ImVec2 max(min.x + width, m_titleBar.max.y);
+
+			ImGui::SetCursorScreenPos(min);
+			ImGui::PushID(index);
+			const bool isClicked = ImGui::InvisibleButton("##WindowButton", ImVec2(width, height));
+			ImGui::PopID();
+			const bool isHovered = ImGui::IsItemHovered();
+			const bool isHeld = ImGui::IsItemActive();
+
+			const bool isHighlighted = isHovered || isHeld;
+			const bool isCloseHighlighted = button == WindowButton::Close && isHighlighted;
+			if (isCloseHighlighted)
+				drawList->AddRectFilled(min, max, ImGui::GetColorU32(colors.danger));
+			else if (isHighlighted)
+				drawList->AddRectFilled(min, max,
+				                        ImGui::GetColorU32(isHeld ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered));
+
+			const ImU32 glyphColor = ImGui::GetColorU32(isCloseHighlighted ? kWindowCloseGlyphHovered : colors.text);
+			const ImVec2 center(ImFloor((min.x + max.x) * 0.5f) + 0.5f, ImFloor((min.y + max.y) * 0.5f) + 0.5f);
+			const ImVec2 glyphMin(center.x - halfGlyph, center.y - halfGlyph);
+			const ImVec2 glyphMax(center.x + halfGlyph, center.y + halfGlyph);
+
+			switch (button)
+			{
+			case WindowButton::Minimize:
+				drawList->AddLine(ImVec2(glyphMin.x, center.y), ImVec2(glyphMax.x, center.y), glyphColor, thickness);
+				if (isClicked) m_window->Minimize();
+				break;
+
+			case WindowButton::Maximize:
+				if (isMaximized)
+				{
+					const float offset = ImFloor(halfGlyph * kWindowButtonRestoreOffset);
+					drawList->AddRect(ImVec2(glyphMin.x, glyphMin.y + offset), ImVec2(glyphMax.x - offset, glyphMax.y),
+					                  glyphColor, 0.0f, 0, thickness);
+					drawList->PathLineTo(ImVec2(glyphMin.x + offset, glyphMin.y + offset));
+					drawList->PathLineTo(ImVec2(glyphMin.x + offset, glyphMin.y));
+					drawList->PathLineTo(ImVec2(glyphMax.x, glyphMin.y));
+					drawList->PathLineTo(ImVec2(glyphMax.x, glyphMax.y - offset));
+					drawList->PathLineTo(ImVec2(glyphMax.x - offset, glyphMax.y - offset));
+					drawList->PathStroke(glyphColor, 0, thickness);
+				}
+				else
+				{
+					drawList->AddRect(glyphMin, glyphMax, glyphColor, 0.0f, 0, thickness);
+				}
+				if (isClicked) m_window->ToggleMaximize();
+				break;
+
+			case WindowButton::Close:
+				drawList->AddLine(glyphMin, glyphMax, glyphColor, thickness);
+				drawList->AddLine(ImVec2(glyphMin.x, glyphMax.y), ImVec2(glyphMax.x, glyphMin.y), glyphColor, thickness);
+				if (isClicked) m_window->RequestClose();
+				break;
+
+			default:
+				break;
+			}
+		}
+	}
+
+	void EditorLayer::AddTitleBarInteractiveRect(const ImVec2& min, const ImVec2& max)
+	{
+		m_titleBarInteractiveRects.push_back({min, max});
+	}
+
+	WindowHitArea EditorLayer::HitTestTitleBar(int32_t x, int32_t y) const
+	{
+		const ImVec2 point(static_cast<float>(x), static_cast<float>(y));
+		const auto contains = [&point](const TitleBarRect& rect)
+		{ return point.x >= rect.min.x && point.x < rect.max.x && point.y >= rect.min.y && point.y < rect.max.y; };
+
+		if (!contains(m_titleBar)) return WindowHitArea::Client;
+		for (const TitleBarRect& rect : m_titleBarInteractiveRects)
+		{
+			if (contains(rect)) return WindowHitArea::Client;
+		}
+
+		return WindowHitArea::Caption;
 	}
 
 	void EditorLayer::SetMode(EditorMode mode)

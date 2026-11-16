@@ -314,6 +314,12 @@ namespace NeneEngine
 		return mainWindow != nullptr ? mainWindow->imguiBackend.get() : nullptr;
 	}
 
+	IWindow* AppWindowRuntimeService::GetMainWindow()
+	{
+		AppWindowContext* mainWindow = FindMainWindow();
+		return mainWindow != nullptr ? mainWindow->window.get() : nullptr;
+	}
+
 	IRenderAdapter* AppWindowRuntimeService::GetMainRenderer()
 	{
 		AppWindowContext* mainWindow = FindMainWindow();

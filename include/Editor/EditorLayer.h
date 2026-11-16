@@ -8,6 +8,7 @@
 #include "Editor/EditorSceneSnapshot.h"
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorThemeService.h"
+#include "Platform/IWindow.h"
 
 #include <EASTL/functional.h>
 #include <EASTL/string.h>
@@ -31,6 +32,7 @@ namespace NeneEngine
 		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput, ECS::Entity cameraEntity,
 		                RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged);
 		void SetRenderer(IRenderAdapter* renderer);
+		void SetWindow(IWindow* window);
 		void SetResourceLoading(ResourceLoadQueue& loads, const SceneAssetResolver& assets);
 		void Shutdown();
 
@@ -44,6 +46,12 @@ namespace NeneEngine
 		}
 
 	  private:
+		struct TitleBarRect
+		{
+			ImVec2 min;
+			ImVec2 max;
+		};
+
 		struct PanelEntry
 		{
 			eastl::unique_ptr<IEditorPanel> panel;
@@ -60,6 +68,9 @@ namespace NeneEngine
 		void DrawThemeMenu();
 		void SetTheme(EditorThemeVariant variant);
 		void DrawPlayControls();
+		void DrawWindowButtons();
+		void AddTitleBarInteractiveRect(const ImVec2& min, const ImVec2& max);
+		[[nodiscard]] WindowHitArea HitTestTitleBar(int32_t x, int32_t y) const;
 		void SetMode(EditorMode mode);
 		void DrawDockSpace();
 		void BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size);
@@ -71,6 +82,9 @@ namespace NeneEngine
 
 		IImGuiBackend* m_imguiBackend = nullptr;
 		InputDevice* m_uiInput = nullptr;
+		IWindow* m_window = nullptr;
+		TitleBarRect m_titleBar;
+		eastl::vector<TitleBarRect> m_titleBarInteractiveRects;
 		RequestShutdownCallback m_requestShutdown;
 		ModeChangedCallback m_onModeChanged;
 		EditorHistory m_history;

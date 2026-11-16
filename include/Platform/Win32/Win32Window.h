@@ -29,6 +29,11 @@ namespace NeneEngine
 		{
 			m_closeRequestHandler = std::move(handler);
 		}
+		void SetCustomTitleBar(TitleBarHitTest hitTest) override;
+		void Minimize() override;
+		void ToggleMaximize() override;
+		bool IsWindowMaximized() const override;
+		void RequestClose() override;
 		uint32_t GetWidth() const override { return m_width; }
 		uint32_t GetHeight() const override { return m_height; }
 		InputDevice& GetInput() override { return m_input; }
@@ -40,6 +45,8 @@ namespace NeneEngine
 	  private:
 		LRESULT HandleMessage(UINT message, WPARAM wParam, LPARAM lParam);
 		void BeginMouseLeaveTracking();
+		LRESULT CalcCustomFrameClientRect(WPARAM wParam, LPARAM lParam);
+		LRESULT HitTestCustomFrame(WPARAM wParam, LPARAM lParam);
 		static KeyCode TranslateKey(WPARAM wParam, LPARAM lParam);
 		static KeyCode TranslateMouseButton(UINT message, WPARAM wParam);
 
@@ -54,5 +61,6 @@ namespace NeneEngine
 		MulticastDelegate<uint32_t, uint32_t> m_resized;
 		MessageHook m_messageHook;
 		CloseRequestHandler m_closeRequestHandler;
+		TitleBarHitTest m_titleBarHitTest;
 	};
 } // namespace NeneEngine
