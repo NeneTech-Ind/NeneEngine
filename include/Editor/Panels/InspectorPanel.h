@@ -8,11 +8,13 @@
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
+#include "Scripting/ScriptFieldSchema.h"
 
 #include <EASTL/functional.h>
 #include <EASTL/unique_ptr.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <optional>
 #include <string>
 
 namespace NeneEngine
@@ -42,11 +44,13 @@ namespace NeneEngine
 			m_colorEntity = ECS::NullEntity;
 			m_materialError.clear();
 			m_failedScriptPath.clear();
+			m_scriptFieldEdit.reset();
 		}
 
 		struct FieldEdits
 		{
 			bool activated = false;
+			bool active = false;
 			bool deactivatedAfterEdit = false;
 			bool changedInstantly = false;
 			ImFont* valueFont = nullptr;
@@ -55,6 +59,15 @@ namespace NeneEngine
 
 	  private:
 		using PendingEditCommit = eastl::function<void(EditorContext&)>;
+
+		struct ScriptFieldEdit
+		{
+			ECS::Entity entity;
+			std::string path;
+			std::string field;
+			ScriptFieldValue before;
+			ScriptFieldValue value;
+		};
 
 		template <typename Component, typename DrawFields>
 		void DrawComponent(EditorContext& context, const char* icon, const char* label, DrawFields&& drawFields);
@@ -72,13 +85,15 @@ namespace NeneEngine
 		void SetMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, const std::string& path,
 		                      bool texture);
 
-		void DrawScript(const EditorContext& context);
+		bool DrawScript(EditorContext& context);
+		void FinishScriptFieldEdit(EditorContext& context);
 
 		PendingEditCommit m_commitPendingEdit;
 		const char* m_pendingEditLabel = nullptr;
 
 		ScriptEngine& m_scriptEngine;
 		std::string m_failedScriptPath;
+		std::optional<ScriptFieldEdit> m_scriptFieldEdit;
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 
 		ECS::Entity m_eulerEntity = ECS::NullEntity;

@@ -63,6 +63,7 @@ namespace NeneEngine
 		void TrackItem(FieldEdits& edits)
 		{
 			edits.activated |= ImGui::IsItemActivated();
+			edits.active |= ImGui::IsItemActive();
 			edits.deactivatedAfterEdit |= ImGui::IsItemDeactivatedAfterEdit();
 		}
 
@@ -96,6 +97,7 @@ namespace NeneEngine
 			const AxisDragResult result = DragFloat3Axes(widgetId.c_str(), values, speed, min, max, flags, axisColors);
 			if (edits.valueFont != nullptr) ImGui::PopFont();
 			edits.activated |= result.activated;
+			edits.active |= ImGui::IsItemActive();
 			edits.deactivatedAfterEdit |= result.deactivatedAfterEdit;
 
 			ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -134,23 +136,24 @@ namespace NeneEngine
 			return changed;
 		}
 
-		void DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
+		bool DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
 		{
 			const char* label = field.name.c_str();
-			std::visit(
+			return std::visit(
 			    [&](auto& current)
 			    {
 				    using Value = std::decay_t<decltype(current)>;
 				    if constexpr (std::is_same_v<Value, bool>)
-					    Checkbox(label, current, edits);
+					    return Checkbox(label, current, edits);
 				    else if constexpr (std::is_same_v<Value, int>)
-					    DrawValueField(label, edits, [&](const char* id) { return ImGui::DragInt(id, &current); });
+					    return DrawValueField(label, edits, [&](const char* id) { return ImGui::DragInt(id, &current); });
 				    else if constexpr (std::is_same_v<Value, float>)
-					    DragFloat(label, current, 0.05f, edits);
+					    return DragFloat(label, current, 0.05f, edits);
 				    else if constexpr (std::is_same_v<Value, std::string>)
-					    DrawValueField(label, edits, [&](const char* id) { return ImGui::InputText(id, &current); });
+					    return DrawValueField(label, edits,
+					                          [&](const char* id) { return ImGui::InputText(id, &current); });
 				    else if constexpr (std::is_same_v<Value, glm::vec3>)
-					    DragVec3(label, current, kPositionDragSpeed, edits);
+					    return DragVec3(label, current, kPositionDragSpeed, edits);
 			    },
 			    value);
 		}
@@ -307,6 +310,7 @@ namespace NeneEngine
 
 		if (context.selectedEntity == ECS::NullEntity)
 		{
+			FinishScriptFieldEdit(context);
 			m_commitPendingEdit = nullptr;
 			m_pendingEditLabel = nullptr;
 			m_colorEntity = ECS::NullEntity;
@@ -318,23 +322,23 @@ namespace NeneEngine
 		DrawEntityHeader(context);
 		ImGui::Separator();
 		DrawComponents(context);
-		DrawScript(context);
+		if (!DrawScript(context)) FinishScriptFieldEdit(context);
 		DrawAddComponent(context);
 
 		if (m_pendingCommand && context.CanEdit()) context.history.Execute(std::move(m_pendingCommand), context.world);
 		m_pendingCommand.reset();
 	}
 
-	void InspectorPanel::DrawScript(const EditorContext& context)
+	bool InspectorPanel::DrawScript(EditorContext& context)
 	{
 		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity);
-		if (script == nullptr || !ComponentHeader(NENE_ICON_FILE_CODE, "Script")) return;
+		if (script == nullptr || !ComponentHeader(NENE_ICON_FILE_CODE, "Script")) return false;
 
 		ComponentCardScope card;
 		if (script->scriptPath.empty())
 		{
 			ImGui::TextDisabled("No script assigned");
-			return;
+			return false;
 		}
 
 		ImGui::TextWrapped("Path: %s", script->scriptPath.c_str());
@@ -352,27 +356,73 @@ namespace NeneEngine
 		{
 			ImGui::TextWrapped("Could not load script. See the Console for details.");
 			if (ImGui::Button("Retry##ScriptLoad")) m_failedScriptPath.clear();
-			return;
+			return false;
 		}
 		if (schema->empty())
 		{
 			ImGui::TextDisabled("This script exposes no fields");
-			return;
+			return false;
 		}
 
-		FieldEdits edits{};
-		edits.valueFont = context.monospaceFont;
-		edits.colors = context.themeColors;
+		const bool canEdit = context.CanEdit();
+		bool editActive = false;
 		ImGui::PushID("Script");
-		ImGui::BeginDisabled();
+		ImGui::PushID(static_cast<int>(entt::to_integral(context.selectedEntity)));
+		ImGui::BeginDisabled(!canEdit);
+		int fieldId = 0;
 		for (const auto& field : *schema)
 		{
 			const auto override = script->fields.find(field.name);
-			auto value = override != script->fields.end() ? override->second : field.defaultValue;
-			DrawScriptField(field, value, edits);
+			const auto& saved = override != script->fields.end() ? override->second : field.defaultValue;
+			const bool editing = canEdit && m_scriptFieldEdit && m_scriptFieldEdit->entity == context.selectedEntity &&
+			                     m_scriptFieldEdit->path == script->scriptPath && m_scriptFieldEdit->field == field.name;
+			auto value = editing ? m_scriptFieldEdit->value : saved;
+			FieldEdits edits{};
+			edits.valueFont = context.monospaceFont;
+			edits.colors = context.themeColors;
+			ImGui::PushID(fieldId++);
+			const bool changed = DrawScriptField(field, value, edits) && canEdit;
+			ImGui::PopID();
+
+			if (changed)
+			{
+				if (editing)
+					m_scriptFieldEdit->value = std::move(value);
+				else
+				{
+					ScriptFieldEdit edit{context.selectedEntity, script->scriptPath, field.name, saved, std::move(value)};
+					FinishScriptFieldEdit(context);
+					m_scriptFieldEdit = std::move(edit);
+				}
+			}
+			if (editing || changed)
+			{
+				editActive = edits.active;
+				if (!editActive) FinishScriptFieldEdit(context);
+			}
 		}
 		ImGui::EndDisabled();
 		ImGui::PopID();
+		ImGui::PopID();
+		return editActive;
+	}
+
+	void InspectorPanel::FinishScriptFieldEdit(EditorContext& context)
+	{
+		if (!m_scriptFieldEdit) return;
+
+		auto edit = std::move(*m_scriptFieldEdit);
+		m_scriptFieldEdit.reset();
+		if (!context.CanEdit() || edit.before == edit.value || !context.world.GetRegistry().valid(edit.entity)) return;
+
+		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(edit.entity);
+		if (script == nullptr || script->scriptPath != edit.path) return;
+
+		auto after = *script;
+		after.fields.insert_or_assign(edit.field, std::move(edit.value));
+		auto command = eastl::make_unique<ComponentChangeCommand<ECS::ScriptComponent>>(
+		    "Edit Script Field", edit.entity, *script, std::move(after));
+		context.history.Execute(std::move(command), context.world);
 	}
 
 	void InspectorPanel::DrawEntityHeader(EditorContext& context)
