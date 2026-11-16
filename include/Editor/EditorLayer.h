@@ -14,6 +14,7 @@
 #include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
+#include <string>
 
 namespace NeneEngine
 {
@@ -69,7 +70,7 @@ namespace NeneEngine
 		void HandleShortcuts();
 		void DrawMainMenuBar();
 		void DrawStatusBar();
-		void SaveScene(bool saveAs);
+		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
 		void RequestSceneAction(SceneAction action);
 		void RunSceneAction(SceneAction action);
 		void DrawSaveChangesDialog();
@@ -110,6 +111,7 @@ namespace NeneEngine
 		bool m_layoutInitialized = false;
 		bool m_exitRequested = false;
 		SceneAction m_pendingSceneAction = SceneAction::None;
+		std::string m_saveChangesError;
 	};
 
 } // namespace NeneEngine

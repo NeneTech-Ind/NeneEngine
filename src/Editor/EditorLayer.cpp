@@ -206,6 +206,7 @@ namespace NeneEngine
 		m_layoutInitialized = false;
 		m_exitRequested = false;
 		m_pendingSceneAction = SceneAction::None;
+		m_saveChangesError.clear();
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
 		m_context.reset();
@@ -376,22 +377,25 @@ namespace NeneEngine
 		SaveEditorThemeVariant(GetDefaultEditorThemeConfigPath(), variant);
 	}
 
-	void EditorLayer::SaveScene(bool saveAs)
+	bool EditorLayer::SaveScene(bool saveAs, std::string* errorMessage)
 	{
 		try
 		{
 			const auto path = saveAs || m_scenePath.empty() ? ChooseSceneFile(true, m_scenePath) : m_scenePath;
-			if (path.empty()) return;
+			if (path.empty()) return false;
 			SceneSerializer::SaveToFile(m_context->world, path);
 			m_scenePath = path;
 			m_history.MarkSaved();
 			m_context->SetStatus(EditorStatusKind::Success, "Saved: " + ToUtf8(path.filename()));
 			NENE_LOG_INFO("Saved: {}", ToUtf8(path));
+			return true;
 		}
 		catch (const std::exception& e)
 		{
+			if (errorMessage != nullptr) *errorMessage = e.what();
 			m_context->SetStatus(EditorStatusKind::Danger, e.what());
 			NENE_LOG_ERROR("Save scene: {}", e.what());
+			return false;
 		}
 	}
 
@@ -436,6 +440,12 @@ namespace NeneEngine
 		const std::string sceneName = m_scenePath.empty() ? "Untitled" : ToUtf8(m_scenePath.filename());
 		ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ScaledSize(kSaveChangesTextWidth));
 		ImGui::Text("Save changes to %s?", sceneName.c_str());
+		if (!m_saveChangesError.empty())
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, m_themeService.GetColors().danger);
+			ImGui::TextUnformatted(m_saveChangesError.c_str());
+			ImGui::PopStyleColor();
+		}
 		ImGui::PopTextWrapPos();
 		ImGui::Spacing();
 
@@ -445,20 +455,24 @@ namespace NeneEngine
 		ImGui::SameLine();
 		const bool cancel = ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false);
 		ImGui::SetItemDefaultFocus();
-		if (save || discard || cancel) ImGui::CloseCurrentPopup();
-		ImGui::EndPopup();
 
-		if (!save && !discard && !cancel) return;
+		bool saved = false;
 		if (save && !cancel)
 		{
 			SetMode(EditorMode::Edit);
-			SaveScene(false);
+			m_saveChangesError.clear();
+			saved = SaveScene(false, &m_saveChangesError);
 		}
+
+		if (saved || discard || cancel) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+		if (!saved && !discard && !cancel) return;
 
 		const SceneAction action = m_pendingSceneAction;
 		m_pendingSceneAction = SceneAction::None;
+		m_saveChangesError.clear();
 		m_exitRequested = false;
-		if (!cancel && (discard || !m_history.IsDirty())) RunSceneAction(action);
+		if (!cancel) RunSceneAction(action);
 	}
 
 	void EditorLayer::LoadScene()
