@@ -55,8 +55,12 @@ namespace NeneEngine
 			Listener listener;
 			listener.handle = DelegateHandleFactory::Create();
 			listener.callback = std::move(callback);
-			m_listeners.push_back(std::move(listener));
-			return m_listeners.back().handle;
+			const DelegateHandle handle = listener.handle;
+			if (IsBroadcasting())
+				m_pendingListeners.push_back(std::move(listener));
+			else
+				m_listeners.push_back(std::move(listener));
+			return handle;
 		}
 
 		template <typename Lambda> [[nodiscard]] DelegateHandle AddLambda(Lambda&& lambda)
@@ -79,6 +83,12 @@ namespace NeneEngine
 				}
 			}
 
+			for (auto it = m_pendingListeners.begin(); it != m_pendingListeners.end(); ++it)
+			{
+				if (it->handle != handle) continue;
+				m_pendingListeners.erase(it);
+				return true;
+			}
 			return false;
 		}
 
@@ -87,7 +97,7 @@ namespace NeneEngine
 			++m_broadcastDepth;
 			const size_t listenerCount = m_listeners.size();
 
-			// New listeners added during broadcast are handled by the next broadcast, keeping iteration stable.
+			// Pending listeners become active after the outermost broadcast finishes.
 			for (size_t index = 0; index < listenerCount; ++index)
 			{
 				auto& listener = m_listeners[index];
@@ -96,7 +106,12 @@ namespace NeneEngine
 
 			--m_broadcastDepth;
 
-			if (!IsBroadcasting()) Compact();
+			if (!IsBroadcasting())
+			{
+				Compact();
+				for (auto& listener : m_pendingListeners) m_listeners.push_back(std::move(listener));
+				m_pendingListeners.clear();
+			}
 		}
 
 	  private:
@@ -115,6 +130,7 @@ namespace NeneEngine
 		}
 
 		eastl::vector<Listener> m_listeners;
+		eastl::vector<Listener> m_pendingListeners;
 		uint32_t m_broadcastDepth = 0;
 	};
 
