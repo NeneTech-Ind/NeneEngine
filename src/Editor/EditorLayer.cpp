@@ -144,8 +144,8 @@ namespace NeneEngine
 		Shutdown();
 	}
 
-	void EditorLayer::Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput,
-	                             ECS::Entity cameraEntity, RequestShutdownCallback requestShutdown,
+	void EditorLayer::Initialize(ECS::World& world, ScriptEngine& scriptEngine, IImGuiBackend* imguiBackend,
+	                             InputDevice* uiInput, ECS::Entity cameraEntity, RequestShutdownCallback requestShutdown,
 	                             ModeChangedCallback onModeChanged)
 	{
 		Shutdown();
@@ -175,7 +175,7 @@ namespace NeneEngine
 		m_aboutWindow.Initialize(*m_imguiBackend);
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
-		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
+		m_panels.push_back({eastl::make_unique<InspectorPanel>(scriptEngine)});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
 		m_panels.push_back({eastl::make_unique<ConsolePanel>()});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});

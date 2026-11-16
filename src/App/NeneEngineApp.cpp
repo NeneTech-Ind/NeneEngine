@@ -65,7 +65,8 @@ namespace NeneEngine
 			}
 
 			m_editorLayer.Initialize(
-			    m_world, m_windowRuntimeService.GetMainImGuiBackend(), m_windowRuntimeService.GetMainWindowInput(),
+			    m_world, m_scriptEngine, m_windowRuntimeService.GetMainImGuiBackend(),
+			    m_windowRuntimeService.GetMainWindowInput(),
 			    m_windowRuntimeService.GetMainCameraEntity(), [this]() { RequestShutdown(); },
 			    [this](EditorMode mode) { OnEditorModeChanged(mode); });
 			m_editorLayer.SetRenderer(m_windowRuntimeService.GetMainRenderer());

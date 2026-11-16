@@ -12,6 +12,7 @@
 #include "ECS/Components/PlayerControllerComponent.h"
 #include "ECS/Components/PrimitiveControlComponent.h"
 #include "ECS/Components/RigidbodyComponent.h"
+#include "ECS/Components/ScriptComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
@@ -22,8 +23,10 @@
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IRenderAdapter.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -131,7 +134,6 @@ namespace NeneEngine
 			return changed;
 		}
 
-#ifndef NDEBUG
 		void DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
 		{
 			const char* label = field.name.c_str();
@@ -152,7 +154,6 @@ namespace NeneEngine
 			    },
 			    value);
 		}
-#endif
 
 		template <typename Enum, size_t Count>
 		bool EnumCombo(const char* label, Enum& value, const char* const (&names)[Count], FieldEdits& edits)
@@ -310,9 +311,6 @@ namespace NeneEngine
 			m_pendingEditLabel = nullptr;
 			m_colorEntity = ECS::NullEntity;
 			m_materialError.clear();
-#ifndef NDEBUG
-			m_scriptPreviewEntity = ECS::NullEntity;
-#endif
 			DrawEmptyState(context.GetMascot(EditorMascotPose::Search), "Select an entity to inspect it");
 			return;
 		}
@@ -320,48 +318,62 @@ namespace NeneEngine
 		DrawEntityHeader(context);
 		ImGui::Separator();
 		DrawComponents(context);
-#ifndef NDEBUG
-		DrawScriptFieldPreview(context);
-#endif
+		DrawScript(context);
 		DrawAddComponent(context);
 
 		if (m_pendingCommand && context.CanEdit()) context.history.Execute(std::move(m_pendingCommand), context.world);
 		m_pendingCommand.reset();
 	}
 
-#ifndef NDEBUG
-	void InspectorPanel::DrawScriptFieldPreview(const EditorContext& context)
+	void InspectorPanel::DrawScript(const EditorContext& context)
 	{
-		static const ScriptFieldSchema schema = {
-		    {"enabled", true},
-		    {"wave_size", 3},
-		    {"spawn_interval", 1.5f},
-		    {"enemy_name", std::string("Enemy")},
-		    {"spawn_offset", glm::vec3(0.0f, 1.0f, 0.0f)},
-		};
+		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity);
+		if (script == nullptr || !ComponentHeader(NENE_ICON_FILE_CODE, "Script")) return;
 
-		if (m_scriptPreviewEntity != context.selectedEntity)
+		ComponentCardScope card;
+		if (script->scriptPath.empty())
 		{
-			m_scriptPreviewEntity = context.selectedEntity;
-			m_scriptPreviewValues.clear();
-			for (const auto& field : schema) m_scriptPreviewValues.push_back(field.defaultValue);
+			ImGui::TextDisabled("No script assigned");
+			return;
 		}
 
-		ImGui::PushID("ScriptFieldPreview");
-		if (ComponentHeader(NENE_ICON_FILE_CODE, "Script Fields (Preview)"))
+		ImGui::TextWrapped("Path: %s", script->scriptPath.c_str());
+		const std::filesystem::path path(script->scriptPath);
+		const auto* schema = m_scriptEngine.GetFieldSchema(path);
+		if (schema == nullptr && m_failedScriptPath != script->scriptPath)
 		{
-			ComponentCardScope card;
-			FieldEdits edits{};
-			edits.valueFont = context.monospaceFont;
-			edits.colors = context.themeColors;
-			ImGui::BeginDisabled(!context.CanEdit());
-			for (size_t index = 0; index < schema.size(); ++index)
-				DrawScriptField(schema[index], m_scriptPreviewValues[index], edits);
-			ImGui::EndDisabled();
+			if (m_scriptEngine.LoadScript(path) != nullptr)
+				schema = m_scriptEngine.GetFieldSchema(path);
+			else
+				m_failedScriptPath = script->scriptPath;
 		}
+
+		if (schema == nullptr)
+		{
+			ImGui::TextWrapped("Could not load script. See the Console for details.");
+			if (ImGui::Button("Retry##ScriptLoad")) m_failedScriptPath.clear();
+			return;
+		}
+		if (schema->empty())
+		{
+			ImGui::TextDisabled("This script exposes no fields");
+			return;
+		}
+
+		FieldEdits edits{};
+		edits.valueFont = context.monospaceFont;
+		edits.colors = context.themeColors;
+		ImGui::PushID("Script");
+		ImGui::BeginDisabled();
+		for (const auto& field : *schema)
+		{
+			const auto override = script->fields.find(field.name);
+			auto value = override != script->fields.end() ? override->second : field.defaultValue;
+			DrawScriptField(field, value, edits);
+		}
+		ImGui::EndDisabled();
 		ImGui::PopID();
 	}
-#endif
 
 	void InspectorPanel::DrawEntityHeader(EditorContext& context)
 	{

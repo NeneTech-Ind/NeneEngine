@@ -9,10 +9,6 @@
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 
-#ifndef NDEBUG
-#include "Scripting/ScriptFieldSchema.h"
-#endif
-
 #include <EASTL/functional.h>
 #include <EASTL/unique_ptr.h>
 #include <glm/glm.hpp>
@@ -21,6 +17,8 @@
 
 namespace NeneEngine
 {
+	class ScriptEngine;
+
 	namespace ECS
 	{
 		struct TransformComponent;
@@ -29,6 +27,8 @@ namespace NeneEngine
 	class InspectorPanel final : public IEditorPanel
 	{
 	  public:
+		explicit InspectorPanel(ScriptEngine& scriptEngine) : m_scriptEngine(scriptEngine) {}
+
 		[[nodiscard]] const char* GetName() const override { return "Inspector"; }
 		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_INSPECTOR; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Right; }
@@ -41,9 +41,7 @@ namespace NeneEngine
 			m_eulerEntity = ECS::NullEntity;
 			m_colorEntity = ECS::NullEntity;
 			m_materialError.clear();
-#ifndef NDEBUG
-			m_scriptPreviewEntity = ECS::NullEntity;
-#endif
+			m_failedScriptPath.clear();
 		}
 
 		struct FieldEdits
@@ -74,17 +72,13 @@ namespace NeneEngine
 		void SetMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, const std::string& path,
 		                      bool texture);
 
-#ifndef NDEBUG
-		void DrawScriptFieldPreview(const EditorContext& context);
-#endif
+		void DrawScript(const EditorContext& context);
 
 		PendingEditCommit m_commitPendingEdit;
 		const char* m_pendingEditLabel = nullptr;
 
-#ifndef NDEBUG
-		ECS::Entity m_scriptPreviewEntity = ECS::NullEntity;
-		eastl::vector<ScriptFieldValue> m_scriptPreviewValues;
-#endif
+		ScriptEngine& m_scriptEngine;
+		std::string m_failedScriptPath;
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 
 		ECS::Entity m_eulerEntity = ECS::NullEntity;
