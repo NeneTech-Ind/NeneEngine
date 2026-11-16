@@ -66,9 +66,9 @@ namespace NeneEngine
 
 	void EditorSceneSnapshot::Capture(const ECS::World& world)
 	{
+		Clear();
 		const entt::registry& registry = world.GetRegistry();
 
-		m_entities.clear();
 		for (const ECS::Entity entity : registry.view<entt::entity>())
 		{
 			if (IsSceneEntity(registry, entity)) m_entities.push_back(entity);
@@ -76,13 +76,14 @@ namespace NeneEngine
 		eastl::sort(m_entities.begin(), m_entities.end());
 
 		eastl::apply([&registry](auto&... stores) { (CaptureComponents(registry, stores.values), ...); }, m_stores);
+		m_hasCapture = true;
 
 		NENE_LOG_INFO("Editor snapshot captured: {} entities", m_entities.size());
 	}
 
 	void EditorSceneSnapshot::Restore(ECS::World& world)
 	{
-		if (IsEmpty()) return;
+		if (!m_hasCapture) return;
 
 		entt::registry& registry = world.GetRegistry();
 
@@ -129,6 +130,7 @@ namespace NeneEngine
 
 	void EditorSceneSnapshot::Clear()
 	{
+		m_hasCapture = false;
 		m_entities.clear();
 		eastl::apply([](auto&... stores) { (stores.values.clear(), ...); }, m_stores);
 	}

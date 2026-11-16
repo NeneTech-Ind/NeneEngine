@@ -34,8 +34,6 @@ namespace NeneEngine
 		void Restore(ECS::World& world);
 		void Clear();
 
-		[[nodiscard]] bool IsEmpty() const { return m_entities.empty(); }
-
 	  private:
 		template <typename Component> struct ComponentStore
 		{
@@ -54,6 +52,7 @@ namespace NeneEngine
 
 		eastl::vector<ECS::Entity> m_entities;
 		ComponentStores m_stores;
+		bool m_hasCapture = false;
 	};
 
 } // namespace NeneEngine
