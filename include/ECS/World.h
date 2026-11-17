@@ -39,6 +39,7 @@ namespace NeneEngine::ECS
 		// ===== Entity =====
 		Entity CreateEntity(const std::string& name = "Entity");
 		void DestroyEntity(Entity entity);
+		void DeferDestroyEntity(Entity entity);
 
 		// ===== Components =====
 		template <typename Component, typename... Args> Component& AddComponent(Entity entity, Args&&... args)
@@ -77,10 +78,12 @@ namespace NeneEngine::ECS
 
 	  private:
 		void DetachFromParent(Entity entity);
+		void FlushDeferredDestruction();
 
 		EventBus m_eventBus;
 		entt::registry m_registry;
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
+		eastl::vector<Entity> m_pendingDestruction;
 		std::shared_ptr<WorldLifetime> m_lifetime;
 	};
 
