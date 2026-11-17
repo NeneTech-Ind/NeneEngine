@@ -23,6 +23,7 @@
 #include <EASTL/string.h>
 #include <ImGuizmo.h>
 #include <algorithm>
+#include <exception>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <iterator>
@@ -198,7 +199,18 @@ namespace NeneEngine
 		if (m_context != nullptr && m_context->mode == EditorMode::Play)
 		{
 			m_context->mode = EditorMode::Edit;
-			m_context->world.NotifyPlayStopping();
+			try
+			{
+				m_context->world.NotifyPlayStopping();
+			}
+			catch (const std::exception& exception)
+			{
+				NENE_LOG_ERROR("PlayStopping failed during editor shutdown: {}", exception.what());
+			}
+			catch (...)
+			{
+				NENE_LOG_ERROR("PlayStopping failed during editor shutdown with an unknown exception");
+			}
 		}
 
 		++m_sceneLoadGeneration;
