@@ -6,6 +6,7 @@
 #include "Scripting/Bindings/InputBindings.h"
 #include "Scripting/Bindings/LogBindings.h"
 #include "Scripting/Bindings/VectorBindings.h"
+#include "Scripting/Bindings/WorldBindings.h"
 
 #include <algorithm>
 #include <cmath>
@@ -220,6 +221,7 @@ namespace NeneEngine
 		BindLogApi(nene);
 		BindVectorApi(nene);
 		BindEntityApi(nene);
+		BindWorldApi(nene);
 
 		m_impl = std::move(impl);
 		NENE_LOG_INFO("Script engine initialized");
