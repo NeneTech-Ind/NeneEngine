@@ -17,8 +17,6 @@ namespace NeneEngine
 		constexpr const char* kEveningName = "evening";
 		constexpr const char* kDayName = "day";
 
-		constexpr const char* kRelativeConfigPath = "assets/config/editor_theme.json";
-
 		std::string ToUtf8(const std::filesystem::path& path)
 		{
 			const std::u8string utf8Path = path.u8string();
@@ -52,11 +50,7 @@ namespace NeneEngine
 
 	std::filesystem::path GetDefaultEditorThemeConfigPath()
 	{
-		if (std::filesystem::path resolvedPath = ResolveFromExecutionRoots(kRelativeConfigPath, true);
-		    !resolvedPath.empty())
-			return resolvedPath;
-
-		return std::filesystem::path{kRelativeConfigPath};
+		return GetEditorThemePath();
 	}
 
 	EditorThemeVariant LoadEditorThemeVariant(const std::filesystem::path& configPath)

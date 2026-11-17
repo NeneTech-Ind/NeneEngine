@@ -14,16 +14,6 @@
 
 namespace NeneEngine
 {
-	namespace
-	{
-		std::filesystem::path ResolveLogFilePath()
-		{
-			auto logRoot = GetExecutableDirectory();
-			if (logRoot.empty()) logRoot = std::filesystem::current_path();
-			return logRoot / "logs" / "nene_engine.log";
-		}
-	} // namespace
-
 	NeneEngineApp::NeneEngineApp() = default;
 
 	NeneEngineApp::~NeneEngineApp()
@@ -48,7 +38,7 @@ namespace NeneEngine
 			m_windowRuntimeService.SetJobSystem(m_jobSystem);
 			if (!m_bootstrapService.Initialize(
 			        *this, m_jobSystem, m_gameStateMachine, m_world, m_runtimeConfigService, m_windowRuntimeService,
-			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, ResolveLogFilePath().string(),
+			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, GetEditorLogPath().string(),
 			        width, height))
 				return false;
 

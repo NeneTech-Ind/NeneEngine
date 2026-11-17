@@ -37,6 +37,25 @@ namespace NeneEngine
 		return std::filesystem::path(modulePath).parent_path();
 	}
 
+	std::filesystem::path GetEditorLogPath()
+	{
+		auto root = GetExecutableDirectory();
+		if (root.empty()) root = std::filesystem::current_path();
+		return root / "logs" / "nene_engine.log";
+	}
+
+	std::filesystem::path GetEditorLayoutPath()
+	{
+		return GetExecutableDirectory() / "imgui.ini";
+	}
+
+	std::filesystem::path GetEditorThemePath()
+	{
+		const std::filesystem::path relativePath{"assets/config/editor_theme.json"};
+		if (auto path = ResolveFromExecutionRoots(relativePath, true); !path.empty()) return path;
+		return relativePath;
+	}
+
 	std::filesystem::path ResolveFromAncestors(const std::filesystem::path& start,
 	                                           const std::filesystem::path& relativePath, bool allowMissingLeaf)
 	{
