@@ -15,6 +15,7 @@ namespace NeneEngine
 
 	namespace ECS
 	{
+		struct ScriptComponent;
 		class World;
 	}
 
@@ -28,7 +29,7 @@ namespace NeneEngine
 		void Initialize(const IInputHandler& input, ECS::World& world, PrefabLibrary& prefabs);
 		void Shutdown();
 
-		void ExecuteConsoleCommand(std::string_view command);
+		void ExecuteConsoleCommand(std::string_view command, const ECS::ScriptComponent* selectedScript);
 
 		// Load paths relative to assets/scripts and cache successful loads
 		// Returned pointers are valid until Shutdown()

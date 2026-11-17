@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "ECS/Components/ScriptComponent.h"
 #include "Scripting/Bindings/BehaviourBindings.h"
 #include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
@@ -241,7 +242,8 @@ namespace NeneEngine
 				nene.log.info(format_values(...))
 			end
 
-			return function(command)
+			return function(command, selected_fields)
+				rawset(environment, "selected_fields", selected_fields)
 				local chunk = load("return " .. command, "=Console", "t", environment)
 				if not chunk then
 					local message
@@ -268,7 +270,7 @@ namespace NeneEngine
 		NENE_LOG_INFO("Script engine shut down");
 	}
 
-	void ScriptEngine::ExecuteConsoleCommand(std::string_view command)
+	void ScriptEngine::ExecuteConsoleCommand(std::string_view command, const ECS::ScriptComponent* selectedScript)
 	{
 		if (command.find_first_not_of(" \t\r\n") == std::string_view::npos) return;
 		if (!m_impl)
@@ -277,8 +279,25 @@ namespace NeneEngine
 			return;
 		}
 
+		auto& lua = m_impl->lua;
+		sol::object selectedFields = sol::make_object(lua, sol::nil);
+		const auto* schema = selectedScript ? GetFieldSchema(selectedScript->scriptPath) : nullptr;
+		if (schema != nullptr)
+		{
+			auto fields = lua.create_table();
+			for (const auto& field : *schema)
+			{
+				const auto saved = selectedScript->fields.find(field.name);
+				const auto& value = saved != selectedScript->fields.end() && IsValidScriptFieldValue(field, saved->second)
+				                        ? saved->second
+				                        : field.defaultValue;
+				std::visit([&](const auto& fieldValue) { fields.set(field.name, fieldValue); }, value);
+			}
+			selectedFields = std::move(fields);
+		}
+
 		NENE_LOG_INFO("> {}", command);
-		const auto result = m_impl->executeConsoleCommand(command);
+		const auto result = m_impl->executeConsoleCommand(command, selectedFields);
 		if (!result.valid())
 		{
 			const sol::error error = result;

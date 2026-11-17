@@ -3,6 +3,8 @@
 #include "Editor/Panels/ConsolePanel.h"
 
 #include "Core/NeneLogger.h"
+#include "ECS/Components/ScriptComponent.h"
+#include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Scripting/ScriptEngine.h"
@@ -86,9 +88,14 @@ namespace NeneEngine
 		ImGui::EndDisabled();
 		if (!canExecute && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("%s", commandHint);
+		else if (canExecute)
+			ImGui::SetItemTooltip("Use selected_fields to read the selected entity's script settings");
 		if (canExecute && submitted)
 		{
-			m_scriptEngine.ExecuteConsoleCommand(m_command);
+			const auto* selectedScript = context.world.GetRegistry().valid(context.selectedEntity)
+			                                 ? context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity)
+			                                 : nullptr;
+			m_scriptEngine.ExecuteConsoleCommand(m_command, selectedScript);
 			m_command.clear();
 			ImGui::SetKeyboardFocusHere(-1);
 		}
