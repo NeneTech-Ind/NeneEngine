@@ -68,6 +68,8 @@ namespace NeneEngine::ECS
 		// ===== Play =====
 		void NotifyPlayStarted();
 		void NotifyPlayStopping();
+		void RequestPlayStop() { m_playStopRequested = true; }
+		[[nodiscard]] bool ConsumePlayStopRequest() { return std::exchange(m_playStopRequested, false); }
 
 		EventBus& GetEventBus() { return m_eventBus; }
 		const EventBus& GetEventBus() const { return m_eventBus; }
@@ -85,6 +87,7 @@ namespace NeneEngine::ECS
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
 		eastl::vector<Entity> m_pendingDestruction;
 		std::shared_ptr<WorldLifetime> m_lifetime;
+		bool m_playStopRequested = false;
 	};
 
 } // namespace NeneEngine::ECS

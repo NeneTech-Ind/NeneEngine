@@ -38,6 +38,14 @@ namespace NeneEngine
 	void BindWorldApi(sol::table& nene, ECS::World& world, PrefabLibrary& prefabs)
 	{
 		auto worldApi = nene.create_named("world");
+		worldApi.set_function("stop_play", sol::protect(
+		                                      [lifetime = world.GetLifetime()]
+		                                      {
+			                                      const auto live = lifetime.lock();
+			                                      if (!live || !live->world)
+				                                      throw std::runtime_error("World is no longer valid");
+			                                      live->world->RequestPlayStop();
+		                                      }));
 		worldApi.set_function(
 		    "find", sol::protect(
 		                [lifetime = world.GetLifetime()](const std::string& name) -> std::optional<ScriptEntity>

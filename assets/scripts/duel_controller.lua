@@ -56,6 +56,9 @@ function Controller:on_update()
 	end
 	nene.log.info(responses[result])
 	log_status(self.state)
+	if result == "victory" then
+		nene.world.stop_play()
+	end
 end
 
 function Controller:on_destroy()

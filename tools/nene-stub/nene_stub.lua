@@ -241,6 +241,7 @@ stub.actions = {}
 stub.keys = {}
 stub.frame = 0
 stub.time = 0
+stub.play_stop_requested = false
 
 local pressed_actions = {}
 
@@ -407,6 +408,10 @@ function nene.world.find(name)
 		end
 	end
 	return nil
+end
+
+function nene.world.stop_play()
+	stub.play_stop_requested = true
 end
 
 function nene.world.find_by_tag(category)

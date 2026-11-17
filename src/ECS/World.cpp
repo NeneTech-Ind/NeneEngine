@@ -16,6 +16,7 @@ namespace NeneEngine::ECS
 		    {
 			    ++m_lifetime->sceneGeneration;
 			    m_pendingDestruction.clear();
+			    m_playStopRequested = false;
 			    for (auto& system : m_systems) system->OnSceneRestored(*this);
 		    });
 	}
@@ -111,6 +112,7 @@ namespace NeneEngine::ECS
 
 	void World::NotifyPlayStarted()
 	{
+		m_playStopRequested = false;
 		for (auto& system : m_systems) system->OnPlayStarted(*this);
 	}
 

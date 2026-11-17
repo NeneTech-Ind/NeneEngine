@@ -274,6 +274,10 @@ namespace NeneEngine
 
 	void EditorLayer::Update()
 	{
+		// Lua requests are handled after the world update, once script callbacks have returned.
+		if (m_context && m_context->world.ConsumePlayStopRequest() && m_context->mode == EditorMode::Play)
+			SetMode(EditorMode::Edit);
+
 		if (m_exitRequested)
 		{
 			m_exitRequested = false;
