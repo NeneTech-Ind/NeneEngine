@@ -29,6 +29,7 @@
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
+#include <limits>
 #include <misc/cpp/imgui_stdlib.h>
 #include <string>
 #include <type_traits>
@@ -136,6 +137,22 @@ namespace NeneEngine
 			return changed;
 		}
 
+		template <typename Number>
+		bool DrawRangedScriptField(const char* label, Number& value, Number min, Number max, FieldEdits& edits)
+		{
+			// ImGui sliders require bounds within half the numeric type's range.
+			const bool useSlider = min >= std::numeric_limits<Number>::lowest() / 2 &&
+			                       max <= (std::numeric_limits<Number>::max)() / 2;
+			return DrawValueField(label, edits, [&](const char* id)
+			{
+				if constexpr (std::is_same_v<Number, int>)
+					return useSlider ? ImGui::SliderInt(id, &value, min, max) : ImGui::InputInt(id, &value, 0, 0);
+				else
+					return useSlider ? ImGui::SliderFloat(id, &value, min, max, "%.3f")
+					                 : ImGui::InputFloat(id, &value, 0.0f, 0.0f, "%.9g");
+			});
+		}
+
 		bool DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
 		{
 			const char* label = field.name.c_str();
@@ -162,16 +179,14 @@ namespace NeneEngine
 				    if constexpr (std::is_same_v<Value, bool>)
 					    return Checkbox(label, current, edits);
 				    else if constexpr (std::is_same_v<Value, int>)
-					    return DrawValueField(label, edits, [&](const char* id) {
-						    return field.minimum ? ImGui::SliderInt(id, &current, std::get<int>(*field.minimum),
-						                                            std::get<int>(*field.maximum))
-						                         : ImGui::DragInt(id, &current);
-					    });
+					    return field.minimum ? DrawRangedScriptField(label, current, std::get<int>(*field.minimum),
+					                                                std::get<int>(*field.maximum), edits)
+					                         : DrawValueField(label, edits, [&](const char* id)
+					                           { return ImGui::DragInt(id, &current); });
 				    else if constexpr (std::is_same_v<Value, float>)
-					    return field.minimum ? DrawValueField(label, edits, [&](const char* id) {
-						    return ImGui::SliderFloat(id, &current, std::get<float>(*field.minimum),
-						                              std::get<float>(*field.maximum), "%.3f");
-					    }) : DragFloat(label, current, 0.05f, edits);
+					    return field.minimum ? DrawRangedScriptField(label, current, std::get<float>(*field.minimum),
+					                                                std::get<float>(*field.maximum), edits)
+					                         : DragFloat(label, current, 0.05f, edits);
 				    else if constexpr (std::is_same_v<Value, std::string>)
 					    return DrawValueField(label, edits,
 					                          [&](const char* id) { return ImGui::InputText(id, &current); });
