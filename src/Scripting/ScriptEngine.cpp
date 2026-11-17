@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
 #include "Scripting/Bindings/LogBindings.h"
 #include "Scripting/Bindings/VectorBindings.h"
@@ -218,6 +219,7 @@ namespace NeneEngine
 		BindInputApi(nene, input);
 		BindLogApi(nene);
 		BindVectorApi(nene);
+		BindEntityApi(nene);
 
 		m_impl = std::move(impl);
 		NENE_LOG_INFO("Script engine initialized");
