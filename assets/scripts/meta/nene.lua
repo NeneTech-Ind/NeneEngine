@@ -133,6 +133,11 @@ function nene.world.destroy(entity) end
 ---@return Entity?
 function nene.world.find(name) end
 
+---Returns all entities with the given category tag in unspecified order.
+---@param category string
+---@return Entity[] matches Empty when no entity matches.
+function nene.world.find_by_tag(category) end
+
 ---@param position vec3
 ---@param radius number
 ---@return Entity[]

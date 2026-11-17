@@ -193,12 +193,18 @@ end
 function stub.create(name, options)
 	options = options or {}
 
+	local tags = {}
+	for _, tag in ipairs(options.tags or {}) do
+		tags[tag] = true
+	end
+
 	local id = next_id
 	next_id = next_id + 1
 
 	local record = {
 		id = id,
 		name = name,
+		tags = tags,
 		position = copy(options.position or vec3()),
 		rotation = copy(options.rotation or vec3()),
 		velocity = copy(options.velocity or vec3()),
@@ -401,6 +407,16 @@ function nene.world.find(name)
 		end
 	end
 	return nil
+end
+
+function nene.world.find_by_tag(category)
+	local found = {}
+	for _, id in ipairs(alive_ids()) do
+		if records[id].tags[category] then
+			found[#found + 1] = handle(id)
+		end
+	end
+	return found
 end
 
 function nene.world.find_in_radius(position, radius)
