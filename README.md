@@ -9,7 +9,7 @@
 
 <p align="center"><b>A small C++20 game engine for Windows with a built-in editor</b></p>
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_happy_128.png">
+<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_happy_128.png">
 
 NeneEngine renders with DirectX 12 and keeps its world in an Entity-Component-System, with Jolt for physics and an editor. Engine settings, scenes and asset descriptions are plain JSON files, so you can change them without recompiling.
 
@@ -50,7 +50,7 @@ Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 
 ## Getting started
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_search_128.png">
+<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_search_128.png">
 
 ### Requirements
 
@@ -88,7 +88,7 @@ cpack --config out/build/x64-release/CPackConfig.cmake
 
 ### Run
 
-Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. The log goes to `logs/nene_engine.log` next to the executable.
+Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. Each run writes a separate `nene_engine-<date>-<time>-<timestamp>-<pid>.log` file in `%LOCALAPPDATA%/NeneEngine/logs/`.
 
 | Option                | Effect                                                                  |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -154,6 +154,11 @@ Inside `on_start`, use `Ctrl+Space` after `self.` to look for `speed`, then hove
 | `external/` | Submodules: Diligent Engine, Dear ImGui, ImGuizmo                                               |
 | `docs/`     | Project conventions                                                                             |
 
+Editor artwork, fonts and built-in shaders live in `assets/engine/`. Demo scenes are in `assets/scenes/`, models in `assets/models/` and scripts in `assets/scripts/`. The Asset Browser skips `assets/engine/`, `assets/readme/` and `assets/icons/`.
+
+The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. Logs are in `%LOCALAPPDATA%/NeneEngine/logs/`. At startup, the editor keeps the 20 most recent logs. Older logs that are still open are kept until a later startup.
+
+
 ## Contributing
 
 Read the [Git conventions](docs/conventions/git-convention.md) and [naming conventions](docs/conventions/naming-convention.md) before opening a branch.
@@ -166,6 +171,6 @@ Read the [Git conventions](docs/conventions/git-convention.md) and [naming conve
 
 ## License
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_sleep_128.png">
+<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_sleep_128.png">
 
 NeneEngine is released under the [MIT License](LICENSE.txt). Third-party libraries, fonts, icons and models keep their own licenses, listed in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).

@@ -8,15 +8,46 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <functional>
 #include <iostream>
+#include <regex>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <vector>
 
 namespace NeneEngine
 {
 	namespace
 	{
 		constexpr size_t kHistoryCapacity = 2000;
+		constexpr size_t kLogFileLimit = 20;
+
+		void RemoveOldLogs(const std::filesystem::path& logPath)
+		{
+			const std::wregex logName(LR"(nene_engine-[0-9]{8}-[0-9]{6}-[0-9]+-[0-9]+\.log)");
+			if (!std::regex_match(logPath.filename().wstring(), logName)) return;
+
+			std::error_code error;
+			std::vector<std::filesystem::path> logs;
+			std::filesystem::directory_iterator it(logPath.parent_path(), error);
+			const std::filesystem::directory_iterator end;
+			for (; !error && it != end; it.increment(error))
+			{
+				std::error_code entryError;
+				if (it->is_regular_file(entryError) && std::regex_match(it->path().filename().wstring(), logName))
+					logs.push_back(it->path());
+			}
+			if (error) return;
+
+			std::sort(logs.begin(), logs.end(), std::greater<>());
+			for (size_t index = kLogFileLimit; index < logs.size(); ++index)
+			{
+				if (logs[index] == logPath) continue;
+				std::filesystem::remove(logs[index], error);
+				error.clear();
+			}
+		}
 	} // namespace
 
 	NeneLogger& NeneLogger::GetInstance()
@@ -25,7 +56,7 @@ namespace NeneEngine
 		return instance;
 	}
 
-	bool NeneLogger::Initialize(const std::string& logFileName, spdlog::level::level_enum logLevel, bool consoleWithColor)
+	bool NeneLogger::Initialize(const std::filesystem::path& logFileName, spdlog::level::level_enum logLevel, bool consoleWithColor)
 	{
 		try
 		{
@@ -50,15 +81,17 @@ namespace NeneEngine
 					std::filesystem::create_directories(parentPath, errorCode);
 				}
 
-				try
+				m_logFile.open(logPath, std::ios::out | std::ios::trunc | std::ios::binary);
+				if (m_logFile.is_open())
 				{
-					auto file = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName.c_str(), true);
+					RemoveOldLogs(logPath);
+					auto file = std::make_shared<spdlog::sinks::ostream_sink_mt>(m_logFile);
 					file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
 					sinks.push_back(file);
 				}
-				catch (const spdlog::spdlog_ex& ex)
+				else
 				{
-					fileSinkError = ex.what();
+					fileSinkError = "could not open log file";
 				}
 			}
 
@@ -91,6 +124,7 @@ namespace NeneEngine
 			m_logger.reset();
 		}
 		m_history.reset();
+		m_logFile.close();
 	}
 
 } // namespace NeneEngine

@@ -14,16 +14,6 @@
 
 namespace NeneEngine
 {
-	namespace
-	{
-		std::filesystem::path ResolveLogFilePath()
-		{
-			auto logRoot = GetExecutableDirectory();
-			if (logRoot.empty()) logRoot = std::filesystem::current_path();
-			return logRoot / "logs" / "nene_engine.log";
-		}
-	} // namespace
-
 	NeneEngineApp::NeneEngineApp() = default;
 
 	NeneEngineApp::~NeneEngineApp()
@@ -48,14 +38,14 @@ namespace NeneEngine
 			m_windowRuntimeService.SetJobSystem(m_jobSystem);
 			if (!m_bootstrapService.Initialize(
 			        *this, m_jobSystem, m_gameStateMachine, m_world, m_runtimeConfigService, m_windowRuntimeService,
-			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, ResolveLogFilePath().string(),
+			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, GetEditorLogPath(),
 			        width, height))
 				return false;
 
 			if (auto* renderer = m_windowRuntimeService.GetMainRenderer())
 			{
 				NENE_PROFILE_SCOPE("Default Shader Warmup");
-				const std::string shaderPath = "assets/shaders/textured_mesh.shader";
+				const std::string shaderPath = "assets/engine/shaders/textured_mesh.shader";
 				m_sceneAssets.Shader(shaderPath, *renderer, JobPriority::High);
 				while (m_sceneAssets.GetShaderState(shaderPath, *renderer) == ResourceLoadState::Loading)
 				{

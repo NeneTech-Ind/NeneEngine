@@ -10,11 +10,6 @@
 
 namespace NeneEngine
 {
-	namespace
-	{
-		constexpr const char* kImGuiIniFileName = "imgui.ini";
-	} // namespace
-
 	eastl::optional<AppWindowContext> AppWindowContextFactory::Create(uint32_t width, uint32_t height,
 	                                                                  const std::string& title,
 	                                                                  ECS::Entity cameraEntity, bool isMain)
@@ -43,7 +38,7 @@ namespace NeneEngine
 		if (isMain)
 		{
 			windowContext.imguiBackend = eastl::make_unique<DiligentImGuiBackend>(
-			    *renderer, windowContext.window->GetHWND(), GetExecutableDirectory() / kImGuiIniFileName);
+			    *renderer, windowContext.window->GetHWND(), GetEditorLayoutPath());
 			windowContext.window->SetMessageHook(
 			    [imguiBackend = windowContext.imguiBackend.get()](HWND hwnd, uint32_t message, uintptr_t wParam,
 			                                                      intptr_t lParam, intptr_t& result)

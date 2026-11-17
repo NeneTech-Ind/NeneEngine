@@ -20,8 +20,10 @@ namespace NeneEngine
 
 	DiligentImGuiBackend::DiligentImGuiBackend(DiligentDX12Adapter& adapter, HWND hwnd,
 	                                           const std::filesystem::path& iniFilePath)
-	    : m_adapter(adapter), m_hwnd(hwnd), m_iniFilePath(iniFilePath.string())
+	    : m_adapter(adapter), m_hwnd(hwnd)
 	{
+		const auto utf8Path = iniFilePath.u8string();
+		m_iniFilePath.assign(utf8Path.begin(), utf8Path.end());
 		const SwapChainDesc& swapChainDesc = m_adapter.GetSwapChain()->GetDesc();
 		m_impl = eastl::make_unique<ImGuiImplWin32>(ImGuiDiligentCreateInfo{m_adapter.GetDevice(),
 		                                                                    swapChainDesc.ColorBufferFormat,
