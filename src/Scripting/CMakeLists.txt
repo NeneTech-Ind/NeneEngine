@@ -3,7 +3,9 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/ScriptFieldSchema.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/Bindings/InputBindings.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/Bindings/LogBindings.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/Bindings/VectorBindings.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ScriptEngine.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Bindings/InputBindings.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Bindings/LogBindings.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Bindings/VectorBindings.cpp"
 )
