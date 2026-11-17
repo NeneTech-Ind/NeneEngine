@@ -25,6 +25,8 @@ can be opened from the File menu.
 
 Each run writes a separate nene_engine-<date>-<time>-<timestamp>-<pid>.log
 file in %LOCALAPPDATA%/NeneEngine/logs/.
+At startup, the editor keeps the 20 most recent logs. Older logs that are
+still open are kept until a later startup.
 
 On the first start Windows may ask whether NeneEngine can use the network.
 The engine opens a port only for the Tracy profiler, so access can be denied.

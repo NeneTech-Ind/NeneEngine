@@ -156,7 +156,7 @@ Inside `on_start`, use `Ctrl+Space` after `self.` to look for `speed`, then hove
 
 Editor artwork, fonts and built-in shaders live in `assets/engine/`. Demo scenes are in `assets/scenes/`, models in `assets/models/` and scripts in `assets/scripts/`. The Asset Browser skips `assets/engine/`, `assets/readme/` and `assets/icons/`.
 
-The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. Logs are in `%LOCALAPPDATA%/NeneEngine/logs/`.
+The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. Logs are in `%LOCALAPPDATA%/NeneEngine/logs/`. At startup, the editor keeps the 20 most recent logs. Older logs that are still open are kept until a later startup.
 
 
 ## Contributing
