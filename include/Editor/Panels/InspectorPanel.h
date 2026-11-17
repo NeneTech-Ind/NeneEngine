@@ -36,6 +36,7 @@ namespace NeneEngine
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Right; }
 
 		void Draw(EditorContext& context) override;
+		void CommitPendingEdits(EditorContext& context) override { FinishScriptFieldEdit(context); }
 		void OnSceneLoaded() override
 		{
 			m_commitPendingEdit = nullptr;

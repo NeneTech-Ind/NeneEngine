@@ -402,6 +402,7 @@ namespace NeneEngine
 
 	bool EditorLayer::SaveScene(bool saveAs, std::string* errorMessage)
 	{
+		CommitPendingEdits();
 		try
 		{
 			const auto path = saveAs || m_scenePath.empty() ? ChooseSceneFile(true, m_scenePath) : m_scenePath;
@@ -425,6 +426,7 @@ namespace NeneEngine
 	bool EditorLayer::HandleWindowCloseRequest()
 	{
 		if (m_context == nullptr) return true;
+		CommitPendingEdits();
 		if (m_pendingSceneAction == SceneAction::None && !m_history.IsDirty()) return true;
 		if (m_window != nullptr && m_window->IsMinimized()) ShowWindow(m_window->GetHWND(), SW_RESTORE);
 		RequestExit();
@@ -435,6 +437,7 @@ namespace NeneEngine
 	{
 		if (m_context == nullptr || m_pendingSceneAction != SceneAction::None) return;
 		if (action == SceneAction::Load && m_resourceLoads == nullptr) return;
+		CommitPendingEdits();
 		if (m_history.IsDirty())
 			m_pendingSceneAction = action;
 		else
@@ -768,6 +771,7 @@ namespace NeneEngine
 	void EditorLayer::SetMode(EditorMode mode)
 	{
 		if (m_context->mode == mode) return;
+		CommitPendingEdits();
 
 		ECS::World& world = m_context->world;
 		if (mode == EditorMode::Play)
@@ -786,6 +790,11 @@ namespace NeneEngine
 		NENE_LOG_INFO("Editor switched to {} mode", mode == EditorMode::Play ? "Play" : "Edit");
 
 		if (m_onModeChanged) m_onModeChanged(mode);
+	}
+
+	void EditorLayer::CommitPendingEdits()
+	{
+		for (auto& entry : m_panels) entry.panel->CommitPendingEdits(*m_context);
 	}
 
 	void EditorLayer::HandleShortcuts()
