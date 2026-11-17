@@ -8,6 +8,8 @@ lua tools/nene-stub/run.lua tools/nene-stub/examples/chaser_scene.lua
 
 A scenario file registers prefabs in `stub.prefabs`, creates entities with `stub.create(name, options)`, runs frames with `stub.run(frames, dt)` and checks the result. `stub.press(action)` and `stub.release(action)` drive `nene.input`.
 
+Set `tags = { "enemy", "flying" }` in entity options or prefab definitions to make those entities discoverable through `nene.world.find_by_tag(category)`.
+
 The stub is not a physics engine:
 
 - Positions move by `velocity * dt`. There is no gravity, and `is_grounded` returns the `grounded` option given to `stub.create`.
