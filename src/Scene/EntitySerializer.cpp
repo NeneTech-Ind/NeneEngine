@@ -168,7 +168,9 @@ namespace NeneEngine
 
 		nlohmann::json SerializeTag(const ECS::TagComponent& tag)
 		{
-			return {{"name", tag.name}};
+			nlohmann::json value{{"name", tag.name}};
+			if (!tag.tags.empty()) value["tags"] = tag.tags;
+			return value;
 		}
 
 		nlohmann::json SerializeTransform(const ECS::TransformComponent& transform)
@@ -282,9 +284,11 @@ namespace NeneEngine
 
 		void DeserializeTag(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
 		{
+			ECS::TagComponent parsed(value.at("name").get<std::string>());
+			if (value.contains("tags")) parsed.tags = value.at("tags").get<std::set<std::string>>();
 			auto& tag = world.HasComponent<ECS::TagComponent>(entity) ? *world.GetComponent<ECS::TagComponent>(entity)
 			                                                          : world.AddComponent<ECS::TagComponent>(entity);
-			tag.name = value.at("name").get<std::string>();
+			tag = std::move(parsed);
 		}
 
 		void DeserializeTransform(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
