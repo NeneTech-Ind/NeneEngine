@@ -22,9 +22,20 @@ namespace NeneEngine
 		}
 		try
 		{
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(
-			         root, std::filesystem::directory_options::skip_permission_denied))
+			for (auto it = std::filesystem::recursive_directory_iterator(
+			         root, std::filesystem::directory_options::skip_permission_denied);
+			     it != std::filesystem::recursive_directory_iterator{}; ++it)
 			{
+				const auto& entry = *it;
+				if (it.depth() == 0 && entry.is_directory())
+				{
+					const auto name = entry.path().filename();
+					if (name == "engine" || name == "readme" || name == "icons")
+					{
+						it.disable_recursion_pending();
+						continue;
+					}
+				}
 				if (!entry.is_regular_file()) continue;
 				std::string extension = entry.path().extension().string();
 				std::transform(extension.begin(), extension.end(), extension.begin(),
