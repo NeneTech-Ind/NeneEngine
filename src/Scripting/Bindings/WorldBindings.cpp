@@ -1,17 +1,39 @@
 #include "Scripting/Bindings/WorldBindings.h"
 
 #include "Core/NeneLogger.h"
+#include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/TagComponent.h"
+#include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
 #include "Scene/Prefab/PrefabLibrary.h"
 #include "Scripting/Bindings/ScriptEntity.h"
 
+#include <cmath>
 #include <optional>
 #include <sol/sol.hpp>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace NeneEngine
 {
+	namespace
+	{
+		std::optional<glm::dvec3> FindWorldPosition(const entt::registry& registry, ECS::Entity entity,
+		                                           const ECS::TransformComponent& transform)
+		{
+			glm::dvec4 position(glm::dvec3(transform.position), 1.0);
+			std::unordered_set<ECS::Entity> visited;
+			while (const auto* hierarchy = registry.try_get<ECS::HierarchyComponent>(entity))
+			{
+				entity = hierarchy->parent;
+				if (!registry.valid(entity)) break;
+				if (!visited.insert(entity).second) return std::nullopt;
+				if (const auto* parent = registry.try_get<ECS::TransformComponent>(entity))
+					position = glm::dmat4(parent->GetModelMatrix()) * position;
+			}
+			return glm::dvec3(position);
+		}
+	}
 
 	void BindWorldApi(sol::table& nene, ECS::World& world, PrefabLibrary& prefabs)
 	{
@@ -48,6 +70,32 @@ namespace NeneEngine
 			                          }
 			                          return matches;
 		                          }));
+		const auto findInRadius = [lifetime = world.GetLifetime()](sol::this_state state, const glm::vec3& center,
+		                                                         double radius)
+		{
+			if (!std::isfinite(radius) || radius < 0.0)
+				throw std::invalid_argument("Search radius must be finite and non-negative");
+			if (!std::isfinite(center.x) || !std::isfinite(center.y) || !std::isfinite(center.z))
+				throw std::invalid_argument("Search center must be finite");
+			const auto live = lifetime.lock();
+			if (!live || !live->world) throw std::runtime_error("World is no longer valid");
+
+			auto& currentWorld = *live->world;
+			const auto& registry = currentWorld.GetRegistry();
+			const glm::dvec3 origin(center);
+			auto matches = sol::state_view(state).create_table();
+			int index = 1;
+			for (const auto [entity, transform] : registry.view<const ECS::TransformComponent>().each())
+			{
+				const auto position = FindWorldPosition(registry, entity, transform);
+				if (!position) continue;
+				const auto offset = *position - origin;
+				if (std::hypot(offset.x, offset.y, offset.z) <= radius)
+					matches.raw_set(index++, ScriptEntity(currentWorld, entity));
+			}
+			return matches;
+		};
+		worldApi.set_function("find_in_radius", sol::protect(findInRadius));
 		worldApi.set_function("spawn",
 		                      sol::protect(
 		                          [lifetime = world.GetLifetime(), &prefabs](
