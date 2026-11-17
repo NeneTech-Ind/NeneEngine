@@ -30,8 +30,8 @@ namespace NeneEngine
 	{
 		if (m_running) RequestShutdown();
 		m_resourceLoads.Shutdown();
-		m_jobSystem.Shutdown();
 		m_editorLayer.Shutdown();
+		m_jobSystem.Shutdown();
 		m_gameStateMachine.Clear();
 		m_scriptEngine.Shutdown();
 		NeneLogger::GetInstance().Shutdown();
@@ -65,10 +65,12 @@ namespace NeneEngine
 			}
 
 			m_editorLayer.Initialize(
-			    m_world, m_windowRuntimeService.GetMainImGuiBackend(), m_windowRuntimeService.GetMainWindowInput(),
+			    m_world, m_scriptEngine, m_windowRuntimeService.GetMainImGuiBackend(),
+			    m_windowRuntimeService.GetMainWindowInput(),
 			    m_windowRuntimeService.GetMainCameraEntity(), [this]() { RequestShutdown(); },
 			    [this](EditorMode mode) { OnEditorModeChanged(mode); });
 			m_editorLayer.SetRenderer(m_windowRuntimeService.GetMainRenderer());
+			m_editorLayer.SetWindowCameras(m_windowRuntimeService.GetWindowCameraEntities());
 			m_editorLayer.SetWindow(m_windowRuntimeService.GetMainWindow());
 			m_editorLayer.SetResourceLoading(m_resourceLoads, m_sceneAssets);
 			m_windowRuntimeService.SetMainWindowCloseRequestHandler(

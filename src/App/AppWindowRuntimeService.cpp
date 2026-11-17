@@ -344,6 +344,15 @@ namespace NeneEngine
 		return mainWindow != nullptr ? mainWindow->cameraEntity : ECS::NullEntity;
 	}
 
+	eastl::vector<ECS::Entity> AppWindowRuntimeService::GetWindowCameraEntities() const
+	{
+		eastl::vector<ECS::Entity> cameras;
+		cameras.reserve(m_windows.size());
+		for (const auto& window : m_windows)
+			if (window.cameraEntity != ECS::NullEntity) cameras.push_back(window.cameraEntity);
+		return cameras;
+	}
+
 	AppWindowContext* AppWindowRuntimeService::FindMainWindow()
 	{
 		for (auto& windowContext : m_windows)

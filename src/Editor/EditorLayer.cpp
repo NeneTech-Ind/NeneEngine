@@ -23,6 +23,7 @@
 #include <EASTL/string.h>
 #include <ImGuizmo.h>
 #include <algorithm>
+#include <exception>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <iterator>
@@ -139,13 +140,18 @@ namespace NeneEngine
 		if (m_context) m_context->renderer = renderer;
 	}
 
+	void EditorLayer::SetWindowCameras(eastl::vector<ECS::Entity> cameras)
+	{
+		if (m_context) m_context->windowCameras = std::move(cameras);
+	}
+
 	EditorLayer::~EditorLayer()
 	{
 		Shutdown();
 	}
 
-	void EditorLayer::Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput,
-	                             ECS::Entity cameraEntity, RequestShutdownCallback requestShutdown,
+	void EditorLayer::Initialize(ECS::World& world, ScriptEngine& scriptEngine, IImGuiBackend* imguiBackend,
+	                             InputDevice* uiInput, ECS::Entity cameraEntity, RequestShutdownCallback requestShutdown,
 	                             ModeChangedCallback onModeChanged)
 	{
 		Shutdown();
@@ -175,7 +181,7 @@ namespace NeneEngine
 		m_aboutWindow.Initialize(*m_imguiBackend);
 
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
-		m_panels.push_back({eastl::make_unique<InspectorPanel>()});
+		m_panels.push_back({eastl::make_unique<InspectorPanel>(scriptEngine)});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
 		m_panels.push_back({eastl::make_unique<ConsolePanel>()});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
@@ -190,6 +196,23 @@ namespace NeneEngine
 
 	void EditorLayer::Shutdown()
 	{
+		if (m_context != nullptr && m_context->mode == EditorMode::Play)
+		{
+			m_context->mode = EditorMode::Edit;
+			try
+			{
+				m_context->world.NotifyPlayStopping();
+			}
+			catch (const std::exception& exception)
+			{
+				NENE_LOG_ERROR("PlayStopping failed during editor shutdown: {}", exception.what());
+			}
+			catch (...)
+			{
+				NENE_LOG_ERROR("PlayStopping failed during editor shutdown with an unknown exception");
+			}
+		}
+
 		++m_sceneLoadGeneration;
 		m_resourceLoads = nullptr;
 		if (m_uiInput != nullptr)
@@ -379,6 +402,7 @@ namespace NeneEngine
 
 	bool EditorLayer::SaveScene(bool saveAs, std::string* errorMessage)
 	{
+		CommitPendingEdits();
 		try
 		{
 			const auto path = saveAs || m_scenePath.empty() ? ChooseSceneFile(true, m_scenePath) : m_scenePath;
@@ -402,6 +426,7 @@ namespace NeneEngine
 	bool EditorLayer::HandleWindowCloseRequest()
 	{
 		if (m_context == nullptr) return true;
+		CommitPendingEdits();
 		if (m_pendingSceneAction == SceneAction::None && !m_history.IsDirty()) return true;
 		if (m_window != nullptr && m_window->IsMinimized()) ShowWindow(m_window->GetHWND(), SW_RESTORE);
 		RequestExit();
@@ -412,6 +437,7 @@ namespace NeneEngine
 	{
 		if (m_context == nullptr || m_pendingSceneAction != SceneAction::None) return;
 		if (action == SceneAction::Load && m_resourceLoads == nullptr) return;
+		CommitPendingEdits();
 		if (m_history.IsDirty())
 			m_pendingSceneAction = action;
 		else
@@ -745,11 +771,12 @@ namespace NeneEngine
 	void EditorLayer::SetMode(EditorMode mode)
 	{
 		if (m_context->mode == mode) return;
+		CommitPendingEdits();
 
 		ECS::World& world = m_context->world;
 		if (mode == EditorMode::Play)
 		{
-			m_sceneSnapshot.Capture(world);
+			m_sceneSnapshot.Capture(world, m_context->windowCameras);
 			world.NotifyPlayStarted();
 		}
 		else
@@ -763,6 +790,11 @@ namespace NeneEngine
 		NENE_LOG_INFO("Editor switched to {} mode", mode == EditorMode::Play ? "Play" : "Edit");
 
 		if (m_onModeChanged) m_onModeChanged(mode);
+	}
+
+	void EditorLayer::CommitPendingEdits()
+	{
+		for (auto& entry : m_panels) entry.panel->CommitPendingEdits(*m_context);
 	}
 
 	void EditorLayer::HandleShortcuts()

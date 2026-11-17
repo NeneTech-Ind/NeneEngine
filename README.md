@@ -115,6 +115,19 @@ Install the Lua extension (`sumneko.lua`) and open `assets/scripts` as a folder 
 
 In a Lua script under `assets/scripts`, type `nene.` and press `Ctrl+Space` to see the available API members. Use `---@field` on the behaviour class to give LuaLS the types of fields copied from `Behaviour.fields` onto `self`.
 
+Declare field defaults in `fields` and add optional editor metadata separately:
+
+```lua
+Mover.fields = { speed = 4.0, enabled = true, mode = "walk" }
+Mover.field_metadata = {
+    speed = { type = "float", min = 0, max = 10 },
+    enabled = { type = "bool" },
+    mode = { type = "enum", options = { "walk", "run" } },
+}
+```
+
+Supported types are `bool`, `int`, `float`, `string`, `vec3` and string-valued `enum`. For a numeric range, set both `min` and `max`. For an enum, provide a nonempty `options` array that includes the default. Write float defaults as Lua floats (for example `4.0`). Fields without metadata continue to work. The inspector highlights invalid edits and does not apply them to the component.
+
 ```lua
 ---@class Mover : nene.Behaviour
 ---@field speed number

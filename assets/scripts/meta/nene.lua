@@ -59,9 +59,16 @@ function Entity:is_grounded() end
 
 ---@alias nene.FieldValue boolean|integer|number|string|vec3
 
+---@class nene.FieldMetadata
+---@field type 'bool'|'int'|'float'|'string'|'vec3'|'enum'
+---@field min? number
+---@field max? number
+---@field options? string[]
+
 ---@class nene.Behaviour
 ---@field entity Entity The entity this behaviour is attached to.
 ---@field fields table<string, nene.FieldValue> Declared fields and their default values. Their current values are copied into the instance, so `self.wave_size` reads the field `wave_size`.
+---@field field_metadata? table<string, nene.FieldMetadata> Optional inspector types and constraints.
 local Behaviour = {}
 
 ---Creates a behaviour class. A script file returns the class it creates.

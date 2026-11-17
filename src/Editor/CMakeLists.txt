@@ -8,6 +8,7 @@ target_sources(NeneEngine PRIVATE
 	"${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorAssetActions.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Panels/AssetBrowserPanel.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Commands/ComponentChangeCommand.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Commands/ComponentPresenceCommand.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/Commands/IEditorCommand.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorAboutWindow.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Editor/EditorContext.h"

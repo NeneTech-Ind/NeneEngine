@@ -56,7 +56,11 @@ namespace NeneEngine
 		{
 			const auto fields = scriptClass.raw_get<sol::object>("fields");
 			ScriptFieldSchema schema;
-			if (fields == sol::nil) return schema;
+			if (fields == sol::nil)
+			{
+				if (scriptClass.raw_get<sol::object>("field_metadata") != sol::nil) return std::nullopt;
+				return schema;
+			}
 			if (fields.get_type() != sol::type::table)
 			{
 				NENE_LOG_ERROR("Script '{}': fields must be a table", fileName);
@@ -73,12 +77,95 @@ namespace NeneEngine
 
 				auto name = key.as<std::string>();
 				auto defaultValue = ReadFieldValue(value);
-				if (!defaultValue)
+				if (!defaultValue || !IsValidScriptFieldValue({name, *defaultValue}, *defaultValue))
 				{
 					NENE_LOG_ERROR("Script '{}': invalid default value for field '{}'", fileName, name);
 					return std::nullopt;
 				}
 				schema.push_back({std::move(name), std::move(*defaultValue)});
+			}
+
+			const auto metadata = scriptClass.raw_get<sol::object>("field_metadata");
+			if (metadata != sol::nil)
+			{
+				if (metadata.get_type() != sol::type::table)
+				{
+					NENE_LOG_ERROR("Script '{}': field_metadata must be a table", fileName);
+					return std::nullopt;
+				}
+				for (const auto& [key, value] : metadata.as<sol::table>())
+				{
+					if (key.get_type() != sol::type::string || value.get_type() != sol::type::table)
+					{
+						NENE_LOG_ERROR("Script '{}': invalid field metadata entry", fileName);
+						return std::nullopt;
+					}
+					const auto name = key.as<std::string>();
+					auto it = std::find_if(schema.begin(), schema.end(), [&](const auto& f) { return f.name == name; });
+					if (it == schema.end())
+					{
+						NENE_LOG_ERROR("Script '{}': metadata refers to unknown field '{}'", fileName, name);
+						return std::nullopt;
+					}
+					const sol::table spec = value.as<sol::table>();
+					const auto type = spec.raw_get<sol::object>("type");
+					const char* expected[] = {"bool", "int", "float", "string", "vec3"};
+					if (type.get_type() != sol::type::string ||
+					    (type.as<std::string>() != expected[it->defaultValue.index()] &&
+					     !(type.as<std::string>() == "enum" && std::holds_alternative<std::string>(it->defaultValue))))
+					{
+						NENE_LOG_ERROR("Script '{}': invalid type for field '{}'", fileName, name);
+						return std::nullopt;
+					}
+					const auto min = spec.raw_get<sol::object>("min");
+					const auto max = spec.raw_get<sol::object>("max");
+					if (min != sol::nil || max != sol::nil)
+					{
+						if (min == sol::nil || max == sol::nil || min.get_type() != sol::type::number ||
+						    max.get_type() != sol::type::number)
+							return std::nullopt;
+						if (std::holds_alternative<int>(it->defaultValue))
+						{
+							auto low = ReadFieldValue(min), high = ReadFieldValue(max);
+							if (!low || !high || !std::holds_alternative<int>(*low) || !std::holds_alternative<int>(*high) ||
+							    std::get<int>(*low) >= std::get<int>(*high)) return std::nullopt;
+							it->minimum = *low;
+							it->maximum = *high;
+						}
+						else if (std::holds_alternative<float>(it->defaultValue))
+						{
+							const double low = min.as<double>(), high = max.as<double>();
+							if (!std::isfinite(low) || !std::isfinite(high) || low >= high ||
+							    std::abs(low) > (std::numeric_limits<float>::max)() ||
+							    std::abs(high) > (std::numeric_limits<float>::max)() ||
+							    static_cast<float>(low) >= static_cast<float>(high)) return std::nullopt;
+							it->minimum = static_cast<float>(low);
+							it->maximum = static_cast<float>(high);
+						}
+						else return std::nullopt;
+					}
+					const auto options = spec.raw_get<sol::object>("options");
+					if (type.as<std::string>() == "enum")
+					{
+						if (options.get_type() != sol::type::table) return std::nullopt;
+						const auto list = options.as<sol::table>();
+						const auto count = list.size();
+						if (count == 0) return std::nullopt;
+						for (size_t i = 1; i <= count; ++i)
+						{
+							const auto option = list.raw_get<sol::object>(i);
+							if (option.get_type() != sol::type::string) return std::nullopt;
+							auto text = option.as<std::string>();
+							if (std::find(it->options.begin(), it->options.end(), text) != it->options.end()) return std::nullopt;
+							it->options.push_back(std::move(text));
+						}
+						size_t actual = 0;
+						for (const auto& entry : list) { (void)entry; ++actual; }
+						if (actual != count) return std::nullopt;
+					}
+					else if (options != sol::nil) return std::nullopt;
+					if (!IsValidScriptFieldValue(*it, it->defaultValue)) return std::nullopt;
+				}
 			}
 
 			std::ranges::sort(schema, {}, &ScriptFieldDefinition::name);
@@ -181,7 +268,11 @@ namespace NeneEngine
 
 		auto scriptClass = result.get<sol::table>();
 		auto fieldSchema = ReadFieldSchema(scriptClass, fileName);
-		if (!fieldSchema) return nullptr;
+		if (!fieldSchema)
+		{
+			NENE_LOG_ERROR("Script '{}': invalid field schema or metadata", fileName);
+			return nullptr;
+		}
 
 		const auto it = scripts.emplace(
 		    scriptPath, Impl::LoadedScript{std::move(environment), std::move(scriptClass), std::move(*fieldSchema)});

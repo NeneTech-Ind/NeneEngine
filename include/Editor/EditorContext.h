@@ -57,6 +57,7 @@ namespace NeneEngine
 		EditorHistory& history;
 		ECS::Entity selectedEntity = ECS::NullEntity;
 		ECS::Entity cameraEntity = ECS::NullEntity;
+		eastl::vector<ECS::Entity> windowCameras;
 		EditorMode mode = EditorMode::Edit;
 		bool isViewportHovered = false;
 		bool isViewportFocused = false;

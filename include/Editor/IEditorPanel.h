@@ -28,6 +28,7 @@ namespace NeneEngine
 
 		virtual void Update(EditorContext& /*context*/) {}
 		virtual void Draw(EditorContext& context) = 0;
+		virtual void CommitPendingEdits(EditorContext& /*context*/) {}
 		virtual void OnSceneLoaded() {}
 	};
 

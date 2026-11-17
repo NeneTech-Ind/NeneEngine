@@ -64,22 +64,30 @@ namespace NeneEngine::ECS
 			if (iterator == m_subscribers.end()) return;
 
 			++m_publishDepth;
-			for (const auto& subscriber : iterator->second)
+			try
 			{
-				if (!subscriber.pendingRemove) subscriber.callback(&event);
+				for (const auto& subscriber : iterator->second)
+				{
+					if (!subscriber.pendingRemove) subscriber.callback(&event);
+				}
 			}
-			--m_publishDepth;
-
-			if (!IsPublishing())
+			catch (...)
 			{
-				AddPendingSubscribers();
-				RemovePendingSubscribers();
+				FinishPublish();
+				throw;
 			}
+			FinishPublish();
 		}
 
 		void Clear()
 		{
-			m_subscribers.clear();
+			if (IsPublishing())
+			{
+				for (auto& entry : m_subscribers)
+					for (auto& subscriber : entry.second) subscriber.pendingRemove = true;
+			}
+			else
+				m_subscribers.clear();
 			m_pendingSubscribers.clear();
 		}
 
@@ -98,6 +106,14 @@ namespace NeneEngine::ECS
 		};
 
 		[[nodiscard]] bool IsPublishing() const { return m_publishDepth > 0; }
+
+		void FinishPublish()
+		{
+			--m_publishDepth;
+			if (IsPublishing()) return;
+			RemovePendingSubscribers();
+			AddPendingSubscribers();
+		}
 
 		void AddPendingSubscribers()
 		{

@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "ECS/Components/CameraComponent.h"
+#include "ECS/Components/CameraControllerComponent.h"
 #include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/ContactStateComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
@@ -30,11 +32,9 @@ namespace NeneEngine
 	class EditorSceneSnapshot final
 	{
 	  public:
-		void Capture(const ECS::World& world);
+		void Capture(const ECS::World& world, const eastl::vector<ECS::Entity>& windowCameras);
 		void Restore(ECS::World& world);
 		void Clear();
-
-		[[nodiscard]] bool IsEmpty() const { return m_entities.empty(); }
 
 	  private:
 		template <typename Component> struct ComponentStore
@@ -44,6 +44,7 @@ namespace NeneEngine
 
 		using ComponentStores =
 		    eastl::tuple<ComponentStore<ECS::TagComponent>, ComponentStore<ECS::TransformComponent>,
+		                 ComponentStore<ECS::CameraComponent>, ComponentStore<ECS::CameraControllerComponent>,
 		                 ComponentStore<ECS::HierarchyComponent>, ComponentStore<ECS::MeshRendererComponent>,
 		                 ComponentStore<ECS::ColliderComponent>, ComponentStore<ECS::RigidbodyComponent>,
 		                 ComponentStore<ECS::ContactStateComponent>, ComponentStore<ECS::MovementComponent>,
@@ -53,7 +54,9 @@ namespace NeneEngine
 		[[nodiscard]] bool WasCaptured(ECS::Entity entity) const;
 
 		eastl::vector<ECS::Entity> m_entities;
+		eastl::vector<ECS::Entity> m_windowCameras;
 		ComponentStores m_stores;
+		bool m_hasCapture = false;
 	};
 
 } // namespace NeneEngine

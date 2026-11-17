@@ -20,6 +20,7 @@ namespace NeneEngine
 {
 	class IImGuiBackend;
 	class InputDevice;
+	class ScriptEngine;
 
 	class EditorLayer final
 	{
@@ -30,11 +31,13 @@ namespace NeneEngine
 		EditorLayer();
 		~EditorLayer();
 
-		void Initialize(ECS::World& world, IImGuiBackend* imguiBackend, InputDevice* uiInput, ECS::Entity cameraEntity,
-		                RequestShutdownCallback requestShutdown, ModeChangedCallback onModeChanged);
+		void Initialize(ECS::World& world, ScriptEngine& scriptEngine, IImGuiBackend* imguiBackend, InputDevice* uiInput,
+		                ECS::Entity cameraEntity, RequestShutdownCallback requestShutdown,
+		                ModeChangedCallback onModeChanged);
 		void SetRenderer(IRenderAdapter* renderer);
 		void SetWindow(IWindow* window);
 		void SetResourceLoading(ResourceLoadQueue& loads, const SceneAssetResolver& assets);
+		void SetWindowCameras(eastl::vector<ECS::Entity> cameras);
 		void Shutdown();
 
 		void Update();
@@ -68,6 +71,7 @@ namespace NeneEngine
 		};
 
 		void HandleShortcuts();
+		void CommitPendingEdits();
 		void DrawMainMenuBar();
 		void DrawStatusBar();
 		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
