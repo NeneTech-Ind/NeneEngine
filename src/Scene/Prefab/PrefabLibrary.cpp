@@ -2,11 +2,13 @@
 
 #include "Core/PathResolver.h"
 #include "Core/Profiler.h"
+#include "ECS/Components/ScriptComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
 #include "Scene/EntitySerializer.h"
 #include "Scene/SceneSerializer.h"
 
+#include <Windows.h>
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -23,6 +25,37 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr const char* kPrefabSuffix = ".prefab.json";
+
+		nlohmann::json ReadDefinition(const std::filesystem::path& path)
+		{
+			std::ifstream file(path, std::ios::binary);
+			if (!file) throw std::runtime_error("Could not open prefab: " + path.string());
+			nlohmann::json definition;
+			file >> definition;
+			return definition;
+		}
+
+		void WriteDefinition(const std::filesystem::path& path, const std::string& contents)
+		{
+			wchar_t tempPath[MAX_PATH]{};
+			if (GetTempFileNameW(path.parent_path().c_str(), L"NNE", 0, tempPath) == 0)
+				throw std::runtime_error("Could not create a temporary file for the prefab");
+
+			try
+			{
+				std::ofstream file(std::filesystem::path(tempPath), std::ios::binary | std::ios::trunc);
+				file << contents;
+				file.close();
+				if (!file) throw std::runtime_error("Could not write the prefab");
+				if (!MoveFileExW(tempPath, path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+					throw std::runtime_error("Could not replace the prefab file");
+			}
+			catch (...)
+			{
+				DeleteFileW(tempPath);
+				throw;
+			}
+		}
 
 		uint32_t ReadId(const nlohmann::json& value)
 		{
@@ -217,18 +250,19 @@ namespace NeneEngine
 		return key;
 	}
 
-	nlohmann::json PrefabLibrary::Read(const std::string& name) const
+	std::filesystem::path PrefabLibrary::ResolvePath(const std::string& name) const
 	{
 		const auto root = std::filesystem::weakly_canonical(m_directory);
 		const auto path = std::filesystem::canonical(root / name);
 		const auto relative = path.lexically_relative(root);
 		if (relative.empty() || relative.has_root_path() || *relative.begin() == "..")
 			throw std::runtime_error("Prefab path leaves the prefab directory");
-		std::ifstream file(path, std::ios::binary);
-		if (!file) throw std::runtime_error("Could not open prefab: " + path.string());
-		nlohmann::json definition;
-		file >> definition;
-		return PreparePrefab(definition);
+		return path;
+	}
+
+	nlohmann::json PrefabLibrary::Read(const std::string& name) const
+	{
+		return PreparePrefab(ReadDefinition(ResolvePath(name)));
 	}
 
 	const nlohmann::json& PrefabLibrary::Load(const std::string& name)
@@ -255,6 +289,38 @@ namespace NeneEngine
 	void PrefabLibrary::ClearCache()
 	{
 		m_prefabs.clear();
+	}
+
+	void PrefabLibrary::SaveScriptFields(const std::string& name, const ECS::ScriptComponent& script)
+	{
+		const auto key = NormalizeName(name);
+		const auto path = ResolvePath(key);
+		auto definition = ReadDefinition(path);
+		const auto saved = SerializeScriptComponent(script);
+		const auto scriptPath = std::filesystem::path(script.scriptPath).lexically_normal();
+
+		nlohmann::json* target = nullptr;
+		const auto findTarget = [&](nlohmann::json& entity)
+		{
+			auto& components = entity.at("components");
+			const auto candidate = components.find("ScriptComponent");
+			if (candidate == components.end()) return;
+			const auto candidatePath = std::filesystem::path(candidate->at("scriptPath").get<std::string>());
+			if (candidatePath.lexically_normal() != scriptPath) return;
+			if (target != nullptr) throw std::runtime_error("The prefab has multiple entities with this script");
+			target = &*candidate;
+		};
+		if (definition.contains("entities"))
+			for (auto& entity : definition.at("entities")) findTarget(entity);
+		else
+			findTarget(definition);
+
+		if (target == nullptr) throw std::runtime_error("The prefab does not contain this script");
+		if (!target->contains("fields")) (*target)["fields"] = nlohmann::json::object();
+		target->at("fields").update(saved.at("fields"));
+		(void)PreparePrefab(definition);
+		WriteDefinition(path, definition.dump(4) + "\n");
+		ClearCache();
 	}
 
 	ECS::Entity PrefabLibrary::Instantiate(const std::string& name, const glm::vec3& position,

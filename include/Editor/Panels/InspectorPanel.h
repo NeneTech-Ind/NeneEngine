@@ -87,6 +87,7 @@ namespace NeneEngine
 		                      bool texture);
 
 		bool DrawScript(EditorContext& context);
+		void DrawSaveToPrefab(EditorContext& context, const ScriptFieldSchema& schema);
 		void FinishScriptFieldEdit(EditorContext& context);
 
 		PendingEditCommit m_commitPendingEdit;
