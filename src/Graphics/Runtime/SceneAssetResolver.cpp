@@ -16,11 +16,6 @@ namespace NeneEngine
 		if (path.empty()) return {};
 		const std::filesystem::path value(path);
 		if (value.is_absolute()) return value;
-		if (value.lexically_normal().generic_string() == "assets/shaders/textured_mesh.shader")
-		{
-			if (const auto existing = ResolveFromExecutionRoots(value); !existing.empty()) return existing;
-			return ResolveFromExecutionRoots("assets/engine/shaders/textured_mesh.shader", true);
-		}
 		return ResolveFromExecutionRoots(value, true);
 	}
 
