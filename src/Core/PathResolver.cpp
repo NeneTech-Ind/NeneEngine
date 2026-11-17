@@ -3,11 +3,45 @@
 #include <Windows.h>
 
 #include <system_error>
+#include <string>
 
 namespace NeneEngine
 {
 	namespace
 	{
+		std::filesystem::path GetEditorDataDirectory()
+		{
+			const DWORD size = GetEnvironmentVariableW(L"LOCALAPPDATA", nullptr, 0);
+			if (size == 0) return {};
+
+			std::wstring value(size, L'\0');
+			const DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", value.data(), size);
+			if (length == 0 || length >= size) return {};
+			value.resize(length);
+			const auto directory = std::filesystem::path(value) / "NeneEngine";
+			std::error_code error;
+			std::filesystem::create_directories(directory, error);
+			return error ? std::filesystem::path{} : directory;
+		}
+
+		std::filesystem::path MigrateEditorSetting(const std::filesystem::path& directory,
+		                                           const std::filesystem::path& filename,
+		                                           const std::filesystem::path& legacyPath)
+		{
+			if (directory.empty()) return legacyPath;
+			const auto destination = directory / filename;
+			std::error_code error;
+			if (std::filesystem::exists(destination, error) || error) return destination;
+			if (legacyPath.empty() || !std::filesystem::exists(legacyPath, error) || error) return destination;
+			std::filesystem::copy_file(legacyPath, destination, std::filesystem::copy_options::skip_existing, error);
+			if (error)
+			{
+				std::error_code existsError;
+				if (!std::filesystem::exists(destination, existsError)) return legacyPath;
+			}
+			return destination;
+		}
+
 		std::filesystem::path FindNearestAncestorMatch(const std::filesystem::path& start,
 		                                               const std::filesystem::path& relativePath, bool matchParentOnly)
 		{
@@ -39,6 +73,8 @@ namespace NeneEngine
 
 	std::filesystem::path GetEditorLogPath()
 	{
+		if (const auto directory = GetEditorDataDirectory(); !directory.empty())
+			return directory / "logs" / "nene_engine.log";
 		auto root = GetExecutableDirectory();
 		if (root.empty()) root = std::filesystem::current_path();
 		return root / "logs" / "nene_engine.log";
@@ -46,14 +82,15 @@ namespace NeneEngine
 
 	std::filesystem::path GetEditorLayoutPath()
 	{
-		return GetExecutableDirectory() / "imgui.ini";
+		return MigrateEditorSetting(GetEditorDataDirectory(), "imgui.ini", GetExecutableDirectory() / "imgui.ini");
 	}
 
 	std::filesystem::path GetEditorThemePath()
 	{
 		const std::filesystem::path relativePath{"assets/config/editor_theme.json"};
-		if (auto path = ResolveFromExecutionRoots(relativePath, true); !path.empty()) return path;
-		return relativePath;
+		auto legacyPath = ResolveFromExecutionRoots(relativePath, true);
+		if (legacyPath.empty()) legacyPath = relativePath;
+		return MigrateEditorSetting(GetEditorDataDirectory(), "editor_theme.json", legacyPath);
 	}
 
 	std::filesystem::path ResolveFromAncestors(const std::filesystem::path& start,

@@ -38,7 +38,7 @@ namespace NeneEngine
 			m_windowRuntimeService.SetJobSystem(m_jobSystem);
 			if (!m_bootstrapService.Initialize(
 			        *this, m_jobSystem, m_gameStateMachine, m_world, m_runtimeConfigService, m_windowRuntimeService,
-			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, GetEditorLogPath().string(),
+			        [this](const AppConfig& config) { ApplyRuntimeAppConfig(config); }, GetEditorLogPath(),
 			        width, height))
 				return false;
 

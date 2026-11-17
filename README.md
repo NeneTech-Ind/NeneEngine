@@ -88,7 +88,7 @@ cpack --config out/build/x64-release/CPackConfig.cmake
 
 ### Run
 
-Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. The log goes to `logs/nene_engine.log` next to the executable.
+Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. The log goes to `%LOCALAPPDATA%/NeneEngine/logs/nene_engine.log`.
 
 | Option                | Effect                                                                  |
 | --------------------- | ----------------------------------------------------------------------- |

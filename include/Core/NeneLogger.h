@@ -3,6 +3,8 @@
 #pragma once
 
 #include <memory>
+#include <filesystem>
+#include <fstream>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
@@ -23,7 +25,7 @@ namespace NeneEngine
 
 		static NeneLogger& GetInstance();
 
-		bool Initialize(const std::string& logFileName = "NeneEngine.log",
+		bool Initialize(const std::filesystem::path& logFileName = "NeneEngine.log",
 		                spdlog::level::level_enum logLevel = spdlog::level::level_enum::info,
 		                bool consoleWithColor = true);
 		void Shutdown();
@@ -59,6 +61,7 @@ namespace NeneEngine
 		NeneLogger() = default;
 		~NeneLogger() = default;
 
+		std::ofstream m_logFile;
 		std::shared_ptr<spdlog::logger> m_logger;
 		std::shared_ptr<LogHistorySink> m_history;
 	};

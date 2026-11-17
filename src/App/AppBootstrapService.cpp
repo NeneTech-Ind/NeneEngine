@@ -62,7 +62,7 @@ namespace NeneEngine
 	bool AppBootstrapService::Initialize(NeneEngineApp& app, JobSystem& jobSystem, GameStateMachine& gameStateMachine,
 	                                     ECS::World& world, AppRuntimeConfigService& runtimeConfigService,
 	                                     AppWindowRuntimeService& windowRuntimeService,
-	                                     ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath,
+	                                     ApplyConfigCallback applyRuntimeConfig, const std::filesystem::path& logFilePath,
 	                                     uint32_t width, uint32_t height)
 	{
 		if (!NeneLogger::GetInstance().Initialize(logFilePath, spdlog::level::info, true)) return false;
