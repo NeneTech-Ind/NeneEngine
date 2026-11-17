@@ -51,7 +51,7 @@ namespace NeneEngine
 		void CheckStbImage()
 		{
 			const auto texturePath =
-			    ResolveFromExecutionRoots(std::filesystem::path{"assets"} / "editor" / "about_banner.jpg");
+			    ResolveFromExecutionRoots(std::filesystem::path{"assets"} / "engine" / "editor" / "about_banner.jpg");
 			if (texturePath.empty())
 			{
 				NENE_LOG_ERROR("stb_image check: texture file was not found");

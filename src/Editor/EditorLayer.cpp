@@ -244,7 +244,7 @@ namespace NeneEngine
 		for (size_t pose = 0; pose < std::size(kMascotFiles); ++pose)
 		{
 			const std::filesystem::path relativePath =
-			    std::filesystem::path{"assets"} / "editor" / "mascot" / kMascotFiles[pose];
+			    std::filesystem::path{"assets"} / "engine" / "editor" / "mascot" / kMascotFiles[pose];
 			const std::filesystem::path path = ResolveFromExecutionRoots(relativePath);
 			if (path.empty())
 			{

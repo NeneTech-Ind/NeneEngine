@@ -79,7 +79,7 @@ namespace NeneEngine
 		if (isTexture)
 		{
 			rootEntry.mesh.texturePath = path;
-			rootEntry.mesh.shaderPath = "assets/shaders/textured_mesh.shader";
+			rootEntry.mesh.shaderPath = "assets/engine/shaders/textured_mesh.shader";
 		}
 		created->push_back(rootEntry);
 		context.history.Execute(eastl::make_unique<CreateAssetCommand>(created), context.world);
@@ -131,7 +131,7 @@ namespace NeneEngine
 						    entry.mesh.meshPath = path;
 						    entry.mesh.meshPart = static_cast<int>(index);
 						    entry.mesh.texturePath = PortableAssetPath(parts[index].diffuseTexturePath);
-						    entry.mesh.shaderPath = "assets/shaders/textured_mesh.shader";
+						    entry.mesh.shaderPath = "assets/engine/shaders/textured_mesh.shader";
 						    if (const auto* part = FindPartOverride(config, parts[index].name))
 						    {
 							    entry.transform.position = part->positionOffset;

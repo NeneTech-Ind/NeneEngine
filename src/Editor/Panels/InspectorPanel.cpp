@@ -621,7 +621,7 @@ namespace NeneEngine
 		const auto before = material;
 		(texture ? material.texturePath : material.shaderPath) = path;
 		if (texture && !path.empty() && material.shaderPath.empty())
-			material.shaderPath = "assets/shaders/textured_mesh.shader";
+			material.shaderPath = "assets/engine/shaders/textured_mesh.shader";
 		context.history.RecordComponentChange("Edit Material", context.selectedEntity, before, material);
 		m_materialError.clear();
 	}

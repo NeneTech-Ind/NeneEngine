@@ -9,7 +9,7 @@
 
 <p align="center"><b>A small C++20 game engine for Windows with a built-in editor</b></p>
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_happy_128.png">
+<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_happy_128.png">
 
 NeneEngine renders with DirectX 12 and keeps its world in an Entity-Component-System, with Jolt for physics and an editor. Engine settings, scenes and asset descriptions are plain JSON files, so you can change them without recompiling.
 
@@ -50,7 +50,7 @@ Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 
 ## Getting started
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_search_128.png">
+<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_search_128.png">
 
 ### Requirements
 
@@ -166,6 +166,6 @@ Read the [Git conventions](docs/conventions/git-convention.md) and [naming conve
 
 ## License
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_sleep_128.png">
+<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_sleep_128.png">
 
 NeneEngine is released under the [MIT License](LICENSE.txt). Third-party libraries, fonts, icons and models keep their own licenses, listed in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).

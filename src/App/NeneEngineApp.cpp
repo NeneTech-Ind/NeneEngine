@@ -45,7 +45,7 @@ namespace NeneEngine
 			if (auto* renderer = m_windowRuntimeService.GetMainRenderer())
 			{
 				NENE_PROFILE_SCOPE("Default Shader Warmup");
-				const std::string shaderPath = "assets/shaders/textured_mesh.shader";
+				const std::string shaderPath = "assets/engine/shaders/textured_mesh.shader";
 				m_sceneAssets.Shader(shaderPath, *renderer, JobPriority::High);
 				while (m_sceneAssets.GetShaderState(shaderPath, *renderer) == ResourceLoadState::Loading)
 				{

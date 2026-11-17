@@ -19,7 +19,7 @@ namespace NeneEngine
 		}
 
 		const auto shaderPath =
-		    ResolveFromExecutionRoots(std::filesystem::path{"assets"} / "shaders" / "textured_mesh.shader");
+		    ResolveFromExecutionRoots(std::filesystem::path{"assets"} / "engine" / "shaders" / "textured_mesh.shader");
 		const auto manifestPath =
 		    ResolveFromExecutionRoots(std::filesystem::path{"assets"} / "models" / "spawn_manifest.json");
 
