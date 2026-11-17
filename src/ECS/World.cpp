@@ -58,7 +58,10 @@ namespace NeneEngine::ECS
 
 		for (auto it = subtree.rbegin(); it != subtree.rend(); ++it)
 		{
-			if (m_registry.valid(*it)) m_registry.destroy(*it);
+			if (!m_registry.valid(*it)) continue;
+
+			for (auto& system : m_systems) system->OnEntityDestroying(*this, *it);
+			m_registry.destroy(*it);
 		}
 	}
 

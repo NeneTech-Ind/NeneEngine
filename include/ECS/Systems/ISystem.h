@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "ECS/Entity.h"
+
 namespace NeneEngine::ECS
 {
 
@@ -16,6 +18,7 @@ namespace NeneEngine::ECS
 		virtual void OnSceneRestored(World& /*world*/) {}
 		virtual void OnPlayStarted(World& /*world*/) {}
 		virtual void OnPlayStopping(World& /*world*/) {}
+		virtual void OnEntityDestroying(World& /*world*/, Entity /*entity*/) {}
 	};
 
 } // namespace NeneEngine::ECS

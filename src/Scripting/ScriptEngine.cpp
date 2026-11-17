@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "Scripting/Bindings/BehaviourBindings.h"
 #include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
 #include "Scripting/Bindings/LogBindings.h"
@@ -217,9 +218,10 @@ namespace NeneEngine
 		searchers[4] = sol::nil;
 
 		auto nene = lua.create_named_table("nene");
+		BindVectorApi(nene);
+		BindBehaviourApi(nene);
 		BindInputApi(nene, input);
 		BindLogApi(nene);
-		BindVectorApi(nene);
 		BindEntityApi(nene);
 		BindWorldApi(nene, world, prefabs);
 
