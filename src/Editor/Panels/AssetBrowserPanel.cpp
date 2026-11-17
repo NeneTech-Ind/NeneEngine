@@ -3,10 +3,12 @@
 #include "Editor/Panels/AssetBrowserPanel.h"
 
 #include "Editor/AssetCatalog.h"
+#include "Editor/EditorAssetActions.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IRenderAdapter.h"
+#include "Scene/Prefab/PrefabLibrary.h"
 
 #include <algorithm>
 
@@ -26,6 +28,8 @@ namespace NeneEngine
 				return NENE_ICON_IMAGE;
 			case AssetKind::Shader:
 				return NENE_ICON_FILE_CODE;
+			case AssetKind::Prefab:
+				return NENE_ICON_MESH;
 			}
 			return NENE_ICON_FILE;
 		}
@@ -40,6 +44,8 @@ namespace NeneEngine
 				return TextureAssetPayload;
 			case AssetKind::Shader:
 				break;
+			case AssetKind::Prefab:
+				return PrefabAssetPayload;
 			}
 			return ShaderAssetPayload;
 		}
@@ -65,6 +71,7 @@ namespace NeneEngine
 		{
 			context.assets.Refresh();
 			context.assetResolver.RetryFailed();
+			if (context.prefabs) context.prefabs->ClearCache();
 			m_failedPreviewPath.clear();
 		}
 		ImGui::SetItemTooltip("Refresh assets");
@@ -75,7 +82,7 @@ namespace NeneEngine
 			m_filter.Build();
 
 		StatusText(colors, EditorStatusKind::Muted,
-		           context.CanEdit()                  ? "Drag a model or texture into Viewport to create an entity"
+		           context.CanEdit() ? "Drag a model, texture or prefab into Viewport to create an entity"
 		           : context.mode == EditorMode::Play ? "Assets cannot be dragged during Play"
 		                                              : "Assets cannot be dragged while a scene is loading");
 		if (!context.assets.Error().empty())
@@ -152,6 +159,14 @@ namespace NeneEngine
 		}
 
 		DrawPath(context, selected->path);
+		if (selected->kind == AssetKind::Prefab)
+		{
+			ImGui::BeginDisabled(!context.CanEdit() || !context.prefabs);
+			if (ImGui::Button("Spawn prefab")) CreateScenePrefab(context, selected->path, glm::vec3(0.0f));
+			ImGui::SetItemTooltip("Create an instance at the world origin");
+			ImGui::EndDisabled();
+			return;
+		}
 		if (selected->kind != AssetKind::Texture || context.renderer == nullptr) return;
 
 		if (m_failedPreviewPath == selected->path)

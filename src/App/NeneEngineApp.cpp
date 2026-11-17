@@ -73,6 +73,7 @@ namespace NeneEngine
 			m_editorLayer.SetWindowCameras(m_windowRuntimeService.GetWindowCameraEntities());
 			m_editorLayer.SetWindow(m_windowRuntimeService.GetMainWindow());
 			m_editorLayer.SetResourceLoading(m_resourceLoads, m_sceneAssets);
+			m_editorLayer.SetPrefabLibrary(m_prefabLibrary);
 			m_windowRuntimeService.SetMainWindowCloseRequestHandler(
 			    [this]() { return m_editorLayer.HandleWindowCloseRequest(); });
 			return true;

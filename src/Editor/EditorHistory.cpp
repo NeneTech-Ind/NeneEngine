@@ -4,6 +4,7 @@
 
 #include "Core/NeneLogger.h"
 
+#include <exception>
 #include <limits>
 
 namespace NeneEngine
@@ -34,12 +35,20 @@ namespace NeneEngine
 	bool EditorHistory::Undo(ECS::World& world)
 	{
 		if (m_undoStack.empty()) return false;
+		try
+		{
+			m_undoStack.back()->Undo(world);
+		}
+		catch (const std::exception& exception)
+		{
+			NENE_LOG_ERROR("Editor undo failed: {}", exception.what());
+			return false;
+		}
 
 		eastl::unique_ptr<IEditorCommand> command = std::move(m_undoStack.back());
 		m_undoStack.pop_back();
 		--m_position;
 
-		command->Undo(world);
 		NENE_LOG_DEBUG("Editor undo: {}", command->GetName());
 		m_redoStack.push_back(std::move(command));
 		return true;
@@ -48,12 +57,20 @@ namespace NeneEngine
 	bool EditorHistory::Redo(ECS::World& world)
 	{
 		if (m_redoStack.empty()) return false;
+		try
+		{
+			m_redoStack.back()->Execute(world);
+		}
+		catch (const std::exception& exception)
+		{
+			NENE_LOG_ERROR("Editor redo failed: {}", exception.what());
+			return false;
+		}
 
 		eastl::unique_ptr<IEditorCommand> command = std::move(m_redoStack.back());
 		m_redoStack.pop_back();
 		++m_position;
 
-		command->Execute(world);
 		NENE_LOG_DEBUG("Editor redo: {}", command->GetName());
 		PushUndo(std::move(command));
 		return true;
