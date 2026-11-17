@@ -89,12 +89,29 @@ namespace NeneEngine
 		if (!m_hasCapture) return;
 
 		entt::registry& registry = world.GetRegistry();
+		const auto wasCreatedDuringPlay = [&](ECS::Entity entity)
+		{ return IsSceneEntity(m_windowCameras, entity) && !WasCaptured(entity); };
 
 		eastl::vector<ECS::Entity> createdDuringPlay;
 		for (const ECS::Entity entity : registry.view<entt::entity>())
 		{
-			if (IsSceneEntity(m_windowCameras, entity) && !WasCaptured(entity)) createdDuringPlay.push_back(entity);
+			if (wasCreatedDuringPlay(entity)) createdDuringPlay.push_back(entity);
 		}
+
+		for (const ECS::Entity entity : createdDuringPlay)
+		{
+			auto* hierarchy = registry.try_get<ECS::HierarchyComponent>(entity);
+			if (hierarchy == nullptr) continue;
+			eastl::erase_if(hierarchy->children, [&](ECS::Entity child)
+			{
+				if (wasCreatedDuringPlay(child)) return false;
+				auto* childHierarchy = registry.try_get<ECS::HierarchyComponent>(child);
+				if (childHierarchy != nullptr && childHierarchy->parent == entity)
+					childHierarchy->parent = ECS::NullEntity;
+				return true;
+			});
+		}
+
 		for (const ECS::Entity entity : createdDuringPlay) world.DestroyEntity(entity);
 
 		size_t recreatedCount = 0;
