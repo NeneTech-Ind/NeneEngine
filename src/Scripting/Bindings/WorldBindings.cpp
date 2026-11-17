@@ -31,6 +31,23 @@ namespace NeneEngine
 			                if (found == ECS::NullEntity) return std::nullopt;
 			                return ScriptEntity(*live->world, found);
 		                }));
+		worldApi.set_function("find_by_tag",
+		                      sol::protect(
+		                          [lifetime = world.GetLifetime()](sol::this_state state, const std::string& category)
+		                          {
+			                          const auto live = lifetime.lock();
+			                          if (!live || !live->world) throw std::runtime_error("World is no longer valid");
+			                          auto& currentWorld = *live->world;
+			                          const auto& registry = currentWorld.GetRegistry();
+			                          auto matches = sol::state_view(state).create_table();
+			                          int index = 1;
+			                          for (const auto [entity, tag] : registry.view<const ECS::TagComponent>().each())
+			                          {
+				                          if (tag.tags.contains(category))
+					                          matches.raw_set(index++, ScriptEntity(currentWorld, entity));
+			                          }
+			                          return matches;
+		                          }));
 		worldApi.set_function("spawn",
 		                      sol::protect(
 		                          [lifetime = world.GetLifetime(), &prefabs](
