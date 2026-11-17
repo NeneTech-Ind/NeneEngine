@@ -1,108 +1,47 @@
 {
-    "entities": [
-        {
-            "components": {
-                "MeshRenderer": {
-                    "material": {
-                        "shaderPath": "",
-                        "texturePath": "",
-                        "tint": {
-                            "w": 1.0,
-                            "x": 0.25,
-                            "y": 0.75,
-                            "z": 1.0
-                        }
-                    },
-                    "meshPart": -1,
-                    "meshPath": "",
-                    "primitiveType": "Cube",
-                    "visible": true
-                },
-                "ScriptComponent": {
-                    "fields": {
-                        "rotation_speed": {
-                            "type": "float",
-                            "value": 127.19999694824219
-                        }
-                    },
-                    "scriptPath": "spin_cube.lua"
-                },
-                "Tag": {
-                    "name": "SpinningCube"
-                },
-                "Transform": {
-                    "position": {
-                        "x": 0.0,
-                        "y": 0.0,
-                        "z": 0.0
-                    },
-                    "rotation": {
-                        "w": 0.951251208782196,
-                        "x": 0.16773129999637604,
-                        "y": 0.25488701462745667,
-                        "z": -0.04494350031018257
-                    },
-                    "scale": {
-                        "x": 2.0,
-                        "y": 2.0,
-                        "z": 2.0
-                    }
-                }
-            },
-            "id": 1
+  "version": 2,
+  "entities": [
+    {
+      "id": 1,
+      "components": {
+        "Tag": { "name": "MainCamera" },
+        "Transform": {
+          "position": { "x": 0.0, "y": 0.0, "z": 8.0 },
+          "rotation": { "x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0 },
+          "scale": { "x": 1.0, "y": 1.0, "z": 1.0 }
         },
-        {
-            "components": {
-                "CameraComponent": {
-                    "aspectRatio": 1.3456790447235107,
-                    "farPlane": 100.0,
-                    "forward": {
-                        "x": 0.0,
-                        "y": 0.0,
-                        "z": -1.0
-                    },
-                    "fovDegrees": 60.0,
-                    "isPrimary": true,
-                    "nearPlane": 0.10000000149011612,
-                    "up": {
-                        "x": 0.0,
-                        "y": 1.0,
-                        "z": 0.0
-                    }
-                },
-                "CameraControllerComponent": {
-                    "lookSensitivity": 0.003000000026077032,
-                    "maxPitchRadians": 1.5,
-                    "moveSpeed": 4.0,
-                    "pitchRadians": 0.0,
-                    "rotateWithRightMouse": true,
-                    "sprintMultiplier": 2.5,
-                    "yawRadians": 0.0
-                },
-                "Tag": {
-                    "name": "MainCamera"
-                },
-                "Transform": {
-                    "position": {
-                        "x": 0.0,
-                        "y": 0.0,
-                        "z": 8.0
-                    },
-                    "rotation": {
-                        "w": 1.0,
-                        "x": 0.0,
-                        "y": 0.0,
-                        "z": 0.0
-                    },
-                    "scale": {
-                        "x": 1.0,
-                        "y": 1.0,
-                        "z": 1.0
-                    }
-                }
-            },
-            "id": 2
+        "CameraComponent": {
+          "fovDegrees": 60.0,
+          "nearPlane": 0.1,
+          "farPlane": 100.0,
+          "aspectRatio": 1.7777778,
+          "isPrimary": true
         }
-    ],
-    "version": 2
+      }
+    },
+    {
+      "id": 2,
+      "components": {
+        "Tag": { "name": "SpinningCube" },
+        "Transform": {
+          "position": { "x": 0.0, "y": 0.0, "z": 0.0 },
+          "rotation": { "x": 0.1677313, "y": 0.254887, "z": -0.0449435, "w": 0.9512512 },
+          "scale": { "x": 2.0, "y": 2.0, "z": 2.0 }
+        },
+        "MeshRenderer": {
+          "primitiveType": "Cube",
+          "visible": true,
+          "material": {
+            "tint": { "x": 0.25, "y": 0.75, "z": 1.0, "w": 1.0 }
+          }
+        },
+        "ScriptComponent": {
+          "scriptPath": "spin_cube.lua",
+          "fields": {
+            "rotation_speed": { "type": "float", "value": 120.0 }
+          }
+        }
+      }
+    }
+  ]
 }
