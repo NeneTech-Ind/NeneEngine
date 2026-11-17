@@ -1,5 +1,7 @@
 #include "Scripting/Bindings/ScriptEntity.h"
 
+#include "ECS/Components/ContactStateComponent.h"
+#include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
@@ -23,7 +25,7 @@ namespace NeneEngine
 		void ValidateVector(const glm::vec3& value)
 		{
 			if (!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z))
-				throw std::invalid_argument("Entity transform values must be finite");
+				throw std::invalid_argument("Entity vector values must be finite");
 		}
 	}
 
@@ -87,6 +89,28 @@ namespace NeneEngine
 		auto& transform = RequireTransform(GetWorld(), m_entity);
 		ValidateVector(degrees);
 		transform.rotation = glm::quat(glm::radians(degrees));
+	}
+
+	glm::vec3 ScriptEntity::GetVelocity() const
+	{
+		const auto* rigidbody = GetWorld().GetComponent<ECS::RigidbodyComponent>(m_entity);
+		return rigidbody ? rigidbody->velocity : glm::vec3(0.0f);
+	}
+
+	void ScriptEntity::SetVelocity(const glm::vec3& velocity) const
+	{
+		auto* rigidbody = GetWorld().GetComponent<ECS::RigidbodyComponent>(m_entity);
+		if (!rigidbody) throw std::runtime_error("Entity has no RigidbodyComponent");
+		ValidateVector(velocity);
+		rigidbody->velocity = velocity;
+	}
+
+	bool ScriptEntity::IsGrounded() const
+	{
+		auto& world = GetWorld();
+		if (!world.HasComponent<ECS::RigidbodyComponent>(m_entity)) return false;
+		const auto* contact = world.GetComponent<ECS::ContactStateComponent>(m_entity);
+		return contact && contact->isGrounded;
 	}
 
 }

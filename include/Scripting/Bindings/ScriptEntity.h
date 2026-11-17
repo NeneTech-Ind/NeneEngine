@@ -30,6 +30,9 @@ namespace NeneEngine
 		void SetPosition(const glm::vec3& position) const;
 		[[nodiscard]] glm::vec3 GetRotation() const;
 		void SetRotation(const glm::vec3& degrees) const;
+		[[nodiscard]] glm::vec3 GetVelocity() const;
+		void SetVelocity(const glm::vec3& velocity) const;
+		[[nodiscard]] bool IsGrounded() const;
 
 	  private:
 		[[nodiscard]] ECS::World* GetLiveWorld() const;

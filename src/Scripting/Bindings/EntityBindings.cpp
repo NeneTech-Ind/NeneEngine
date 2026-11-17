@@ -20,6 +20,11 @@ namespace NeneEngine
 		                    sol::protect([](const ScriptEntity& value) { return value.GetRotation(); }));
 		entity.set_function("set_rotation", sol::protect([](const ScriptEntity& value, const glm::vec3& degrees)
 		                                                 { value.SetRotation(degrees); }));
+		entity.set_function("get_velocity",
+		                    sol::protect([](const ScriptEntity& value) { return value.GetVelocity(); }));
+		entity.set_function("set_velocity", sol::protect([](const ScriptEntity& value, const glm::vec3& velocity)
+		                                                 { value.SetVelocity(velocity); }));
+		entity.set_function("is_grounded", sol::protect([](const ScriptEntity& value) { return value.IsGrounded(); }));
 	}
 
 }
