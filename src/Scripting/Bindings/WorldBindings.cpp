@@ -1,16 +1,37 @@
 #include "Scripting/Bindings/WorldBindings.h"
 
+#include "Core/NeneLogger.h"
 #include "ECS/World.h"
+#include "Scene/Prefab/PrefabLibrary.h"
 #include "Scripting/Bindings/ScriptEntity.h"
 
+#include <optional>
 #include <sol/sol.hpp>
+#include <stdexcept>
 
 namespace NeneEngine
 {
 
-	void BindWorldApi(sol::table& nene)
+	void BindWorldApi(sol::table& nene, ECS::World& world, PrefabLibrary& prefabs)
 	{
 		auto worldApi = nene.create_named("world");
+		worldApi.set_function("spawn",
+		                      sol::protect(
+		                          [lifetime = world.GetLifetime(), &prefabs](
+		                              const std::string& name, const glm::vec3& position) -> std::optional<ScriptEntity>
+		                          {
+			                          const auto live = lifetime.lock();
+			                          if (!live || !live->world) throw std::runtime_error("World is no longer valid");
+			                          try
+			                          {
+				                          return ScriptEntity(*live->world, prefabs.Instantiate(name, position));
+			                          }
+			                          catch (const std::exception& error)
+			                          {
+				                          NENE_LOG_ERROR("Cannot spawn prefab '{}': {}", name, error.what());
+				                          return std::nullopt;
+			                          }
+		                          }));
 		worldApi.set_function("destroy", sol::protect([](const ScriptEntity& entity)
 		                                              { entity.GetWorld().DeferDestroyEntity(entity.GetId()); }));
 	}

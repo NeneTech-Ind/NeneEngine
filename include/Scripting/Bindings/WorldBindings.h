@@ -5,6 +5,13 @@
 namespace NeneEngine
 {
 
-	void BindWorldApi(sol::table& nene);
+	namespace ECS
+	{
+		class World;
+	}
+
+	class PrefabLibrary;
+
+	void BindWorldApi(sol::table& nene, ECS::World& world, PrefabLibrary& prefabs);
 
 }

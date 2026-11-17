@@ -194,7 +194,7 @@ namespace NeneEngine
 	ScriptEngine::ScriptEngine() = default;
 	ScriptEngine::~ScriptEngine() = default;
 
-	void ScriptEngine::Initialize(const IInputHandler& input)
+	void ScriptEngine::Initialize(const IInputHandler& input, ECS::World& world, PrefabLibrary& prefabs)
 	{
 		if (m_impl) return;
 
@@ -221,7 +221,7 @@ namespace NeneEngine
 		BindLogApi(nene);
 		BindVectorApi(nene);
 		BindEntityApi(nene);
-		BindWorldApi(nene);
+		BindWorldApi(nene, world, prefabs);
 
 		m_impl = std::move(impl);
 		NENE_LOG_INFO("Script engine initialized");
