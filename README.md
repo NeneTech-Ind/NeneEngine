@@ -154,6 +154,11 @@ Inside `on_start`, use `Ctrl+Space` after `self.` to look for `speed`, then hove
 | `external/` | Submodules: Diligent Engine, Dear ImGui, ImGuizmo                                               |
 | `docs/`     | Project conventions                                                                             |
 
+Editor artwork, fonts and built-in shaders live in `assets/engine/`. Demo scenes are in `assets/scenes/`, models in `assets/models/` and scripts in `assets/scripts/`. The Asset Browser skips `assets/engine/`, `assets/readme/` and `assets/icons/`.
+
+The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. The log is at `%LOCALAPPDATA%/NeneEngine/logs/nene_engine.log`.
+
+
 ## Contributing
 
 Read the [Git conventions](docs/conventions/git-convention.md) and [naming conventions](docs/conventions/naming-convention.md) before opening a branch.
