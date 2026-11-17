@@ -38,6 +38,7 @@ namespace NeneEngine
 {
 	namespace
 	{
+		constexpr const char* kTexturedMeshShaderPath = "assets/engine/shaders/textured_mesh.shader";
 		using FieldEdits = InspectorPanel::FieldEdits;
 
 		constexpr float kPositionDragSpeed = 0.05f;
@@ -621,7 +622,7 @@ namespace NeneEngine
 		const auto before = material;
 		(texture ? material.texturePath : material.shaderPath) = path;
 		if (texture && !path.empty() && material.shaderPath.empty())
-			material.shaderPath = "assets/engine/shaders/textured_mesh.shader";
+			material.shaderPath = kTexturedMeshShaderPath;
 		context.history.RecordComponentChange("Edit Material", context.selectedEntity, before, material);
 		m_materialError.clear();
 	}
@@ -638,6 +639,8 @@ namespace NeneEngine
 		{
 			if (ImGui::Selectable(texture ? "None" : "Default", path.empty()))
 				SetMaterialAsset(context, material, "", texture);
+			if (!texture && ImGui::Selectable("Textured Mesh", path == kTexturedMeshShaderPath))
+				SetMaterialAsset(context, material, kTexturedMeshShaderPath, false);
 			for (const auto& entry : context.assets.Entries())
 				if (entry.kind == kind && ImGui::Selectable(entry.path.c_str(), entry.path == path))
 					SetMaterialAsset(context, material, entry.path, texture);
