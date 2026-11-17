@@ -129,6 +129,9 @@ function nene.world.spawn(prefab, position) end
 ---@param entity Entity
 function nene.world.destroy(entity) end
 
+---Requests that the editor leave Play mode after the current world update.
+function nene.world.stop_play() end
+
 ---@param name string
 ---@return Entity?
 function nene.world.find(name) end

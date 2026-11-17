@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "entities": [
+    {
+      "id": 1,
+      "components": {
+        "Tag": { "name": "MainCamera" },
+        "Transform": {
+          "position": { "x": 0.0, "y": 0.0, "z": 8.0 },
+          "rotation": { "x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0 },
+          "scale": { "x": 1.0, "y": 1.0, "z": 1.0 }
+        },
+        "CameraComponent": {
+          "fovDegrees": 60.0,
+          "nearPlane": 0.1,
+          "farPlane": 100.0,
+          "aspectRatio": 1.7777778,
+          "isPrimary": true
+        }
+      }
+    },
+    {
+      "id": 2,
+      "components": {
+        "Tag": { "name": "DuelController" },
+        "ScriptComponent": { "scriptPath": "duel_controller.lua" }
+      }
+    }
+  ]
+}
