@@ -139,6 +139,22 @@ namespace NeneEngine
 		bool DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
 		{
 			const char* label = field.name.c_str();
+			if (!field.options.empty())
+			{
+				auto& current = std::get<std::string>(value);
+				bool changed = false;
+				if (ImGui::BeginCombo(label, current.c_str()))
+				{
+					for (const auto& option : field.options)
+						if (ImGui::Selectable(option.c_str(), option == current))
+						{
+							current = option;
+							changed = true;
+						}
+					ImGui::EndCombo();
+				}
+				return changed;
+			}
 			return std::visit(
 			    [&](auto& current)
 			    {
@@ -146,9 +162,16 @@ namespace NeneEngine
 				    if constexpr (std::is_same_v<Value, bool>)
 					    return Checkbox(label, current, edits);
 				    else if constexpr (std::is_same_v<Value, int>)
-					    return DrawValueField(label, edits, [&](const char* id) { return ImGui::DragInt(id, &current); });
+					    return DrawValueField(label, edits, [&](const char* id) {
+						    return field.minimum ? ImGui::SliderInt(id, &current, std::get<int>(*field.minimum),
+						                                            std::get<int>(*field.maximum))
+						                         : ImGui::DragInt(id, &current);
+					    });
 				    else if constexpr (std::is_same_v<Value, float>)
-					    return DragFloat(label, current, 0.05f, edits);
+					    return field.minimum ? DrawValueField(label, edits, [&](const char* id) {
+						    return ImGui::SliderFloat(id, &current, std::get<float>(*field.minimum),
+						                              std::get<float>(*field.maximum), "%.3f");
+					    }) : DragFloat(label, current, 0.05f, edits);
 				    else if constexpr (std::is_same_v<Value, std::string>)
 					    return DrawValueField(label, edits,
 					                          [&](const char* id) { return ImGui::InputText(id, &current); });
@@ -377,11 +400,16 @@ namespace NeneEngine
 			const bool editing = canEdit && m_scriptFieldEdit && m_scriptFieldEdit->entity == context.selectedEntity &&
 			                     m_scriptFieldEdit->path == script->scriptPath && m_scriptFieldEdit->field == field.name;
 			auto value = editing ? m_scriptFieldEdit->value : saved;
+			if (value.index() != field.defaultValue.index()) value = field.defaultValue;
+			const bool invalid = !IsValidScriptFieldValue(field, editing ? m_scriptFieldEdit->value : saved);
 			FieldEdits edits{};
 			edits.valueFont = context.monospaceFont;
 			edits.colors = context.themeColors;
 			ImGui::PushID(fieldId++);
+			if (invalid) ImGui::PushStyleColor(ImGuiCol_FrameBg, context.themeColors ? context.themeColors->danger : ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
 			const bool changed = DrawScriptField(field, value, edits) && canEdit;
+			if (invalid) ImGui::PopStyleColor();
+			if (invalid) ImGui::TextColored(context.themeColors ? context.themeColors->danger : ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "Invalid value");
 			ImGui::PopID();
 
 			if (changed)
@@ -410,6 +438,13 @@ namespace NeneEngine
 	void InspectorPanel::FinishScriptFieldEdit(EditorContext& context)
 	{
 		if (!m_scriptFieldEdit) return;
+		if (const auto* schema = m_scriptEngine.GetFieldSchema(m_scriptFieldEdit->path))
+		{
+			const auto field = std::find_if(schema->begin(), schema->end(), [&](const auto& item) {
+				return item.name == m_scriptFieldEdit->field;
+			});
+			if (field != schema->end() && !IsValidScriptFieldValue(*field, m_scriptFieldEdit->value)) return;
+		}
 
 		auto edit = std::move(*m_scriptFieldEdit);
 		m_scriptFieldEdit.reset();
@@ -417,6 +452,10 @@ namespace NeneEngine
 
 		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(edit.entity);
 		if (script == nullptr || script->scriptPath != edit.path) return;
+		const auto* schema = m_scriptEngine.GetFieldSchema(edit.path);
+		if (schema == nullptr) return;
+		const auto field = std::find_if(schema->begin(), schema->end(), [&](const auto& item) { return item.name == edit.field; });
+		if (field == schema->end() || !IsValidScriptFieldValue(*field, edit.value)) return;
 
 		auto after = *script;
 		after.fields.insert_or_assign(edit.field, std::move(edit.value));

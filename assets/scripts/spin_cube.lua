@@ -5,6 +5,9 @@ local SpinCube = nene.Behaviour and nene.Behaviour:extend() or {}
 SpinCube.fields = {
 	rotation_speed = 60.0,
 }
+SpinCube.field_metadata = {
+	rotation_speed = { type = "float", min = 0, max = 360 },
+}
 
 function SpinCube:on_start()
 	self.initial_rotation = self.entity:get_rotation()
