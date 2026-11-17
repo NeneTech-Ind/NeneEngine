@@ -188,7 +188,7 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>(scriptEngine)});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
-		m_panels.push_back({eastl::make_unique<ConsolePanel>()});
+		m_panels.push_back({eastl::make_unique<ConsolePanel>(scriptEngine)});
 		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
 

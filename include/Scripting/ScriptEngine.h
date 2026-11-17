@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <sol/forward.hpp>
+#include <string_view>
 
 namespace NeneEngine
 {
@@ -26,6 +27,8 @@ namespace NeneEngine
 		// The input handler must stay alive until Shutdown()
 		void Initialize(const IInputHandler& input, ECS::World& world, PrefabLibrary& prefabs);
 		void Shutdown();
+
+		void ExecuteConsoleCommand(std::string_view command);
 
 		// Load paths relative to assets/scripts and cache successful loads
 		// Returned pointers are valid until Shutdown()

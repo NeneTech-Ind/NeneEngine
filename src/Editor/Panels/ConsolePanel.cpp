@@ -5,9 +5,11 @@
 #include "Core/NeneLogger.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorThemeConfig.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <format>
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 namespace NeneEngine
 {
@@ -74,6 +76,22 @@ namespace NeneEngine
 		DrawToolbar();
 		ImGui::Separator();
 		DrawLines(context);
+		ImGui::Separator();
+		const bool canExecute = context.mode == EditorMode::Play;
+		const char* commandHint = canExecute ? "Lua command (Enter to run)" : "Enter Play mode to run Lua commands";
+		ImGui::BeginDisabled(!canExecute);
+		ImGui::SetNextItemWidth(-FLT_MIN);
+		const bool submitted =
+		    ImGui::InputTextWithHint("##LuaCommand", commandHint, &m_command, ImGuiInputTextFlags_EnterReturnsTrue);
+		ImGui::EndDisabled();
+		if (!canExecute && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", commandHint);
+		if (canExecute && submitted)
+		{
+			m_scriptEngine.ExecuteConsoleCommand(m_command);
+			m_command.clear();
+			ImGui::SetKeyboardFocusHere(-1);
+		}
 	}
 
 	void ConsolePanel::DrawToolbar()
@@ -103,7 +121,8 @@ namespace NeneEngine
 
 	void ConsolePanel::DrawLines(const EditorContext& context)
 	{
-		if (!ImGui::BeginChild("##ConsoleLines", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None,
+		const float commandHeight = ImGui::GetFrameHeight() + 2.0f * ImGui::GetStyle().ItemSpacing.y + 1.0f;
+		if (!ImGui::BeginChild("##ConsoleLines", ImVec2(0.0f, -commandHeight), ImGuiChildFlags_None,
 		                       ImGuiWindowFlags_HorizontalScrollbar))
 		{
 			ImGui::EndChild();

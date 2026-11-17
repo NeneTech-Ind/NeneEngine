@@ -188,6 +188,7 @@ namespace NeneEngine
 
 		// Destroy loaded scripts and their Lua references before the interpreter
 		sol::state lua;
+		sol::protected_function executeConsoleCommand;
 		std::filesystem::path scriptsRoot;
 		std::unordered_map<std::filesystem::path, LoadedScript> scripts;
 	};
@@ -225,6 +226,37 @@ namespace NeneEngine
 		BindEntityApi(nene);
 		BindWorldApi(nene, world, prefabs);
 
+		const auto consoleCommand = lua.script(R"lua(
+			local environment = setmetatable({}, { __index = _G })
+
+			local function format_values(...)
+				local values = table.pack(...)
+				for index = 1, values.n do
+					values[index] = tostring(values[index])
+				end
+				return table.concat(values, "\t", 1, values.n)
+			end
+
+			environment.print = function(...)
+				nene.log.info(format_values(...))
+			end
+
+			return function(command)
+				local chunk = load("return " .. command, "=Console", "t", environment)
+				if not chunk then
+					local message
+					chunk, message = load(command, "=Console", "t", environment)
+					if not chunk then error(message, 0) end
+				end
+
+				local values = table.pack(chunk())
+				if values.n > 0 then
+					return format_values(table.unpack(values, 1, values.n))
+				end
+			end
+		)lua");
+		impl->executeConsoleCommand = consoleCommand.get<sol::protected_function>();
+
 		m_impl = std::move(impl);
 		NENE_LOG_INFO("Script engine initialized");
 	}
@@ -234,6 +266,26 @@ namespace NeneEngine
 		if (!m_impl) return;
 		m_impl.reset();
 		NENE_LOG_INFO("Script engine shut down");
+	}
+
+	void ScriptEngine::ExecuteConsoleCommand(std::string_view command)
+	{
+		if (command.find_first_not_of(" \t\r\n") == std::string_view::npos) return;
+		if (!m_impl)
+		{
+			NENE_LOG_ERROR("Cannot execute Lua command: script engine is not initialized");
+			return;
+		}
+
+		NENE_LOG_INFO("> {}", command);
+		const auto result = m_impl->executeConsoleCommand(command);
+		if (!result.valid())
+		{
+			const sol::error error = result;
+			NENE_LOG_ERROR("{}", error.what());
+			return;
+		}
+		if (result.return_count() > 0) NENE_LOG_INFO("{}", result.get<std::string>());
 	}
 
 	const sol::table* ScriptEngine::LoadScript(const std::filesystem::path& path)
