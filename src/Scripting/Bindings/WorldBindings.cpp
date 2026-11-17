@@ -1,6 +1,7 @@
 #include "Scripting/Bindings/WorldBindings.h"
 
 #include "Core/NeneLogger.h"
+#include "ECS/Components/TagComponent.h"
 #include "ECS/World.h"
 #include "Scene/Prefab/PrefabLibrary.h"
 #include "Scripting/Bindings/ScriptEntity.h"
@@ -15,6 +16,21 @@ namespace NeneEngine
 	void BindWorldApi(sol::table& nene, ECS::World& world, PrefabLibrary& prefabs)
 	{
 		auto worldApi = nene.create_named("world");
+		worldApi.set_function(
+		    "find", sol::protect(
+		                [lifetime = world.GetLifetime()](const std::string& name) -> std::optional<ScriptEntity>
+		                {
+			                const auto live = lifetime.lock();
+			                if (!live || !live->world) throw std::runtime_error("World is no longer valid");
+			                ECS::Entity found = ECS::NullEntity;
+			                const auto& registry = live->world->GetRegistry();
+			                for (const auto [entity, tag] : registry.view<const ECS::TagComponent>().each())
+				                if (tag.name == name &&
+				                    (found == ECS::NullEntity || entt::to_integral(entity) < entt::to_integral(found)))
+					                found = entity;
+			                if (found == ECS::NullEntity) return std::nullopt;
+			                return ScriptEntity(*live->world, found);
+		                }));
 		worldApi.set_function("spawn",
 		                      sol::protect(
 		                          [lifetime = world.GetLifetime(), &prefabs](
