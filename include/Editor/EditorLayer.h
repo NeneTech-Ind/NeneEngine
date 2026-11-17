@@ -21,6 +21,7 @@ namespace NeneEngine
 	class IImGuiBackend;
 	class InputDevice;
 	class ScriptEngine;
+	class PrefabLibrary;
 
 	class EditorLayer final
 	{
@@ -37,6 +38,7 @@ namespace NeneEngine
 		void SetRenderer(IRenderAdapter* renderer);
 		void SetWindow(IWindow* window);
 		void SetResourceLoading(ResourceLoadQueue& loads, const SceneAssetResolver& assets);
+		void SetPrefabLibrary(PrefabLibrary& prefabs);
 		void SetWindowCameras(eastl::vector<ECS::Entity> cameras);
 		void Shutdown();
 

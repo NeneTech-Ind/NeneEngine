@@ -140,6 +140,11 @@ namespace NeneEngine
 		if (m_context) m_context->renderer = renderer;
 	}
 
+	void EditorLayer::SetPrefabLibrary(PrefabLibrary& prefabs)
+	{
+		if (m_context) m_context->prefabs = &prefabs;
+	}
+
 	void EditorLayer::SetWindowCameras(eastl::vector<ECS::Entity> cameras)
 	{
 		if (m_context) m_context->windowCameras = std::move(cameras);

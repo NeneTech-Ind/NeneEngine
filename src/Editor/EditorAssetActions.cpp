@@ -8,10 +8,12 @@
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
+#include "Editor/Commands/CreatePrefabCommand.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Scene/Instantiation/ModelInstanceConfig.h"
+#include "Scene/Prefab/PrefabLibrary.h"
 
 #include <vector>
 
@@ -67,6 +69,30 @@ namespace NeneEngine
 			eastl::shared_ptr<std::vector<CreatedEntity>> m_entities;
 		};
 	} // namespace
+
+	bool CreateScenePrefab(EditorContext& context, const std::string& path, const glm::vec3& position)
+	{
+		if (!context.CanEdit() || !context.prefabs) return false;
+		auto root = ECS::NullEntity;
+		try
+		{
+			const auto name = std::filesystem::path(path).lexically_relative("assets/prefabs").generic_string();
+			root = context.prefabs->Instantiate(name, position);
+			auto command = eastl::make_unique<CreatePrefabCommand>(context.world, root);
+			context.history.Record(std::move(command));
+			context.selectedEntity = root;
+			context.SetStatus(EditorStatusKind::Success,
+			                  "Created prefab: " + std::filesystem::path(path).filename().string());
+			return true;
+		}
+		catch (const std::exception& exception)
+		{
+			if (context.world.GetRegistry().valid(root)) context.world.DestroyEntity(root);
+			NENE_LOG_ERROR("Prefab spawn failed: {}", exception.what());
+			context.SetStatus(EditorStatusKind::Danger, exception.what());
+			return false;
+		}
+	}
 
 	bool CreateSceneAsset(EditorContext& context, const std::string& path, bool isTexture, const glm::vec3& position)
 	{

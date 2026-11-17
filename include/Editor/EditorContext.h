@@ -19,6 +19,7 @@ struct ImFont;
 namespace NeneEngine
 {
 	class EditorHistory;
+	class PrefabLibrary;
 	class IRenderAdapter;
 	struct EditorThemeColorsConfig;
 
@@ -65,6 +66,7 @@ namespace NeneEngine
 		AssetCatalog assets;
 		SceneAssetResolver assetResolver{};
 		ResourceLoadQueue* resourceLoads = nullptr;
+		PrefabLibrary* prefabs = nullptr;
 		uint64_t sceneGeneration = 0;
 		bool isSceneLoading = false;
 		eastl::vector<ResourceLoadQueue::Completion> pendingAssets;

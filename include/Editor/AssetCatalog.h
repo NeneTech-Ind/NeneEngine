@@ -12,7 +12,8 @@ namespace NeneEngine
 	{
 		Model,
 		Texture,
-		Shader
+		Shader,
+		Prefab
 	};
 
 	struct AssetEntry
@@ -36,4 +37,5 @@ namespace NeneEngine
 	inline constexpr const char* ModelAssetPayload = "NENE_MODEL_ASSET";
 	inline constexpr const char* TextureAssetPayload = "NENE_TEXTURE_ASSET";
 	inline constexpr const char* ShaderAssetPayload = "NENE_SHADER_ASSET";
+	inline constexpr const char* PrefabAssetPayload = "NENE_PREFAB_ASSET";
 } // namespace NeneEngine
