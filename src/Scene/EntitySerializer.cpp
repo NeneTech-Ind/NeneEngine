@@ -73,39 +73,6 @@ namespace NeneEngine
 			if (!std::isfinite(value)) throw std::runtime_error("Script fields must contain finite floats");
 		}
 
-		nlohmann::json SerializeScript(const ECS::ScriptComponent& script)
-		{
-			nlohmann::json fields = nlohmann::json::object();
-			for (const auto& [name, value] : script.fields)
-			{
-				fields[name] = std::visit(
-				    [](const auto& field) -> nlohmann::json
-				    {
-					    using T = std::decay_t<decltype(field)>;
-					    if constexpr (std::is_same_v<T, bool>)
-						    return {{"type", "bool"}, {"value", field}};
-					    else if constexpr (std::is_same_v<T, int>)
-						    return {{"type", "int"}, {"value", field}};
-					    else if constexpr (std::is_same_v<T, float>)
-					    {
-						    ValidateScriptFloat(field);
-						    return {{"type", "float"}, {"value", field}};
-					    }
-					    else if constexpr (std::is_same_v<T, std::string>)
-						    return {{"type", "string"}, {"value", field}};
-					    else
-					    {
-						    ValidateScriptFloat(field.x);
-						    ValidateScriptFloat(field.y);
-						    ValidateScriptFloat(field.z);
-						    return {{"type", "vec3"}, {"value", ToJson(field)}};
-					    }
-				    },
-				    value);
-			}
-			return {{"scriptPath", script.scriptPath}, {"fields", std::move(fields)}};
-		}
-
 		ECS::ScriptFieldValue ReadScriptField(const nlohmann::json& field)
 		{
 			const auto type = field.at("type").get<std::string>();
@@ -455,6 +422,39 @@ namespace NeneEngine
 
 	}
 
+	nlohmann::json SerializeScriptComponent(const ECS::ScriptComponent& script)
+	{
+		nlohmann::json fields = nlohmann::json::object();
+		for (const auto& [name, value] : script.fields)
+		{
+			fields[name] = std::visit(
+			    [](const auto& field) -> nlohmann::json
+			    {
+				    using T = std::decay_t<decltype(field)>;
+				    if constexpr (std::is_same_v<T, bool>)
+					    return {{"type", "bool"}, {"value", field}};
+				    else if constexpr (std::is_same_v<T, int>)
+					    return {{"type", "int"}, {"value", field}};
+				    else if constexpr (std::is_same_v<T, float>)
+				    {
+					    ValidateScriptFloat(field);
+					    return {{"type", "float"}, {"value", field}};
+				    }
+				    else if constexpr (std::is_same_v<T, std::string>)
+					    return {{"type", "string"}, {"value", field}};
+				    else
+				    {
+					    ValidateScriptFloat(field.x);
+					    ValidateScriptFloat(field.y);
+					    ValidateScriptFloat(field.z);
+					    return {{"type", "vec3"}, {"value", ToJson(field)}};
+				    }
+			    },
+			    value);
+		}
+		return {{"scriptPath", script.scriptPath}, {"fields", std::move(fields)}};
+	}
+
 	nlohmann::json SerializeEntity(const ECS::World& world, ECS::Entity entity, const EntitySerializationMap& entityIds)
 	{
 		if (!world.GetRegistry().valid(entity)) throw std::runtime_error("Cannot serialize an invalid entity");
@@ -501,7 +501,7 @@ namespace NeneEngine
 			entityJson["components"]["PlayerControllerComponent"] = SerializePlayerController(*playerController);
 
 		const auto* script = world.GetRegistry().try_get<ECS::ScriptComponent>(entity);
-		if (script != nullptr) entityJson["components"]["ScriptComponent"] = SerializeScript(*script);
+		if (script != nullptr) entityJson["components"]["ScriptComponent"] = SerializeScriptComponent(*script);
 		return entityJson;
 	}
 

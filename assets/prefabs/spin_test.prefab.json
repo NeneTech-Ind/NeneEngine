@@ -1,0 +1,13 @@
+{
+    "components": {
+        "ScriptComponent": {
+            "fields": {
+                "rotation_speed": {
+                    "type": "float",
+                    "value": 120.0
+                }
+            },
+            "scriptPath": "spin_cube.lua"
+        }
+    }
+}

@@ -2,6 +2,7 @@
 
 #include "Editor/Panels/InspectorPanel.h"
 
+#include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
 #include "ECS/Components/ColliderComponent.h"
@@ -23,6 +24,7 @@
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IRenderAdapter.h"
+#include "Scene/Prefab/PrefabLibrary.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <algorithm>
@@ -31,6 +33,7 @@
 #include <imgui.h>
 #include <limits>
 #include <misc/cpp/imgui_stdlib.h>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 
@@ -446,9 +449,63 @@ namespace NeneEngine
 			}
 		}
 		ImGui::EndDisabled();
+		DrawSaveToPrefab(context, *schema);
 		ImGui::PopID();
 		ImGui::PopID();
 		return editActive;
+	}
+
+	void InspectorPanel::DrawSaveToPrefab(EditorContext& context, const ScriptFieldSchema& schema)
+	{
+		if (!context.prefabs) return;
+		constexpr const char* popup = "Choose prefab";
+		ImGui::BeginDisabled(!context.CanEdit());
+		if (ImGui::Button("Save to prefab")) ImGui::OpenPopup(popup);
+		ImGui::EndDisabled();
+		if (!ImGui::BeginPopup(popup)) return;
+
+		bool hasPrefabs = false;
+		if (context.CanEdit())
+		{
+			for (const auto& asset : context.assets.Entries())
+			{
+				if (asset.kind != AssetKind::Prefab) continue;
+				hasPrefabs = true;
+				const auto name = std::filesystem::path(asset.path).lexically_relative("assets/prefabs").generic_string();
+				if (!ImGui::MenuItem(name.c_str())) continue;
+
+				try
+				{
+					FinishScriptFieldEdit(context);
+					if (m_scriptFieldEdit && m_scriptFieldEdit->entity == context.selectedEntity)
+						throw std::runtime_error("Correct the invalid script field before saving");
+					const auto& script = *context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity);
+					ECS::ScriptComponent saved{script.scriptPath, {}};
+					for (const auto& field : schema)
+					{
+						const auto override = script.fields.find(field.name);
+						const auto& value = override == script.fields.end() ? field.defaultValue : override->second;
+						if (!IsValidScriptFieldValue(field, value))
+							throw std::runtime_error("Invalid script field: " + field.name);
+						saved.fields.emplace(field.name, value);
+					}
+					context.prefabs->SaveScriptFields(name, saved);
+					context.SetStatus(EditorStatusKind::Success, "Script fields saved to " + name);
+				}
+				catch (const std::exception& exception)
+				{
+					NENE_LOG_ERROR("Could not save script fields to prefab '{}': {}", name, exception.what());
+					context.SetStatus(EditorStatusKind::Danger, exception.what());
+				}
+				break;
+			}
+		}
+		else
+		{
+			ImGui::CloseCurrentPopup();
+		}
+		if (!hasPrefabs) ImGui::TextDisabled("No prefab assets found");
+		ImGui::EndPopup();
 	}
 
 	void InspectorPanel::FinishScriptFieldEdit(EditorContext& context)
