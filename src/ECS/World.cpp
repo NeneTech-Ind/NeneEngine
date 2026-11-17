@@ -8,13 +8,21 @@
 namespace NeneEngine::ECS
 {
 
-	World::World()
+	World::World() : m_lifetime(std::make_shared<WorldLifetime>())
 	{
+		m_lifetime->world = this;
 		m_eventBus.Subscribe<SceneRestoredEvent>(
 		    [this](const SceneRestoredEvent&)
 		    {
+			    ++m_lifetime->sceneGeneration;
+			    m_pendingDestruction.clear();
 			    for (auto& system : m_systems) system->OnSceneRestored(*this);
 		    });
+	}
+
+	World::~World()
+	{
+		m_lifetime->world = nullptr;
 	}
 
 	Entity World::CreateEntity(const std::string& name)
@@ -67,6 +75,26 @@ namespace NeneEngine::ECS
 			eastl::erase(parentHierarchy->children, entity);
 	}
 
+	void World::DeferDestroyEntity(Entity entity)
+	{
+		if (m_registry.valid(entity)) m_pendingDestruction.push_back(entity);
+	}
+
+	void World::FlushDeferredDestruction()
+	{
+		const auto sceneGeneration = m_lifetime->sceneGeneration;
+		while (m_lifetime->sceneGeneration == sceneGeneration && !m_pendingDestruction.empty())
+		{
+			eastl::vector<Entity> pending;
+			pending.swap(m_pendingDestruction);
+			for (const Entity entity : pending)
+			{
+				if (m_lifetime->sceneGeneration != sceneGeneration) return;
+				DestroyEntity(entity);
+			}
+		}
+	}
+
 	void World::AddSystem(eastl::unique_ptr<ISystem> system)
 	{
 		m_systems.push_back(std::move(system));
@@ -75,6 +103,7 @@ namespace NeneEngine::ECS
 	void World::Update(float deltaTime)
 	{
 		for (auto& system : m_systems) system->Update(*this, deltaTime);
+		FlushDeferredDestruction();
 	}
 
 	void World::NotifyPlayStarted()

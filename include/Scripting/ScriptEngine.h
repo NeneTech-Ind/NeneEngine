@@ -10,6 +10,12 @@ namespace NeneEngine
 {
 
 	class IInputHandler;
+	class PrefabLibrary;
+
+	namespace ECS
+	{
+		class World;
+	}
 
 	class ScriptEngine final
 	{
@@ -18,7 +24,7 @@ namespace NeneEngine
 		~ScriptEngine();
 
 		// The input handler must stay alive until Shutdown()
-		void Initialize(const IInputHandler& input);
+		void Initialize(const IInputHandler& input, ECS::World& world, PrefabLibrary& prefabs);
 		void Shutdown();
 
 		// Load paths relative to assets/scripts and cache successful loads

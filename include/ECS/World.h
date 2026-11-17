@@ -8,18 +8,28 @@
 
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
+#include <cstdint>
 #include <entt/entt.hpp>
+#include <memory>
 #include <string>
 #include <utility>
 
 namespace NeneEngine::ECS
 {
 
+	class World;
+
+	struct WorldLifetime
+	{
+		World* world = nullptr;
+		uint64_t sceneGeneration = 0;
+	};
+
 	class World
 	{
 	  public:
 		World();
-		~World() = default;
+		~World();
 
 		World(const World&) = delete;
 		World& operator=(const World&) = delete;
@@ -29,6 +39,7 @@ namespace NeneEngine::ECS
 		// ===== Entity =====
 		Entity CreateEntity(const std::string& name = "Entity");
 		void DestroyEntity(Entity entity);
+		void DeferDestroyEntity(Entity entity);
 
 		// ===== Components =====
 		template <typename Component, typename... Args> Component& AddComponent(Entity entity, Args&&... args)
@@ -63,13 +74,17 @@ namespace NeneEngine::ECS
 
 		entt::registry& GetRegistry() { return m_registry; }
 		const entt::registry& GetRegistry() const { return m_registry; }
+		[[nodiscard]] std::weak_ptr<const WorldLifetime> GetLifetime() const { return m_lifetime; }
 
 	  private:
 		void DetachFromParent(Entity entity);
+		void FlushDeferredDestruction();
 
 		EventBus m_eventBus;
 		entt::registry m_registry;
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
+		eastl::vector<Entity> m_pendingDestruction;
+		std::shared_ptr<WorldLifetime> m_lifetime;
 	};
 
 } // namespace NeneEngine::ECS

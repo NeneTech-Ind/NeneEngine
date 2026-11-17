@@ -2,8 +2,11 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
 #include "Scripting/Bindings/LogBindings.h"
+#include "Scripting/Bindings/VectorBindings.h"
+#include "Scripting/Bindings/WorldBindings.h"
 
 #include <algorithm>
 #include <cmath>
@@ -191,7 +194,7 @@ namespace NeneEngine
 	ScriptEngine::ScriptEngine() = default;
 	ScriptEngine::~ScriptEngine() = default;
 
-	void ScriptEngine::Initialize(const IInputHandler& input)
+	void ScriptEngine::Initialize(const IInputHandler& input, ECS::World& world, PrefabLibrary& prefabs)
 	{
 		if (m_impl) return;
 
@@ -216,8 +219,9 @@ namespace NeneEngine
 		auto nene = lua.create_named_table("nene");
 		BindInputApi(nene, input);
 		BindLogApi(nene);
-		nene.new_usertype<glm::vec3>("vec3", sol::call_constructor, sol::constructors<glm::vec3(float, float, float)>(),
-		                             "x", &glm::vec3::x, "y", &glm::vec3::y, "z", &glm::vec3::z);
+		BindVectorApi(nene);
+		BindEntityApi(nene);
+		BindWorldApi(nene, world, prefabs);
 
 		m_impl = std::move(impl);
 		NENE_LOG_INFO("Script engine initialized");
