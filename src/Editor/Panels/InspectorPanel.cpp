@@ -28,6 +28,8 @@
 #include "Scripting/ScriptEngine.h"
 
 #include <algorithm>
+#include <charconv>
+#include <cmath>
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -142,6 +144,31 @@ namespace NeneEngine
 		}
 
 		template <typename Number>
+		bool InputScriptNumber(const char* id, Number& value)
+		{
+			char buffer[64];
+			const auto formatted = std::to_chars(buffer, buffer + sizeof(buffer), value);
+			std::string text(buffer, formatted.ptr);
+			const bool submitted = ImGui::InputText(id, &text, ImGuiInputTextFlags_EnterReturnsTrue);
+			const bool finished = submitted || ImGui::IsItemDeactivatedAfterEdit();
+			if (!finished && !ImGui::IsItemActive()) return false;
+
+			const char* first = text.data();
+			const char* end = first + text.size();
+			if (first != end && *first == '+' && first + 1 != end && first[1] != '-') ++first;
+			Number parsed{};
+			const auto result = std::from_chars(first, end, parsed);
+			if (result.ec != std::errc{} || result.ptr != end || !std::isfinite(parsed))
+			{
+				ImGui::SetItemTooltip("Enter a valid number");
+				return false;
+			}
+			if (!finished || parsed == value) return false;
+			value = parsed;
+			return true;
+		}
+
+		template <typename Number>
 		bool DrawRangedScriptField(const char* label, Number& value, Number min, Number max, FieldEdits& edits)
 		{
 			// ImGui sliders require bounds within half the numeric type's range.
@@ -149,11 +176,34 @@ namespace NeneEngine
 			                       max <= (std::numeric_limits<Number>::max)() / 2;
 			return DrawValueField(label, edits, [&](const char* id)
 			{
-				if constexpr (std::is_same_v<Number, int>)
-					return useSlider ? ImGui::SliderInt(id, &value, min, max) : ImGui::InputInt(id, &value, 0, 0);
-				else
-					return useSlider ? ImGui::SliderFloat(id, &value, min, max, "%.3f")
-					                 : ImGui::InputFloat(id, &value, 0.0f, 0.0f, "%.9g");
+				if (useSlider)
+				{
+					const float width = ImGui::CalcItemWidth();
+					const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+					const float inputWidth = (std::max)(1.0f, (width - spacing) * 0.35f);
+					ImGui::PushID(id);
+					ImGui::SetNextItemWidth((std::max)(1.0f, width - spacing - inputWidth));
+					bool changed;
+					if constexpr (std::is_same_v<Number, int>)
+						changed = ImGui::SliderInt("##slider", &value, min, max);
+					else
+						changed = ImGui::SliderFloat("##slider", &value, min, max, "%.3f");
+					TrackItem(edits);
+					ImGui::SameLine(0.0f, spacing);
+					ImGui::SetNextItemWidth(inputWidth);
+					auto typedValue = value;
+					const bool typed = InputScriptNumber("##value", typedValue);
+					if (typed && !changed) value = typedValue;
+					TrackItem(edits);
+					ImGui::PopID();
+					if (edits.valueFont == nullptr)
+					{
+						ImGui::SameLine(0.0f, spacing);
+						ImGui::TextUnformatted(label);
+					}
+					return changed || typed;
+				}
+				return InputScriptNumber(id, value);
 			});
 		}
 
