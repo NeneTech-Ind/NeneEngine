@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 
+#include <format>
 #include <system_error>
 #include <string>
 
@@ -73,11 +74,22 @@ namespace NeneEngine
 
 	std::filesystem::path GetEditorLogPath()
 	{
-		if (const auto directory = GetEditorDataDirectory(); !directory.empty())
-			return directory / "logs" / "nene_engine.log";
-		auto root = GetExecutableDirectory();
-		if (root.empty()) root = std::filesystem::current_path();
-		return root / "logs" / "nene_engine.log";
+		static const std::filesystem::path logPath = []
+		{
+			SYSTEMTIME now{};
+			GetSystemTime(&now);
+			FILETIME fileTime{};
+			SystemTimeToFileTime(&now, &fileTime);
+			const auto ticks = (static_cast<unsigned long long>(fileTime.dwHighDateTime) << 32) | fileTime.dwLowDateTime;
+			const auto filename = std::format("nene_engine-{:04}{:02}{:02}-{:02}{:02}{:02}-{}-{}.log", now.wYear,
+			                                  now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond, ticks,
+			                                  GetCurrentProcessId());
+			auto root = GetEditorDataDirectory();
+			if (root.empty()) root = GetExecutableDirectory();
+			if (root.empty()) root = std::filesystem::current_path();
+			return root / "logs" / filename;
+		}();
+		return logPath;
 	}
 
 	std::filesystem::path GetEditorLayoutPath()

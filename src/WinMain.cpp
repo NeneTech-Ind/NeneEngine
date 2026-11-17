@@ -66,7 +66,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR commandLine, int)
 		NeneEngine::NeneEngineApp app;
 		if (!app.Init(1280, 720))
 		{
-			ReportFatalError("Failed to initialize the application. See the NeneEngine log in Local AppData.",
+			ReportFatalError("Failed to initialize the application. See the NeneEngine log in Local AppData or the logs folder next to the executable.",
 			                 !smokeTestMode);
 			return -1;
 		}

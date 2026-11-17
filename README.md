@@ -88,7 +88,7 @@ cpack --config out/build/x64-release/CPackConfig.cmake
 
 ### Run
 
-Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. The log goes to `%LOCALAPPDATA%/NeneEngine/logs/nene_engine.log`.
+Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. Each run writes a separate `nene_engine-<date>-<time>-<timestamp>-<pid>.log` file in `%LOCALAPPDATA%/NeneEngine/logs/`.
 
 | Option                | Effect                                                                  |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -156,7 +156,7 @@ Inside `on_start`, use `Ctrl+Space` after `self.` to look for `speed`, then hove
 
 Editor artwork, fonts and built-in shaders live in `assets/engine/`. Demo scenes are in `assets/scenes/`, models in `assets/models/` and scripts in `assets/scripts/`. The Asset Browser skips `assets/engine/`, `assets/readme/` and `assets/icons/`.
 
-The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. The log is at `%LOCALAPPDATA%/NeneEngine/logs/nene_engine.log`.
+The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. Logs are in `%LOCALAPPDATA%/NeneEngine/logs/`.
 
 
 ## Contributing

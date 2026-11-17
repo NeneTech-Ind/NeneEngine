@@ -23,7 +23,8 @@ Start NeneEngine.exe. The editor opens the demo scene in Edit mode.
 A stress scene with ten thousand cubes, assets/scenes/stress_scene.json,
 can be opened from the File menu.
 
-The log is written to %LOCALAPPDATA%/NeneEngine/logs/nene_engine.log.
+Each run writes a separate nene_engine-<date>-<time>-<timestamp>-<pid>.log
+file in %LOCALAPPDATA%/NeneEngine/logs/.
 
 On the first start Windows may ask whether NeneEngine can use the network.
 The engine opens a port only for the Tracy profiler, so access can be denied.
