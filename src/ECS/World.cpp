@@ -8,13 +8,20 @@
 namespace NeneEngine::ECS
 {
 
-	World::World()
+	World::World() : m_lifetime(std::make_shared<WorldLifetime>())
 	{
+		m_lifetime->world = this;
 		m_eventBus.Subscribe<SceneRestoredEvent>(
 		    [this](const SceneRestoredEvent&)
 		    {
+			    ++m_lifetime->sceneGeneration;
 			    for (auto& system : m_systems) system->OnSceneRestored(*this);
 		    });
+	}
+
+	World::~World()
+	{
+		m_lifetime->world = nullptr;
 	}
 
 	Entity World::CreateEntity(const std::string& name)
