@@ -15,7 +15,7 @@
 #include "Scene/Instantiation/ModelInstanceConfig.h"
 #include "Scene/Prefab/PrefabLibrary.h"
 
-#include <vector>
+#include <EASTL/vector.h>
 
 namespace NeneEngine
 {
@@ -34,7 +34,7 @@ namespace NeneEngine
 		class CreateAssetCommand final : public IEditorCommand
 		{
 		  public:
-			explicit CreateAssetCommand(eastl::shared_ptr<std::vector<CreatedEntity>> entities)
+			explicit CreateAssetCommand(eastl::shared_ptr<eastl::vector<CreatedEntity>> entities)
 			    : m_entities(std::move(entities))
 			{
 			}
@@ -66,7 +66,7 @@ namespace NeneEngine
 			}
 
 		  private:
-			eastl::shared_ptr<std::vector<CreatedEntity>> m_entities;
+			eastl::shared_ptr<eastl::vector<CreatedEntity>> m_entities;
 		};
 	} // namespace
 
@@ -98,7 +98,7 @@ namespace NeneEngine
 	{
 		if (!context.CanEdit() || !context.renderer || !context.resourceLoads) return false;
 		const auto root = context.world.CreateEntity(std::filesystem::path(path).stem().string());
-		auto created = eastl::make_shared<std::vector<CreatedEntity>>();
+		auto created = eastl::make_shared<eastl::vector<CreatedEntity>>();
 		CreatedEntity rootEntry{root, ECS::TagComponent(std::filesystem::path(path).stem().string()), {}, {}, {}, true};
 		rootEntry.transform.position = position;
 		rootEntry.mesh.meshPath = isTexture ? "@quad" : "@cube";
@@ -143,7 +143,7 @@ namespace NeneEngine
 					    if (context.sceneGeneration != generation) return;
 					    auto rootEntry = created->front();
 					    rootEntry.hasMesh = false;
-					    std::vector<CreatedEntity> entries{rootEntry};
+					    eastl::vector<CreatedEntity> entries{rootEntry};
 					    const auto& parts = resource->GetData();
 					    const bool exists = context.world.GetRegistry().valid(root);
 					    if (!exists) CreateAssetCommand(created).Execute(context.world);

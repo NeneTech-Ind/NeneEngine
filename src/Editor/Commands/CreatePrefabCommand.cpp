@@ -3,17 +3,17 @@
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/World.h"
 
+#include <EASTL/unordered_set.h>
+#include <EASTL/vector.h>
 #include <stdexcept>
-#include <unordered_set>
-#include <vector>
 
 namespace NeneEngine
 {
 
 	CreatePrefabCommand::CreatePrefabCommand(const ECS::World& world, ECS::Entity root) : m_root(root)
 	{
-		std::vector<ECS::Entity> pending{root};
-		std::unordered_set<ECS::Entity> visited;
+		eastl::vector<ECS::Entity> pending{root};
+		eastl::unordered_set<ECS::Entity> visited;
 		EntitySerializationMap ids;
 		for (size_t next = 0; next < pending.size(); ++next)
 		{
@@ -32,7 +32,7 @@ namespace NeneEngine
 
 	void CreatePrefabCommand::Execute(ECS::World& world)
 	{
-		std::vector<ECS::Entity> created;
+		eastl::vector<ECS::Entity> created;
 		created.reserve(m_entities.size());
 		try
 		{
