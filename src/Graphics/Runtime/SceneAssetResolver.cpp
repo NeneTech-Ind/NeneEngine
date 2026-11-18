@@ -1,13 +1,15 @@
 #include "Graphics/Runtime/SceneAssetResolver.h"
 
+#include "Core/EASTLStdHash.h"
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "Core/ResourceManager.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Graphics/Loaders/MeshLoader.h"
+
+#include <EASTL/unordered_map.h>
 #include <cmath>
 #include <stdexcept>
-#include <unordered_map>
 
 namespace NeneEngine
 {
@@ -96,11 +98,11 @@ namespace NeneEngine
 	struct SceneAssetResolver::Impl
 	{
 		ResourceLoadQueue* loads = nullptr;
-		std::unordered_map<std::string, eastl::shared_ptr<ModelAsset>> models;
-		std::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUMesh>>> meshes;
-		std::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUTexture>>> textures;
-		std::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUShaderProgram>>> shaders;
-		std::unordered_map<uintptr_t, GPUTexture> placeholders;
+		eastl::unordered_map<std::string, eastl::shared_ptr<ModelAsset>> models;
+		eastl::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUMesh>>> meshes;
+		eastl::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUTexture>>> textures;
+		eastl::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUShaderProgram>>> shaders;
+		eastl::unordered_map<uintptr_t, GPUTexture> placeholders;
 	};
 
 	SceneAssetResolver::SceneAssetResolver(ResourceLoadQueue* loads) : m_impl(eastl::make_shared<Impl>())
@@ -296,10 +298,10 @@ namespace NeneEngine
 	void SceneAssetResolver::RetryFailed()
 	{
 		const auto failed = [](const auto& entry) { return entry.second->state == ResourceLoadState::Failed; };
-		std::erase_if(m_impl->models, failed);
-		std::erase_if(m_impl->meshes, failed);
-		std::erase_if(m_impl->textures, failed);
-		std::erase_if(m_impl->shaders, failed);
+		eastl::erase_if(m_impl->models, failed);
+		eastl::erase_if(m_impl->meshes, failed);
+		eastl::erase_if(m_impl->textures, failed);
+		eastl::erase_if(m_impl->shaders, failed);
 	}
 
 	MeshRenderRuntimeBinding SceneAssetResolver::Resolve(const std::string& sourcePath, int meshPart,
