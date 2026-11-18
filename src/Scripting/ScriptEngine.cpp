@@ -10,6 +10,7 @@
 #include "Scripting/Bindings/LogBindings.h"
 #include "Scripting/Bindings/VectorBindings.h"
 #include "Scripting/Bindings/WorldBindings.h"
+#include "Scripting/LuaInstructionLimit.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,36 +29,12 @@ namespace NeneEngine
 		constexpr int kConsoleInstructionLimit = 100'000;
 		constexpr int kScriptLoadInstructionLimit = 1'000'000;
 
-		class LuaInstructionLimit
+		int TraceLuaError(lua_State* state)
 		{
-		  public:
-			LuaInstructionLimit(lua_State* state, int instructionLimit)
-			    : m_state(state), m_previousHook(lua_gethook(state)), m_previousMask(lua_gethookmask(state)),
-			      m_previousCount(lua_gethookcount(state))
-			{
-				lua_sethook(m_state, OnLimitReached, LUA_MASKCOUNT, instructionLimit);
-			}
-
-			~LuaInstructionLimit()
-			{
-				lua_sethook(m_state, m_previousHook, m_previousMask, m_previousCount);
-			}
-
-			LuaInstructionLimit(const LuaInstructionLimit&) = delete;
-			LuaInstructionLimit& operator=(const LuaInstructionLimit&) = delete;
-
-		  private:
-			static void OnLimitReached(lua_State* state, lua_Debug*)
-			{
-				lua_sethook(state, OnLimitReached, LUA_MASKCOUNT, 1);
-				luaL_error(state, "Lua execution exceeded its instruction limit");
-			}
-
-			lua_State* m_state;
-			lua_Hook m_previousHook;
-			int m_previousMask;
-			int m_previousCount;
-		};
+			const char* message = lua_tostring(state, 1);
+			luaL_traceback(state, state, message != nullptr ? message : "Lua raised a non-string error", 1);
+			return 1;
+		}
 
 		std::optional<std::filesystem::file_time_type> ReadLastWriteTime(const std::filesystem::path& path)
 		{
@@ -271,6 +248,7 @@ namespace NeneEngine
 
 		auto& lua = impl->lua;
 		lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table, sol::lib::package);
+		sol::protected_function::set_default_handler(sol::object(lua.lua_state(), sol::in_place, &TraceLuaError));
 
 		sol::table package = lua["package"];
 		package["path"] = (impl->scriptsRoot / "?.lua").generic_string() + ";" +
@@ -290,7 +268,7 @@ namespace NeneEngine
 		BindEntityApi(nene);
 		BindWorldApi(nene, world, prefabs);
 
-		const auto consoleCommand = lua.script(R"lua(
+		const auto consoleCommand = lua.safe_script(R"lua(
 			local environment = setmetatable({}, { __index = _G })
 
 			local function format_values(...)
