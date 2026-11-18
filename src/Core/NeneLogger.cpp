@@ -14,7 +14,6 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -29,7 +28,7 @@ namespace NeneEngine
 			if (!std::regex_match(logPath.filename().wstring(), logName)) return;
 
 			std::error_code error;
-			std::vector<std::filesystem::path> logs;
+			eastl::vector<std::filesystem::path> logs;
 			std::filesystem::directory_iterator it(logPath.parent_path(), error);
 			const std::filesystem::directory_iterator end;
 			for (; !error && it != end; it.increment(error))
