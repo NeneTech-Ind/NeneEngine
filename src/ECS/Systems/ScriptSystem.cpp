@@ -9,6 +9,7 @@
 #include "Scripting/ScriptEngine.h"
 
 #include <EASTL/unordered_map.h>
+#include <cstdint>
 #include <filesystem>
 #include <sol/sol.hpp>
 #include <string>
@@ -21,6 +22,7 @@ namespace NeneEngine::ECS
 		struct RuntimeBehaviour
 		{
 			std::string scriptPath;
+			std::uint64_t scriptRevision;
 			lua_State* luaState = nullptr;
 			eastl::unique_ptr<ScriptBehaviour> behaviour;
 		};
@@ -50,8 +52,11 @@ namespace NeneEngine::ECS
 			for (const Entity entity : view)
 			{
 				const ScriptComponent& component = view.get<ScriptComponent>(entity);
+				const std::filesystem::path scriptPath{component.scriptPath};
+				const auto revision = component.scriptPath.empty() ? 0 : scriptEngine.GetScriptRevision(scriptPath);
 				auto runtime = behaviours.find(entity);
-				if (runtime != behaviours.end() && runtime->second.scriptPath != component.scriptPath)
+				if (runtime != behaviours.end() &&
+				    (runtime->second.scriptPath != component.scriptPath || runtime->second.scriptRevision != revision))
 				{
 					DestroyBehaviour(entity);
 					runtime = behaviours.end();
@@ -66,10 +71,10 @@ namespace NeneEngine::ECS
 				if (runtime == behaviours.end())
 				{
 					const auto failed = failedScripts.find(entity);
-					if (failed != failedScripts.end() && failed->second == component.scriptPath) continue;
+					if (failed != failedScripts.end() && failed->second == component.scriptPath && revision == 0)
+						continue;
 					failedScripts.erase(entity);
 
-					const std::filesystem::path scriptPath{component.scriptPath};
 					const sol::table* scriptClass = scriptEngine.LoadScript(scriptPath);
 					const ScriptFieldSchema* fieldSchema = scriptEngine.GetFieldSchema(scriptPath);
 					if (scriptClass == nullptr || fieldSchema == nullptr)
@@ -82,7 +87,8 @@ namespace NeneEngine::ECS
 					sol::object entityApi = sol::make_object(lua, ScriptEntity(world, entity));
 					auto behaviour = eastl::make_unique<LuaBehaviour>(*scriptClass, component.scriptPath, *fieldSchema,
 					                                                  component.fields, entityApi);
-					RuntimeBehaviour newRuntime{component.scriptPath, scriptClass->lua_state(), std::move(behaviour)};
+					RuntimeBehaviour newRuntime{component.scriptPath, scriptEngine.GetScriptRevision(scriptPath),
+					                            scriptClass->lua_state(), std::move(behaviour)};
 					runtime = behaviours.emplace(entity, std::move(newRuntime)).first;
 					failedScripts.erase(entity);
 					runtime->second.behaviour->OnStart();

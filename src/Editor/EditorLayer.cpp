@@ -375,7 +375,7 @@ namespace NeneEngine
 		{
 			DrawHistoryMenuItems();
 			ImGui::Separator();
-			if (ImGui::MenuItem(NENE_ICON_REFRESH " Reload Scripts", "Ctrl+Shift+R", false, m_context->CanEdit()))
+			if (ImGui::MenuItem(NENE_ICON_REFRESH " Reload Scripts", nullptr, false, !m_context->isSceneLoading))
 				ReloadScripts();
 			ImGui::EndMenu();
 		}
@@ -579,8 +579,15 @@ namespace NeneEngine
 
 	void EditorLayer::ReloadScripts()
 	{
-		CommitPendingEdits();
-		m_scriptEngine->ReloadAll();
+		if (m_context->mode == EditorMode::Play)
+		{
+			m_scriptEngine->ReloadChangedScripts();
+		}
+		else
+		{
+			CommitPendingEdits();
+			m_scriptEngine->ReloadAll();
+		}
 	}
 
 	void EditorLayer::DrawStatusBar()
@@ -641,14 +648,16 @@ namespace NeneEngine
 				ImGui::SetItemTooltip("%s", status.message.c_str());
 
 			ImGui::SameLine(rightX);
-			ImGui::BeginDisabled(!m_context->CanEdit());
+			ImGui::BeginDisabled(m_context->isSceneLoading);
 			ImGui::PushStyleColor(ImGuiCol_Text, hasScriptErrors ? colors.danger : colors.text);
 			if (ImGui::Button(reloadLabel)) ReloadScripts();
 			ImGui::PopStyleColor();
 			ImGui::EndDisabled();
+			const char* reloadHint = isPlaying ? "Reload changed Lua scripts and restart their behaviours."
+			                                   : "Reload all tracked Lua scripts.";
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 				ImGui::SetTooltip("%s", hasScriptErrors ? "Lua script load failed. See the Console for details."
-				                                       : "Reload tracked Lua scripts in Edit mode.");
+				                                       : reloadHint);
 
 			ImGui::SameLine(0.0f, segmentSpacing);
 			ImGui::TextColored(detailColor, "%s", sceneLabel.c_str());
