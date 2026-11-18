@@ -4,11 +4,11 @@
 
 #include "ECS/World.h"
 
+#include <EASTL/optional.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/vector.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <optional>
 #include <string>
 
 namespace NeneEngine
@@ -17,7 +17,7 @@ namespace NeneEngine
 	struct SceneCamera
 	{
 		ECS::Entity entity = ECS::NullEntity;
-		std::optional<std::string> name;
+		eastl::optional<std::string> name;
 		bool isPrimary = false;
 	};
 

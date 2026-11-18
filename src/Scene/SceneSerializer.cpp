@@ -107,7 +107,7 @@ namespace NeneEngine
 		for (const auto [entity, camera] : registry.view<const ECS::CameraComponent>().each())
 		{
 			const auto* tag = registry.try_get<ECS::TagComponent>(entity);
-			cameras.push_back({entity, tag ? std::optional<std::string>(tag->name) : std::nullopt, camera.isPrimary});
+			cameras.push_back({entity, tag ? eastl::optional<std::string>(tag->name) : eastl::nullopt, camera.isPrimary});
 		}
 		return cameras;
 	}

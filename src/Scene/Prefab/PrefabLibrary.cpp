@@ -8,6 +8,7 @@
 #include "Scene/EntitySerializer.h"
 #include "Scene/SceneSerializer.h"
 
+#include <EASTL/optional.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
@@ -16,7 +17,6 @@
 #include <cmath>
 #include <fstream>
 #include <limits>
-#include <optional>
 #include <stdexcept>
 
 namespace NeneEngine
@@ -78,7 +78,7 @@ namespace NeneEngine
 			struct Node
 			{
 				uint32_t id;
-				std::optional<uint32_t> parent;
+				eastl::optional<uint32_t> parent;
 				bool hasParent = false;
 				bool hasChildren = false;
 				eastl::vector<uint32_t> children;
@@ -130,7 +130,7 @@ namespace NeneEngine
 				}
 
 			eastl::vector<eastl::vector<uint32_t>> expectedChildren(nodes.size());
-			std::optional<uint32_t> root;
+			eastl::optional<uint32_t> root;
 			for (const auto& node : nodes)
 			{
 				if (!node.parent)
