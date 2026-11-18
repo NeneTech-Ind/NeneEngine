@@ -76,6 +76,7 @@ namespace NeneEngine
 		void HandleShortcuts();
 		void CommitPendingEdits();
 		void DrawMainMenuBar();
+		void ReloadScripts();
 		void DrawStatusBar();
 		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
 		void RequestSceneAction(SceneAction action);
