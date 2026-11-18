@@ -31,9 +31,14 @@ namespace NeneEngine
 
 		void ExecuteConsoleCommand(std::string_view command, const ECS::ScriptComponent* selectedScript);
 
-		// Load paths relative to assets/scripts and cache successful loads
-		// Returned pointers are valid until Shutdown()
+		// Load paths relative to assets/scripts and cache the result of each attempt
+		// Reloads update the cached class and schema in place
 		[[nodiscard]] const sol::table* LoadScript(const std::filesystem::path& path);
+
+		// Call on the main thread in Edit mode, after runtime behaviours have been released
+		void ReloadScript(const std::filesystem::path& path);
+		void ReloadAll();
+		void ReloadChangedScripts();
 
 		// Returns nullptr if the script has not been loaded successfully
 		[[nodiscard]] const ScriptFieldSchema* GetFieldSchema(const std::filesystem::path& path) const;

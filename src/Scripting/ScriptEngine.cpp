@@ -17,6 +17,7 @@
 #include <optional>
 #include <sol/sol.hpp>
 #include <string_view>
+#include <system_error>
 #include <unordered_map>
 #include <utility>
 
@@ -25,30 +26,31 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr int kConsoleInstructionLimit = 100'000;
+		constexpr int kScriptLoadInstructionLimit = 1'000'000;
 
-		class ConsoleInstructionLimit
+		class LuaInstructionLimit
 		{
 		  public:
-			explicit ConsoleInstructionLimit(lua_State* state)
+			LuaInstructionLimit(lua_State* state, int instructionLimit)
 			    : m_state(state), m_previousHook(lua_gethook(state)), m_previousMask(lua_gethookmask(state)),
 			      m_previousCount(lua_gethookcount(state))
 			{
-				lua_sethook(m_state, OnLimitReached, LUA_MASKCOUNT, kConsoleInstructionLimit);
+				lua_sethook(m_state, OnLimitReached, LUA_MASKCOUNT, instructionLimit);
 			}
 
-			~ConsoleInstructionLimit()
+			~LuaInstructionLimit()
 			{
 				lua_sethook(m_state, m_previousHook, m_previousMask, m_previousCount);
 			}
 
-			ConsoleInstructionLimit(const ConsoleInstructionLimit&) = delete;
-			ConsoleInstructionLimit& operator=(const ConsoleInstructionLimit&) = delete;
+			LuaInstructionLimit(const LuaInstructionLimit&) = delete;
+			LuaInstructionLimit& operator=(const LuaInstructionLimit&) = delete;
 
 		  private:
 			static void OnLimitReached(lua_State* state, lua_Debug*)
 			{
 				lua_sethook(state, OnLimitReached, LUA_MASKCOUNT, 1);
-				luaL_error(state, "Lua console command exceeded its instruction limit");
+				luaL_error(state, "Lua execution exceeded its instruction limit");
 			}
 
 			lua_State* m_state;
@@ -56,6 +58,19 @@ namespace NeneEngine
 			int m_previousMask;
 			int m_previousCount;
 		};
+
+		std::optional<std::filesystem::file_time_type> ReadLastWriteTime(const std::filesystem::path& path)
+		{
+			std::error_code error;
+			const auto writeTime = std::filesystem::last_write_time(path, error);
+			if (error) return std::nullopt;
+			return writeTime;
+		}
+
+		bool IsValidScriptPath(const std::filesystem::path& path)
+		{
+			return !path.empty() && !path.has_root_path() && *path.begin() != "..";
+		}
 
 		std::optional<ScriptFieldValue> ReadFieldValue(const sol::object& value)
 		{
@@ -221,12 +236,24 @@ namespace NeneEngine
 			ScriptFieldSchema fieldSchema;
 		};
 
+		struct TrackedScript
+		{
+			std::optional<LoadedScript> loaded;
+			std::optional<std::filesystem::file_time_type> lastAttemptedWriteTime;
+		};
+
 		// Destroy loaded scripts and their Lua references before the interpreter
 		sol::state lua;
 		sol::protected_function executeConsoleCommand;
 		std::weak_ptr<const ECS::WorldLifetime> worldLifetime;
 		std::filesystem::path scriptsRoot;
-		std::unordered_map<std::filesystem::path, LoadedScript> scripts;
+		std::unordered_map<std::filesystem::path, TrackedScript> scripts;
+
+		std::optional<LoadedScript> TryLoadScript(const std::filesystem::path& path);
+		void LoadTrackedScript(const std::filesystem::path& path, TrackedScript& script,
+		                       std::optional<std::filesystem::file_time_type> writeTime, bool isReload);
+		const sol::table* LoadScript(const std::filesystem::path& path, bool reload);
+		void ReloadScripts(bool force);
 	};
 
 	ScriptEngine::ScriptEngine() = default;
@@ -335,7 +362,7 @@ namespace NeneEngine
 		}
 
 		NENE_LOG_INFO("> {}", command);
-		const ConsoleInstructionLimit instructionLimit(lua.lua_state());
+		const LuaInstructionLimit instructionLimit(lua.lua_state(), kConsoleInstructionLimit);
 		const auto result = m_impl->executeConsoleCommand(command, selectedFields);
 		if (!result.valid())
 		{
@@ -353,33 +380,93 @@ namespace NeneEngine
 			NENE_LOG_ERROR("Cannot load script '{}': script engine is not initialized", path.string());
 			return nullptr;
 		}
+		return m_impl->LoadScript(path, false);
+	}
 
+	void ScriptEngine::ReloadScript(const std::filesystem::path& path)
+	{
+		if (m_impl) m_impl->LoadScript(path, true);
+	}
+
+	void ScriptEngine::ReloadAll()
+	{
+		if (!m_impl) return;
+		NENE_LOG_INFO("Reloading tracked Lua scripts");
+		m_impl->ReloadScripts(true);
+	}
+
+	void ScriptEngine::ReloadChangedScripts()
+	{
+		if (m_impl) m_impl->ReloadScripts(false);
+	}
+
+	const ScriptFieldSchema* ScriptEngine::GetFieldSchema(const std::filesystem::path& path) const
+	{
+		if (!m_impl) return nullptr;
+		const auto it = m_impl->scripts.find(path.lexically_normal());
+		if (it == m_impl->scripts.end() || !it->second.loaded) return nullptr;
+		return &it->second.loaded->fieldSchema;
+	}
+
+	const sol::table* ScriptEngine::Impl::LoadScript(const std::filesystem::path& path, bool reload)
+	{
 		const auto scriptPath = path.lexically_normal();
-		if (scriptPath.empty() || scriptPath.has_root_path() || *scriptPath.begin() == "..")
+		auto [it, inserted] = scripts.try_emplace(scriptPath);
+		auto& script = it->second;
+		if (inserted || reload)
 		{
-			NENE_LOG_ERROR("Invalid script path '{}': expected a path relative to assets/scripts", path.string());
-			return nullptr;
+			if (IsValidScriptPath(scriptPath))
+				LoadTrackedScript(scriptPath, script, ReadLastWriteTime(scriptsRoot / scriptPath), reload);
+			else
+				NENE_LOG_ERROR("Invalid script path '{}': expected a path relative to assets/scripts", path.string());
 		}
+		return script.loaded ? &script.loaded->scriptClass : nullptr;
+	}
 
-		auto& scripts = m_impl->scripts;
-		if (const auto it = scripts.find(scriptPath); it != scripts.end()) return &it->second.scriptClass;
+	void ScriptEngine::Impl::ReloadScripts(bool force)
+	{
+		for (auto& [path, script] : scripts)
+		{
+			if (!IsValidScriptPath(path)) continue;
+			const auto writeTime = ReadLastWriteTime(scriptsRoot / path);
+			if (force || writeTime != script.lastAttemptedWriteTime)
+				LoadTrackedScript(path, script, writeTime, true);
+		}
+	}
 
-		const auto fileName = (m_impl->scriptsRoot / scriptPath).string();
-		auto& lua = m_impl->lua;
+	void ScriptEngine::Impl::LoadTrackedScript(const std::filesystem::path& path, TrackedScript& script,
+	                                         std::optional<std::filesystem::file_time_type> writeTime, bool isReload)
+	{
+		script.lastAttemptedWriteTime = writeTime;
+		if (auto loaded = TryLoadScript(path))
+		{
+			script.loaded = std::move(*loaded);
+			if (isReload) NENE_LOG_INFO("Reloaded Lua script '{}'", path.string());
+		}
+		else if (script.loaded)
+		{
+			NENE_LOG_WARN("Keeping the last working version of Lua script '{}'", path.string());
+		}
+	}
+
+	std::optional<ScriptEngine::Impl::LoadedScript> ScriptEngine::Impl::TryLoadScript(const std::filesystem::path& path)
+	{
+		const auto fileName = (scriptsRoot / path).string();
 		sol::environment environment(lua, sol::create, lua.globals());
+		const LuaInstructionLimit instructionLimit(lua.lua_state(), kScriptLoadInstructionLimit);
 		const auto result =
 		    lua.safe_script_file(fileName, environment, sol::script_pass_on_error, sol::load_mode::text);
 		if (!result.valid())
 		{
 			const sol::error error = result;
 			NENE_LOG_ERROR("Failed to load script '{}': {}", fileName, error.what());
-			return nullptr;
+			return std::nullopt;
 		}
 
 		if (result.return_count() == 0 || result.get_type() != sol::type::table)
 		{
 			NENE_LOG_ERROR("Script '{}' must return a table", fileName);
-			return nullptr;
+			return std::nullopt;
 		}
 
 		auto scriptClass = result.get<sol::table>();
@@ -387,19 +474,10 @@ namespace NeneEngine
 		if (!fieldSchema)
 		{
 			NENE_LOG_ERROR("Script '{}': invalid field schema or metadata", fileName);
-			return nullptr;
+			return std::nullopt;
 		}
 
-		const auto it = scripts.emplace(
-		    scriptPath, Impl::LoadedScript{std::move(environment), std::move(scriptClass), std::move(*fieldSchema)});
-		return &it.first->second.scriptClass;
-	}
-
-	const ScriptFieldSchema* ScriptEngine::GetFieldSchema(const std::filesystem::path& path) const
-	{
-		if (!m_impl) return nullptr;
-		const auto it = m_impl->scripts.find(path.lexically_normal());
-		return it == m_impl->scripts.end() ? nullptr : &it->second.fieldSchema;
+		return LoadedScript{std::move(environment), std::move(scriptClass), std::move(*fieldSchema)};
 	}
 
 } // namespace NeneEngine

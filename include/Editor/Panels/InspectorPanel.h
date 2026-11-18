@@ -44,7 +44,6 @@ namespace NeneEngine
 			m_eulerEntity = ECS::NullEntity;
 			m_colorEntity = ECS::NullEntity;
 			m_materialError.clear();
-			m_failedScriptPath.clear();
 			m_scriptFieldEdit.reset();
 		}
 
@@ -94,7 +93,6 @@ namespace NeneEngine
 		const char* m_pendingEditLabel = nullptr;
 
 		ScriptEngine& m_scriptEngine;
-		std::string m_failedScriptPath;
 		std::optional<ScriptFieldEdit> m_scriptFieldEdit;
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 

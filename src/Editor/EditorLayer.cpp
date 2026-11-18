@@ -17,6 +17,7 @@
 #include "Graphics/Backend/IImGuiBackend.h"
 #include "Input/InputDevice.h"
 #include "Scene/SceneSerializer.h"
+#include "Scripting/ScriptEngine.h"
 #include <Windows.h>
 #include <commdlg.h>
 
@@ -48,6 +49,7 @@ namespace NeneEngine
 		constexpr float kWindowButtonGlyphScale = 0.3f;
 		constexpr float kWindowButtonRestoreOffset = 0.4f;
 		constexpr ImVec4 kWindowCloseGlyphHovered{1.0f, 1.0f, 1.0f, 1.0f};
+		constexpr auto kScriptReloadInterval = std::chrono::milliseconds{500};
 
 		enum class WindowButton
 		{
@@ -169,6 +171,7 @@ namespace NeneEngine
 
 		m_imguiBackend = imguiBackend;
 		m_uiInput = uiInput;
+		m_scriptEngine = &scriptEngine;
 		m_requestShutdown = std::move(requestShutdown);
 		m_onModeChanged = std::move(onModeChanged);
 		m_context = eastl::make_unique<EditorContext>(EditorContext{world, m_history});
@@ -238,6 +241,8 @@ namespace NeneEngine
 		m_history.Clear();
 		m_sceneSnapshot.Clear();
 		m_context.reset();
+		m_scriptEngine = nullptr;
+		m_nextScriptReloadCheck = {};
 		m_requestShutdown = nullptr;
 		m_onModeChanged = nullptr;
 		m_uiInput = nullptr;
@@ -300,6 +305,16 @@ namespace NeneEngine
 			}
 		}
 
+		if (m_context->CanEdit())
+		{
+			const auto now = std::chrono::steady_clock::now();
+			if (now >= m_nextScriptReloadCheck)
+			{
+				m_scriptEngine->ReloadChangedScripts();
+				m_nextScriptReloadCheck = now + kScriptReloadInterval;
+			}
+		}
+
 		if (const float dpiScale = m_imguiBackend->GetDpiScale(); dpiScale != m_themeService.GetDpiScale())
 			m_themeService.SetDpiScale(dpiScale);
 
@@ -359,6 +374,12 @@ namespace NeneEngine
 		if (ImGui::BeginMenu("Edit"))
 		{
 			DrawHistoryMenuItems();
+			ImGui::Separator();
+			if (ImGui::MenuItem(NENE_ICON_REFRESH " Reload Scripts", nullptr, false, m_context->CanEdit()))
+			{
+				CommitPendingEdits();
+				m_scriptEngine->ReloadAll();
+			}
 			ImGui::EndMenu();
 		}
 
@@ -785,6 +806,7 @@ namespace NeneEngine
 		ECS::World& world = m_context->world;
 		if (mode == EditorMode::Play)
 		{
+			m_scriptEngine->ReloadChangedScripts();
 			m_sceneSnapshot.Capture(world, m_context->windowCameras);
 			world.NotifyPlayStarted();
 		}

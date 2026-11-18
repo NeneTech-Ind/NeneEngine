@@ -14,6 +14,7 @@
 #include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
+#include <chrono>
 #include <string>
 
 namespace NeneEngine
@@ -100,6 +101,8 @@ namespace NeneEngine
 		IImGuiBackend* m_imguiBackend = nullptr;
 		InputDevice* m_uiInput = nullptr;
 		IWindow* m_window = nullptr;
+		ScriptEngine* m_scriptEngine = nullptr;
+		std::chrono::steady_clock::time_point m_nextScriptReloadCheck{};
 		TitleBarRect m_titleBar;
 		TitleBarRect m_maximizeButtonRect;
 		eastl::vector<TitleBarRect> m_titleBarInteractiveRects;

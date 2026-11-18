@@ -436,18 +436,13 @@ namespace NeneEngine
 		ImGui::TextWrapped("Path: %s", script->scriptPath.c_str());
 		const std::filesystem::path path(script->scriptPath);
 		const auto* schema = m_scriptEngine.GetFieldSchema(path);
-		if (schema == nullptr && m_failedScriptPath != script->scriptPath)
-		{
-			if (m_scriptEngine.LoadScript(path) != nullptr)
-				schema = m_scriptEngine.GetFieldSchema(path);
-			else
-				m_failedScriptPath = script->scriptPath;
-		}
+		if (schema == nullptr && m_scriptEngine.LoadScript(path) != nullptr)
+			schema = m_scriptEngine.GetFieldSchema(path);
 
 		if (schema == nullptr)
 		{
 			ImGui::TextWrapped("Could not load script. See the Console for details.");
-			if (ImGui::Button("Retry##ScriptLoad")) m_failedScriptPath.clear();
+			if (context.CanEdit() && ImGui::Button("Retry##ScriptLoad")) m_scriptEngine.ReloadScript(path);
 			return false;
 		}
 		if (schema->empty())
@@ -461,7 +456,6 @@ namespace NeneEngine
 		ImGui::PushID("Script");
 		ImGui::PushID(static_cast<int>(entt::to_integral(context.selectedEntity)));
 		ImGui::BeginDisabled(!canEdit);
-		int fieldId = 0;
 		for (const auto& field : *schema)
 		{
 			const auto override = script->fields.find(field.name);
@@ -474,7 +468,7 @@ namespace NeneEngine
 			FieldEdits edits{};
 			edits.valueFont = context.monospaceFont;
 			edits.colors = context.themeColors;
-			ImGui::PushID(fieldId++);
+			ImGui::PushID(field.name.c_str());
 			if (invalid) ImGui::PushStyleColor(ImGuiCol_FrameBg, context.themeColors ? context.themeColors->danger : ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
 			const bool changed = DrawScriptField(field, value, edits) && canEdit;
 			if (invalid) ImGui::PopStyleColor();
