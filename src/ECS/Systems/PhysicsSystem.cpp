@@ -48,9 +48,11 @@ namespace NeneEngine::ECS
 		constexpr float kGroundNormalThreshold = 0.5f;
 
 		constexpr JPH::uint kMaxBodies = 4096;
-		constexpr JPH::uint kMaxBodyPairs = 4096;
-		constexpr JPH::uint kMaxContactConstraints = 4096;
-		constexpr size_t kTempAllocatorBytes = 10 * 1024 * 1024;
+		// Bodies can contact several neighbors in dense scenes such as the physics stress scene.
+		constexpr JPH::uint kMaxBodyPairs = 32768;
+		constexpr JPH::uint kMaxContactConstraints = 32768;
+		// Jolt allocates the contact constraint buffer from this arena each step.
+		constexpr size_t kTempAllocatorBytes = 32 * 1024 * 1024;
 		constexpr float kStatsSmoothing = 0.1f;
 
 		namespace ObjectLayers
