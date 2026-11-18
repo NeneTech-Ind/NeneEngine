@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <optional>
 #include <sol/sol.hpp>
@@ -28,6 +29,30 @@ namespace NeneEngine
 	{
 		constexpr int kConsoleInstructionLimit = 100'000;
 		constexpr int kScriptLoadInstructionLimit = 1'000'000;
+
+#ifndef NDEBUG
+		void StartLuaDebugger(sol::state& lua)
+		{
+			char enabled[2]{};
+			std::size_t size = 0;
+			if (getenv_s(&size, enabled, sizeof(enabled), "LOCAL_LUA_DEBUGGER_VSCODE") != 0 ||
+			    std::string_view(enabled) != "1")
+				return;
+
+			lua.open_libraries(sol::lib::debug, sol::lib::io, sol::lib::os, sol::lib::coroutine);
+			const auto result = lua.safe_script(R"lua(
+				local path = assert(os.getenv("LOCAL_LUA_DEBUGGER_FILEPATH"), "Lua debugger path is missing")
+				local debugger = assert(loadfile(path, "t"))()
+				package.loaded["lldebugger"] = debugger
+				debugger.start()
+			)lua", sol::script_pass_on_error);
+			if (!result.valid())
+			{
+				const sol::error error = result;
+				NENE_LOG_WARN("Could not start the Lua debugger: {}", error.what());
+			}
+		}
+#endif
 
 		int TraceLuaError(lua_State* state)
 		{
@@ -300,6 +325,10 @@ namespace NeneEngine
 			end
 		)lua");
 		impl->executeConsoleCommand = consoleCommand.get<sol::protected_function>();
+
+#ifndef NDEBUG
+		StartLuaDebugger(lua);
+#endif
 
 		m_impl = std::move(impl);
 		NENE_LOG_INFO("Script engine initialized");
