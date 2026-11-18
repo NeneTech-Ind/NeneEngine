@@ -15,6 +15,7 @@
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/Texture.h"
 #include "../external/DiligentEngine/DiligentCore/Graphics/GraphicsEngine/interface/TextureView.h"
 
+#include <EASTL/array.h>
 #include <EASTL/functional.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
@@ -87,7 +88,7 @@ namespace NeneEngine
 		Diligent::TEXTURE_FORMAT depthBufferFormat = Diligent::TEX_FORMAT_UNKNOWN;
 		bool pipelinesCreated = false;
 
-		std::array<DrawPipeline, PrimitiveTypeCount> primitivePipelines;
+		eastl::array<DrawPipeline, PrimitiveTypeCount> primitivePipelines;
 		DrawPipeline meshPipeline;
 
 		eastl::unordered_map<uint32_t, Diligent::RefCntAutoPtr<Diligent::IBuffer>> uploadedBuffers;

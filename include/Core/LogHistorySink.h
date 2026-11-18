@@ -2,14 +2,14 @@
 
 #pragma once
 
+#include <EASTL/deque.h>
+#include <EASTL/vector.h>
 #include <spdlog/sinks/base_sink.h>
 
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <mutex>
 #include <string>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -27,7 +27,7 @@ namespace NeneEngine
 	  public:
 		explicit LogHistorySink(size_t capacity);
 
-		uint64_t CopySince(uint64_t sequence, std::vector<LogEntry>& entries);
+		uint64_t CopySince(uint64_t sequence, eastl::vector<LogEntry>& entries);
 
 	  protected:
 		void sink_it_(const spdlog::details::log_msg& message) override;
@@ -36,7 +36,7 @@ namespace NeneEngine
 	  private:
 		size_t m_capacity = 0;
 		uint64_t m_lastSequence = 0;
-		std::deque<LogEntry> m_entries;
+		eastl::deque<LogEntry> m_entries;
 	};
 
 } // namespace NeneEngine

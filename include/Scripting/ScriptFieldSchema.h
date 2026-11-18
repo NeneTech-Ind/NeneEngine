@@ -7,7 +7,6 @@
 #include <optional>
 #include <string>
 #include <variant>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -20,7 +19,7 @@ namespace NeneEngine
 		ScriptFieldValue defaultValue;
 		std::optional<ScriptFieldValue> minimum;
 		std::optional<ScriptFieldValue> maximum;
-		std::vector<std::string> options;
+		eastl::vector<std::string> options;
 	};
 
 	inline bool IsValidScriptFieldValue(const ScriptFieldDefinition& field, const ScriptFieldValue& value)

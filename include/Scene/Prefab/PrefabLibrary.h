@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Core/EASTLStdHash.h"
 #include "ECS/Entity.h"
 
+#include <EASTL/unordered_map.h>
 #include <filesystem>
 #include <glm/vec3.hpp>
 #include <nlohmann/json.hpp>
 #include <string>
-#include <unordered_map>
 
 namespace NeneEngine
 {
@@ -36,7 +37,7 @@ namespace NeneEngine
 
 		ECS::World& m_world;
 		std::filesystem::path m_directory;
-		std::unordered_map<std::string, nlohmann::json> m_prefabs;
+		eastl::unordered_map<std::string, nlohmann::json> m_prefabs;
 	};
 
 }

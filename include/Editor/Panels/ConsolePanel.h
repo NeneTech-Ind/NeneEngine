@@ -6,11 +6,11 @@
 #include "Editor/IEditorPanel.h"
 #include "Editor/Theme/EditorIcons.h"
 
+#include <EASTL/deque.h>
+#include <EASTL/vector.h>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <string>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -53,12 +53,12 @@ namespace NeneEngine
 
 		ScriptEngine& m_scriptEngine;
 		std::string m_command;
-		std::deque<std::string> m_commandHistory;
+		eastl::deque<std::string> m_commandHistory;
 		size_t m_historyPosition = 0;
 		std::string m_commandDraft;
-		std::deque<Line> m_lines;
-		std::vector<LogEntry> m_incoming;
-		std::vector<size_t> m_visible;
+		eastl::deque<Line> m_lines;
+		eastl::vector<LogEntry> m_incoming;
+		eastl::vector<size_t> m_visible;
 		uint64_t m_lastSequence = 0;
 		size_t m_counts[static_cast<size_t>(Severity::Count)]{};
 		bool m_shown[static_cast<size_t>(Severity::Count)]{true, true, true};

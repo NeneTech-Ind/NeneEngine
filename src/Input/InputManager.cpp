@@ -104,7 +104,7 @@ namespace NeneEngine
 
 	bool InputManager::IsActionActive(std::string_view actionName) const
 	{
-		const auto it = m_actionsMap.find(std::string(actionName));
+		const auto it = m_actionsMap.find_as(actionName, eastl::hash<std::string_view>{}, eastl::equal_to<>{});
 		if (it == m_actionsMap.end()) return false;
 
 		for (KeyCode keyCode : it->second)
@@ -117,7 +117,7 @@ namespace NeneEngine
 
 	bool InputManager::IsActionPressed(std::string_view actionName) const
 	{
-		const auto it = m_actionsMap.find(std::string(actionName));
+		const auto it = m_actionsMap.find_as(actionName, eastl::hash<std::string_view>{}, eastl::equal_to<>{});
 		if (it == m_actionsMap.end()) return false;
 
 		for (KeyCode keyCode : it->second)

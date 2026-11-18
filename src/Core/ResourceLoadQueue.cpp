@@ -5,10 +5,10 @@
 #include "Core/NeneLogger.h"
 #include "Core/Profiler.h"
 
+#include <EASTL/deque.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <deque>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -31,9 +31,9 @@ namespace NeneEngine
 			std::string error;
 		};
 
-		std::deque<Request> pending;
-		std::deque<Result> finished;
-		std::deque<Step> steps;
+		eastl::deque<Request> pending;
+		eastl::deque<Result> finished;
+		eastl::deque<Step> steps;
 		std::mutex mutex;
 		std::atomic<bool> stopping{false};
 		size_t inFlight = 0;

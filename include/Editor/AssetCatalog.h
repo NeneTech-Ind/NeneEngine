@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include <EASTL/vector.h>
 #include <filesystem>
 #include <string>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -26,11 +26,11 @@ namespace NeneEngine
 	{
 	  public:
 		void Refresh();
-		[[nodiscard]] const std::vector<AssetEntry>& Entries() const { return m_entries; }
+		[[nodiscard]] const eastl::vector<AssetEntry>& Entries() const { return m_entries; }
 		[[nodiscard]] const std::string& Error() const { return m_error; }
 
 	  private:
-		std::vector<AssetEntry> m_entries;
+		eastl::vector<AssetEntry> m_entries;
 		std::string m_error;
 	};
 

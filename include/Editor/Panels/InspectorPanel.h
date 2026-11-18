@@ -11,10 +11,10 @@
 #include "Scripting/ScriptFieldSchema.h"
 
 #include <EASTL/functional.h>
+#include <EASTL/optional.h>
 #include <EASTL/unique_ptr.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <optional>
 #include <string>
 
 namespace NeneEngine
@@ -93,7 +93,7 @@ namespace NeneEngine
 		const char* m_pendingEditLabel = nullptr;
 
 		ScriptEngine& m_scriptEngine;
-		std::optional<ScriptFieldEdit> m_scriptFieldEdit;
+		eastl::optional<ScriptFieldEdit> m_scriptFieldEdit;
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 
 		ECS::Entity m_eulerEntity = ECS::NullEntity;
