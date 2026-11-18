@@ -375,7 +375,7 @@ namespace NeneEngine
 		{
 			DrawHistoryMenuItems();
 			ImGui::Separator();
-			if (ImGui::MenuItem(NENE_ICON_REFRESH " Reload Scripts", nullptr, false, m_context->CanEdit()))
+			if (ImGui::MenuItem(NENE_ICON_REFRESH " Reload Scripts", "Ctrl+Shift+R", false, m_context->CanEdit()))
 				ReloadScripts();
 			ImGui::EndMenu();
 		}
@@ -851,6 +851,8 @@ namespace NeneEngine
 			SetMode(m_context->mode == EditorMode::Play ? EditorMode::Edit : EditorMode::Play);
 
 		if (!m_context->CanEdit()) return;
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_R, ImGuiInputFlags_RouteGlobal))
+			ReloadScripts();
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
 			SaveScene(true);
 		else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
