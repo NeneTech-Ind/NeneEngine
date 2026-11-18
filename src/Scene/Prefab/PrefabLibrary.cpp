@@ -8,6 +8,9 @@
 #include "Scene/EntitySerializer.h"
 #include "Scene/SceneSerializer.h"
 
+#include <EASTL/unordered_map.h>
+#include <EASTL/unordered_set.h>
+#include <EASTL/vector.h>
 #include <Windows.h>
 #include <algorithm>
 #include <cmath>
@@ -15,9 +18,6 @@
 #include <limits>
 #include <optional>
 #include <stdexcept>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -81,10 +81,10 @@ namespace NeneEngine
 				std::optional<uint32_t> parent;
 				bool hasParent = false;
 				bool hasChildren = false;
-				std::vector<uint32_t> children;
+				eastl::vector<uint32_t> children;
 			};
-			std::vector<Node> nodes;
-			std::unordered_map<uint32_t, size_t> indices;
+			eastl::vector<Node> nodes;
+			eastl::unordered_map<uint32_t, size_t> indices;
 			for (auto& entity : entities)
 			{
 				const uint32_t id = ReadId(entity.at("id"));
@@ -105,7 +105,7 @@ namespace NeneEngine
 					{
 						if (!hierarchy.at("children").is_array())
 							throw std::runtime_error("Prefab hierarchy children must be an array");
-						std::unordered_set<uint32_t> unique;
+						eastl::unordered_set<uint32_t> unique;
 						for (const auto& child : hierarchy.at("children"))
 						{
 							const auto childId = ReadId(child);
@@ -129,7 +129,7 @@ namespace NeneEngine
 					child.parent = node.id;
 				}
 
-			std::vector<std::vector<uint32_t>> expectedChildren(nodes.size());
+			eastl::vector<eastl::vector<uint32_t>> expectedChildren(nodes.size());
 			std::optional<uint32_t> root;
 			for (const auto& node : nodes)
 			{
@@ -161,8 +161,8 @@ namespace NeneEngine
 				else
 					node.children = std::move(expectedChildren[index]);
 			}
-			std::vector<uint32_t> pending{*root};
-			std::unordered_set<uint32_t> visited;
+			eastl::vector<uint32_t> pending{*root};
+			eastl::unordered_set<uint32_t> visited;
 			for (size_t next = 0; next < pending.size(); ++next)
 			{
 				const auto id = pending[next];
@@ -178,9 +178,13 @@ namespace NeneEngine
 				const auto& node = nodes[index];
 				auto& components = entities[index]["components"];
 				if (components.contains("HierarchyComponent") || node.parent || !node.children.empty())
+				{
+					auto children = nlohmann::json::array();
+					for (uint32_t child : node.children) children.push_back(child);
 					components["HierarchyComponent"] = {
 					    {"parent", node.parent ? nlohmann::json(*node.parent) : nlohmann::json(nullptr)},
-					    {"children", node.children}};
+					    {"children", std::move(children)}};
+				}
 			}
 			return *root;
 		}
@@ -344,7 +348,7 @@ namespace NeneEngine
 		}
 		const auto& entities = definition->at("entities");
 		EntityDeserializationMap targets;
-		std::vector<ECS::Entity> created;
+		eastl::vector<ECS::Entity> created;
 		created.reserve(entities.size());
 		try
 		{
