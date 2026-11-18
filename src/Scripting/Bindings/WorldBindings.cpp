@@ -8,11 +8,11 @@
 #include "Scene/Prefab/PrefabLibrary.h"
 #include "Scripting/Bindings/ScriptEntity.h"
 
+#include <EASTL/unordered_set.h>
 #include <cmath>
 #include <optional>
 #include <sol/sol.hpp>
 #include <stdexcept>
-#include <unordered_set>
 
 namespace NeneEngine
 {
@@ -22,7 +22,7 @@ namespace NeneEngine
 		                                           const ECS::TransformComponent& transform)
 		{
 			glm::dvec4 position(glm::dvec3(transform.position), 1.0);
-			std::unordered_set<ECS::Entity> visited;
+			eastl::unordered_set<ECS::Entity> visited;
 			while (const auto* hierarchy = registry.try_get<ECS::HierarchyComponent>(entity))
 			{
 				entity = hierarchy->parent;
