@@ -27,6 +27,8 @@ namespace NeneEngine
 		void OnUpdate(float deltaTime) override;
 		void OnDestroy() override;
 		void OnCollision(const sol::object& other, const glm::vec3& normal) override;
+		void Reload(const sol::table& scriptClass, const ScriptFieldSchema& fieldSchema,
+		            const std::map<std::string, ScriptFieldValue>& fields);
 
 	  private:
 		struct Impl;

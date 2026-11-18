@@ -3,6 +3,7 @@
 #include "Core/NeneLogger.h"
 #include "Scripting/LuaInstructionLimit.h"
 
+#include <algorithm>
 #include <sol/sol.hpp>
 #include <utility>
 
@@ -33,9 +34,25 @@ namespace NeneEngine
 		sol::table instance;
 		sol::protected_function invokeCallback;
 		std::string scriptPath;
+		ScriptFieldSchema fieldSchema;
 		bool started = false;
 		bool destroyed = false;
 		bool faulted = false;
+
+		void SetField(const ScriptFieldDefinition& definition, const std::map<std::string, ScriptFieldValue>& fields)
+		{
+			const auto field = fields.find(definition.name);
+			const ScriptFieldValue* value = &definition.defaultValue;
+			if (field != fields.end())
+			{
+				if (IsValidScriptFieldValue(definition, field->second))
+					value = &field->second;
+				else
+					NENE_LOG_WARN("Script '{}': invalid value for field '{}'; using its default", scriptPath,
+					              definition.name);
+			}
+			std::visit([&](const auto& fieldValue) { instance.raw_set(definition.name, fieldValue); }, *value);
+		}
 
 		template <typename... Args> void Invoke(std::string_view methodName, bool allowWhenFaulted, Args&&... args)
 		{
@@ -65,25 +82,36 @@ namespace NeneEngine
 
 		// Initialize engine-owned fields without invoking a script's __newindex.
 		for (const auto& definition : fieldSchema)
-		{
-			const auto field = fields.find(definition.name);
-			const ScriptFieldValue* value = &definition.defaultValue;
-			if (field != fields.end())
-			{
-				if (IsValidScriptFieldValue(definition, field->second))
-					value = &field->second;
-				else
-					NENE_LOG_WARN("Script '{}': invalid value for field '{}'; using its default", scriptPath,
-					              definition.name);
-			}
-
-			std::visit([&](const auto& fieldValue) { m_impl->instance.raw_set(definition.name, fieldValue); }, *value);
-		}
+			m_impl->SetField(definition, fields);
 
 		m_impl->instance.raw_set("entity", entityApi);
+		m_impl->fieldSchema = fieldSchema;
 	}
 
 	LuaBehaviour::~LuaBehaviour() = default;
+
+	void LuaBehaviour::Reload(const sol::table& scriptClass, const ScriptFieldSchema& fieldSchema,
+	                          const std::map<std::string, ScriptFieldValue>& fields)
+	{
+		for (const auto& previous : m_impl->fieldSchema)
+		{
+			if (previous.name != "entity" &&
+			    std::ranges::find(fieldSchema, previous.name, &ScriptFieldDefinition::name) == fieldSchema.end())
+				m_impl->instance.raw_set(previous.name, sol::lua_nil);
+		}
+		for (const auto& definition : fieldSchema)
+		{
+			if (definition.name == "entity") continue;
+			const auto previous = std::ranges::find(m_impl->fieldSchema, definition.name, &ScriptFieldDefinition::name);
+			if (previous == m_impl->fieldSchema.end() || previous->defaultValue != definition.defaultValue ||
+			    previous->minimum != definition.minimum || previous->maximum != definition.maximum ||
+			    previous->options != definition.options)
+				m_impl->SetField(definition, fields);
+		}
+		m_impl->instance[sol::metatable_key] = scriptClass;
+		m_impl->fieldSchema = fieldSchema;
+		m_impl->faulted = false;
+	}
 
 	void LuaBehaviour::OnStart()
 	{
