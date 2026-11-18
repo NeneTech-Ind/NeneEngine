@@ -5,7 +5,6 @@
 #include "ECS/World.h"
 #include "Scripting/Bindings/ScriptEntity.h"
 #include "Scripting/LuaBehaviour.h"
-#include "Scripting/ScriptBehaviour.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <EASTL/unordered_map.h>
@@ -24,7 +23,7 @@ namespace NeneEngine::ECS
 			std::string scriptPath;
 			std::uint64_t scriptRevision;
 			lua_State* luaState = nullptr;
-			eastl::unique_ptr<ScriptBehaviour> behaviour;
+			eastl::unique_ptr<LuaBehaviour> behaviour;
 		};
 
 		ScriptEngine& scriptEngine;
@@ -55,8 +54,7 @@ namespace NeneEngine::ECS
 				const std::filesystem::path scriptPath{component.scriptPath};
 				const auto revision = component.scriptPath.empty() ? 0 : scriptEngine.GetScriptRevision(scriptPath);
 				auto runtime = behaviours.find(entity);
-				if (runtime != behaviours.end() &&
-				    (runtime->second.scriptPath != component.scriptPath || runtime->second.scriptRevision != revision))
+				if (runtime != behaviours.end() && runtime->second.scriptPath != component.scriptPath)
 				{
 					DestroyBehaviour(entity);
 					runtime = behaviours.end();
@@ -92,6 +90,16 @@ namespace NeneEngine::ECS
 					runtime = behaviours.emplace(entity, std::move(newRuntime)).first;
 					failedScripts.erase(entity);
 					runtime->second.behaviour->OnStart();
+				}
+				else if (runtime->second.scriptRevision != revision)
+				{
+					const auto* scriptClass = scriptEngine.LoadScript(scriptPath);
+					const auto* fieldSchema = scriptEngine.GetFieldSchema(scriptPath);
+					if (scriptClass && fieldSchema)
+					{
+						runtime->second.behaviour->Reload(*scriptClass, *fieldSchema, component.fields);
+						runtime->second.scriptRevision = revision;
+					}
 				}
 
 				runtime->second.behaviour->OnUpdate(deltaTime);
