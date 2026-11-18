@@ -36,9 +36,10 @@ namespace NeneEngine
 		// Reloads update the cached class and schema in place
 		[[nodiscard]] const sol::table* LoadScript(const std::filesystem::path& path);
 
-		// Call on the main thread in Edit mode, after runtime behaviours have been released
+		// Call on the main thread in Edit mode
 		void ReloadScript(const std::filesystem::path& path);
 		void ReloadAll();
+		// Also safe between world updates in Play mode; updated behaviours restart on the next update
 		void ReloadChangedScripts();
 
 		// Includes failed attempts that kept the last working version
