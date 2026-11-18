@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "NeneEngine: Debug Lua",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "${workspaceFolder}/out/build/x64-debug/src/NeneEngine.exe",
+                "communication": "pipe"
+            },
+            "cwd": "${workspaceFolder}",
+            "scriptRoots": [
+                "${workspaceFolder}/assets/scripts"
+            ],
+            "stopOnEntry": false
+        }
+    ]
+}
