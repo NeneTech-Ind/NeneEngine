@@ -21,9 +21,10 @@
 #include "ECS/MovementSettings.h"
 #include "ECS/PhysicsSettings.h"
 #include "ECS/RenderSettings.h"
+
+#include <EASTL/unordered_map.h>
+#include <EASTL/unordered_set.h>
 #include <Windows.h>
-#include <unordered_map>
-#include <unordered_set>
 
 #include <fstream>
 #include <stdexcept>
@@ -96,12 +97,12 @@ namespace NeneEngine
 
 	void SceneSerializer::Deserialize(const nlohmann::json& sceneJson, ECS::World& world, bool preserveCameras)
 	{
-		Apply(Prepare(sceneJson, preserveCameras ? CaptureCameras(world) : std::vector<SceneCamera>{}), world);
+		Apply(Prepare(sceneJson, preserveCameras ? CaptureCameras(world) : eastl::vector<SceneCamera>{}), world);
 	}
 
-	std::vector<SceneCamera> SceneSerializer::CaptureCameras(const ECS::World& world)
+	eastl::vector<SceneCamera> SceneSerializer::CaptureCameras(const ECS::World& world)
 	{
-		std::vector<SceneCamera> cameras;
+		eastl::vector<SceneCamera> cameras;
 		const auto& registry = world.GetRegistry();
 		for (const auto [entity, camera] : registry.view<const ECS::CameraComponent>().each())
 		{
@@ -111,7 +112,7 @@ namespace NeneEngine
 		return cameras;
 	}
 
-	PreparedScene SceneSerializer::Prepare(const nlohmann::json& sceneJson, const std::vector<SceneCamera>& cameras)
+	PreparedScene SceneSerializer::Prepare(const nlohmann::json& sceneJson, const eastl::vector<SceneCamera>& cameras)
 	{
 		NENE_PROFILE_SCOPE("Scene Prepare");
 		ECS::World parsed;
@@ -119,8 +120,8 @@ namespace NeneEngine
 		PreparedScene prepared{eastl::make_shared<ECS::World>(), {}};
 		auto& source = parsed.GetRegistry();
 		auto& target = prepared.world->GetRegistry();
-		std::unordered_map<ECS::Entity, ECS::Entity> remap;
-		std::unordered_set<ECS::Entity> usedCameras;
+		eastl::unordered_map<ECS::Entity, ECS::Entity> remap;
+		eastl::unordered_set<ECS::Entity> usedCameras;
 		for (const auto& camera : cameras)
 		{
 			if (target.create(camera.entity) != camera.entity)

@@ -5,11 +5,11 @@
 #include "ECS/World.h"
 
 #include <EASTL/shared_ptr.h>
+#include <EASTL/vector.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
-#include <vector>
 
 namespace NeneEngine
 {
@@ -24,7 +24,7 @@ namespace NeneEngine
 	struct PreparedScene
 	{
 		eastl::shared_ptr<ECS::World> world;
-		std::vector<ECS::Entity> cameras;
+		eastl::vector<ECS::Entity> cameras;
 	};
 
 	class SceneSerializer final
@@ -35,9 +35,9 @@ namespace NeneEngine
 		[[nodiscard]] static nlohmann::json Serialize(const ECS::World& world);
 		static void Deserialize(const nlohmann::json& sceneJson, ECS::World& world, bool preserveCameras = false);
 
-		[[nodiscard]] static std::vector<SceneCamera> CaptureCameras(const ECS::World& world);
+		[[nodiscard]] static eastl::vector<SceneCamera> CaptureCameras(const ECS::World& world);
 		[[nodiscard]] static PreparedScene Prepare(const nlohmann::json& sceneJson,
-		                                           const std::vector<SceneCamera>& cameras = {});
+		                                           const eastl::vector<SceneCamera>& cameras = {});
 		static void Apply(const PreparedScene& scene, ECS::World& world);
 
 		static void SaveToFile(const ECS::World& world, const std::filesystem::path& path);
