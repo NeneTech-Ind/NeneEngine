@@ -1,6 +1,7 @@
 target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/Bindings/BehaviourBindings.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/LuaBehaviour.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/LuaInstructionLimit.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/ScriptBehaviour.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/ScriptEngine.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Scripting/ScriptFieldSchema.h"
@@ -14,6 +15,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Bindings/BehaviourBindings.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ScriptEngine.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LuaBehaviour.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/LuaInstructionLimit.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Bindings/InputBindings.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Bindings/LogBindings.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Bindings/VectorBindings.cpp"

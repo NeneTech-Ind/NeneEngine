@@ -1,16 +1,37 @@
 #include "Scripting/LuaBehaviour.h"
 
 #include "Core/NeneLogger.h"
+#include "Scripting/LuaInstructionLimit.h"
 
 #include <sol/sol.hpp>
 #include <utility>
 
 namespace NeneEngine
 {
+	namespace
+	{
+		constexpr int kBehaviourInstructionLimit = 100'000;
+
+		int InvokeBehaviourCallback(lua_State* state)
+		{
+			// This runs inside the protected call, so Lua code in __index is covered by the same budget
+			lua_pushvalue(state, 2);
+			lua_gettable(state, 1);
+			if (lua_isnil(state, -1)) return 0;
+			if (!lua_isfunction(state, -1))
+				return luaL_error(state, "'%s' must be a function", lua_tostring(state, 2));
+
+			lua_remove(state, 2);
+			lua_insert(state, 1);
+			lua_call(state, lua_gettop(state) - 1, 0);
+			return 0;
+		}
+	}
 
 	struct LuaBehaviour::Impl
 	{
 		sol::table instance;
+		sol::protected_function invokeCallback;
 		std::string scriptPath;
 		bool started = false;
 		bool destroyed = false;
@@ -20,17 +41,8 @@ namespace NeneEngine
 		{
 			if (destroyed || (faulted && !allowWhenFaulted)) return;
 
-			const sol::object callbackObject = instance.get<sol::object>(std::string{methodName});
-			if (callbackObject == sol::nil) return;
-			if (callbackObject.get_type() != sol::type::function)
-			{
-				NENE_LOG_ERROR("Script '{}': '{}' must be a function", scriptPath, methodName);
-				faulted = true;
-				return;
-			}
-
-			sol::protected_function callback = callbackObject.as<sol::protected_function>();
-			auto result = callback(instance, std::forward<Args>(args)...);
+			const LuaInstructionLimit instructionLimit(instance.lua_state(), kBehaviourInstructionLimit);
+			const auto result = invokeCallback(instance, methodName, std::forward<Args>(args)...);
 			if (!result.valid())
 			{
 				const sol::error error = result;
@@ -48,8 +60,10 @@ namespace NeneEngine
 		m_impl->scriptPath = scriptPath;
 		sol::state_view lua{scriptClass.lua_state()};
 		m_impl->instance = lua.create_table();
+		m_impl->invokeCallback = sol::make_reference<sol::protected_function>(lua.lua_state(), &InvokeBehaviourCallback);
 		m_impl->instance[sol::metatable_key] = scriptClass;
 
+		// Initialize engine-owned fields without invoking a script's __newindex.
 		for (const auto& definition : fieldSchema)
 		{
 			const auto field = fields.find(definition.name);
@@ -63,10 +77,10 @@ namespace NeneEngine
 					              definition.name);
 			}
 
-			std::visit([&](const auto& fieldValue) { m_impl->instance.set(definition.name, fieldValue); }, *value);
+			std::visit([&](const auto& fieldValue) { m_impl->instance.raw_set(definition.name, fieldValue); }, *value);
 		}
 
-		m_impl->instance.set("entity", entityApi);
+		m_impl->instance.raw_set("entity", entityApi);
 	}
 
 	LuaBehaviour::~LuaBehaviour() = default;
