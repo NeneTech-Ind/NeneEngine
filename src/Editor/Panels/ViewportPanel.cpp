@@ -202,7 +202,9 @@ namespace NeneEngine
 
 		if (ImGui::IsKeyPressed(ImGuiKey_W, false)) m_operation = GizmoOperation::Translate;
 		if (ImGui::IsKeyPressed(ImGuiKey_E, false)) m_operation = GizmoOperation::Rotate;
-		if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_operation = GizmoOperation::Scale;
+		const ImGuiIO& io = ImGui::GetIO();
+		if (!(io.KeyCtrl && io.KeyShift) && ImGui::IsKeyPressed(ImGuiKey_R, false))
+			m_operation = GizmoOperation::Scale;
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			m_space = m_space == GizmoSpace::World ? GizmoSpace::Local : GizmoSpace::World;
 	}
