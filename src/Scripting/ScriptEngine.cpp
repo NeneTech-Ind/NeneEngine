@@ -12,11 +12,11 @@
 #include "Scripting/Bindings/WorldBindings.h"
 #include "Scripting/LuaInstructionLimit.h"
 
+#include <EASTL/optional.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
-#include <optional>
 #include <sol/sol.hpp>
 #include <string_view>
 #include <system_error>
@@ -61,11 +61,11 @@ namespace NeneEngine
 			return 1;
 		}
 
-		std::optional<std::filesystem::file_time_type> ReadLastWriteTime(const std::filesystem::path& path)
+		eastl::optional<std::filesystem::file_time_type> ReadLastWriteTime(const std::filesystem::path& path)
 		{
 			std::error_code error;
 			const auto writeTime = std::filesystem::last_write_time(path, error);
-			if (error) return std::nullopt;
+			if (error) return eastl::nullopt;
 			return writeTime;
 		}
 
@@ -74,7 +74,7 @@ namespace NeneEngine
 			return !path.empty() && !path.has_root_path() && *path.begin() != "..";
 		}
 
-		std::optional<ScriptFieldValue> ReadFieldValue(const sol::object& value)
+		eastl::optional<ScriptFieldValue> ReadFieldValue(const sol::object& value)
 		{
 			switch (value.get_type())
 			{
@@ -92,35 +92,35 @@ namespace NeneEngine
 				{
 					const auto number = value.as<lua_Integer>();
 					if (std::in_range<int>(number)) return static_cast<int>(number);
-					return std::nullopt;
+					return eastl::nullopt;
 				}
 
 				const auto number = value.as<lua_Number>();
 				if (std::isfinite(number) && std::abs(number) <= (std::numeric_limits<float>::max)())
 					return static_cast<float>(number);
-				return std::nullopt;
+				return eastl::nullopt;
 			}
 			case sol::type::userdata:
 				if (value.is<glm::vec3>()) return value.as<glm::vec3>();
-				return std::nullopt;
+				return eastl::nullopt;
 			default:
-				return std::nullopt;
+				return eastl::nullopt;
 			}
 		}
 
-		std::optional<ScriptFieldSchema> ReadFieldSchema(const sol::table& scriptClass, std::string_view fileName)
+		eastl::optional<ScriptFieldSchema> ReadFieldSchema(const sol::table& scriptClass, std::string_view fileName)
 		{
 			const auto fields = scriptClass.raw_get<sol::object>("fields");
 			ScriptFieldSchema schema;
 			if (fields == sol::nil)
 			{
-				if (scriptClass.raw_get<sol::object>("field_metadata") != sol::nil) return std::nullopt;
+				if (scriptClass.raw_get<sol::object>("field_metadata") != sol::nil) return eastl::nullopt;
 				return schema;
 			}
 			if (fields.get_type() != sol::type::table)
 			{
 				NENE_LOG_ERROR("Script '{}': fields must be a table", fileName);
-				return std::nullopt;
+				return eastl::nullopt;
 			}
 
 			for (const auto& [key, value] : fields.as<sol::table>())
@@ -128,7 +128,7 @@ namespace NeneEngine
 				if (key.get_type() != sol::type::string)
 				{
 					NENE_LOG_ERROR("Script '{}': field names must be strings", fileName);
-					return std::nullopt;
+					return eastl::nullopt;
 				}
 
 				auto name = key.as<std::string>();
@@ -136,7 +136,7 @@ namespace NeneEngine
 				if (!defaultValue || !IsValidScriptFieldValue({name, *defaultValue}, *defaultValue))
 				{
 					NENE_LOG_ERROR("Script '{}': invalid default value for field '{}'", fileName, name);
-					return std::nullopt;
+					return eastl::nullopt;
 				}
 				schema.push_back({std::move(name), std::move(*defaultValue)});
 			}
@@ -147,21 +147,21 @@ namespace NeneEngine
 				if (metadata.get_type() != sol::type::table)
 				{
 					NENE_LOG_ERROR("Script '{}': field_metadata must be a table", fileName);
-					return std::nullopt;
+					return eastl::nullopt;
 				}
 				for (const auto& [key, value] : metadata.as<sol::table>())
 				{
 					if (key.get_type() != sol::type::string || value.get_type() != sol::type::table)
 					{
 						NENE_LOG_ERROR("Script '{}': invalid field metadata entry", fileName);
-						return std::nullopt;
+						return eastl::nullopt;
 					}
 					const auto name = key.as<std::string>();
 					auto it = std::find_if(schema.begin(), schema.end(), [&](const auto& f) { return f.name == name; });
 					if (it == schema.end())
 					{
 						NENE_LOG_ERROR("Script '{}': metadata refers to unknown field '{}'", fileName, name);
-						return std::nullopt;
+						return eastl::nullopt;
 					}
 					const sol::table spec = value.as<sol::table>();
 					const auto type = spec.raw_get<sol::object>("type");
@@ -171,7 +171,7 @@ namespace NeneEngine
 					     !(type.as<std::string>() == "enum" && std::holds_alternative<std::string>(it->defaultValue))))
 					{
 						NENE_LOG_ERROR("Script '{}': invalid type for field '{}'", fileName, name);
-						return std::nullopt;
+						return eastl::nullopt;
 					}
 					const auto min = spec.raw_get<sol::object>("min");
 					const auto max = spec.raw_get<sol::object>("max");
@@ -179,12 +179,12 @@ namespace NeneEngine
 					{
 						if (min == sol::nil || max == sol::nil || min.get_type() != sol::type::number ||
 						    max.get_type() != sol::type::number)
-							return std::nullopt;
+							return eastl::nullopt;
 						if (std::holds_alternative<int>(it->defaultValue))
 						{
 							auto low = ReadFieldValue(min), high = ReadFieldValue(max);
 							if (!low || !high || !std::holds_alternative<int>(*low) || !std::holds_alternative<int>(*high) ||
-							    std::get<int>(*low) >= std::get<int>(*high)) return std::nullopt;
+							    std::get<int>(*low) >= std::get<int>(*high)) return eastl::nullopt;
 							it->minimum = *low;
 							it->maximum = *high;
 						}
@@ -194,33 +194,33 @@ namespace NeneEngine
 							if (!std::isfinite(low) || !std::isfinite(high) || low >= high ||
 							    std::abs(low) > (std::numeric_limits<float>::max)() ||
 							    std::abs(high) > (std::numeric_limits<float>::max)() ||
-							    static_cast<float>(low) >= static_cast<float>(high)) return std::nullopt;
+							    static_cast<float>(low) >= static_cast<float>(high)) return eastl::nullopt;
 							it->minimum = static_cast<float>(low);
 							it->maximum = static_cast<float>(high);
 						}
-						else return std::nullopt;
+						else return eastl::nullopt;
 					}
 					const auto options = spec.raw_get<sol::object>("options");
 					if (type.as<std::string>() == "enum")
 					{
-						if (options.get_type() != sol::type::table) return std::nullopt;
+						if (options.get_type() != sol::type::table) return eastl::nullopt;
 						const auto list = options.as<sol::table>();
 						const auto count = list.size();
-						if (count == 0) return std::nullopt;
+						if (count == 0) return eastl::nullopt;
 						for (size_t i = 1; i <= count; ++i)
 						{
 							const auto option = list.raw_get<sol::object>(i);
-							if (option.get_type() != sol::type::string) return std::nullopt;
+							if (option.get_type() != sol::type::string) return eastl::nullopt;
 							auto text = option.as<std::string>();
-							if (std::find(it->options.begin(), it->options.end(), text) != it->options.end()) return std::nullopt;
+							if (std::find(it->options.begin(), it->options.end(), text) != it->options.end()) return eastl::nullopt;
 							it->options.push_back(std::move(text));
 						}
 						size_t actual = 0;
 						for (const auto& entry : list) { (void)entry; ++actual; }
-						if (actual != count) return std::nullopt;
+						if (actual != count) return eastl::nullopt;
 					}
-					else if (options != sol::nil) return std::nullopt;
-					if (!IsValidScriptFieldValue(*it, it->defaultValue)) return std::nullopt;
+					else if (options != sol::nil) return eastl::nullopt;
+					if (!IsValidScriptFieldValue(*it, it->defaultValue)) return eastl::nullopt;
 				}
 			}
 
@@ -240,8 +240,8 @@ namespace NeneEngine
 
 		struct TrackedScript
 		{
-			std::optional<LoadedScript> loaded;
-			std::optional<std::filesystem::file_time_type> lastAttemptedWriteTime;
+			eastl::optional<LoadedScript> loaded;
+			eastl::optional<std::filesystem::file_time_type> lastAttemptedWriteTime;
 			std::uint64_t revision = 0;
 			bool loadFailed = false;
 		};
@@ -253,9 +253,9 @@ namespace NeneEngine
 		std::filesystem::path scriptsRoot;
 		std::unordered_map<std::filesystem::path, TrackedScript> scripts;
 
-		std::optional<LoadedScript> TryLoadScript(const std::filesystem::path& path);
+		eastl::optional<LoadedScript> TryLoadScript(const std::filesystem::path& path);
 		void LoadTrackedScript(const std::filesystem::path& path, TrackedScript& script,
-		                       std::optional<std::filesystem::file_time_type> writeTime, bool isReload);
+		                       eastl::optional<std::filesystem::file_time_type> writeTime, bool isReload);
 		const sol::table* LoadScript(const std::filesystem::path& path, bool reload);
 		void ReloadScripts(bool force);
 	};
@@ -456,7 +456,7 @@ namespace NeneEngine
 	}
 
 	void ScriptEngine::Impl::LoadTrackedScript(const std::filesystem::path& path, TrackedScript& script,
-	                                         std::optional<std::filesystem::file_time_type> writeTime, bool isReload)
+	                                         eastl::optional<std::filesystem::file_time_type> writeTime, bool isReload)
 	{
 		script.lastAttemptedWriteTime = writeTime;
 		auto loaded = TryLoadScript(path);
@@ -473,7 +473,7 @@ namespace NeneEngine
 		}
 	}
 
-	std::optional<ScriptEngine::Impl::LoadedScript> ScriptEngine::Impl::TryLoadScript(const std::filesystem::path& path)
+	eastl::optional<ScriptEngine::Impl::LoadedScript> ScriptEngine::Impl::TryLoadScript(const std::filesystem::path& path)
 	{
 		const auto fileName = (scriptsRoot / path).string();
 		sol::environment environment(lua, sol::create, lua.globals());
@@ -484,13 +484,13 @@ namespace NeneEngine
 		{
 			const sol::error error = result;
 			NENE_LOG_ERROR("Failed to load script '{}': {}", fileName, error.what());
-			return std::nullopt;
+			return eastl::nullopt;
 		}
 
 		if (result.return_count() == 0 || result.get_type() != sol::type::table)
 		{
 			NENE_LOG_ERROR("Script '{}' must return a table", fileName);
-			return std::nullopt;
+			return eastl::nullopt;
 		}
 
 		auto scriptClass = result.get<sol::table>();
@@ -498,7 +498,7 @@ namespace NeneEngine
 		if (!fieldSchema)
 		{
 			NENE_LOG_ERROR("Script '{}': invalid field schema or metadata", fileName);
-			return std::nullopt;
+			return eastl::nullopt;
 		}
 
 		return LoadedScript{std::move(environment), std::move(scriptClass), std::move(*fieldSchema)};

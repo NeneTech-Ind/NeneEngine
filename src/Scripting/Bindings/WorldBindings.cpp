@@ -8,6 +8,7 @@
 #include "Scene/Prefab/PrefabLibrary.h"
 #include "Scripting/Bindings/ScriptEntity.h"
 
+#include <EASTL/optional.h>
 #include <EASTL/unordered_set.h>
 #include <cmath>
 #include <optional>
@@ -18,8 +19,8 @@ namespace NeneEngine
 {
 	namespace
 	{
-		std::optional<glm::dvec3> FindWorldPosition(const entt::registry& registry, ECS::Entity entity,
-		                                           const ECS::TransformComponent& transform)
+		eastl::optional<glm::dvec3> FindWorldPosition(const entt::registry& registry, ECS::Entity entity,
+		                                             const ECS::TransformComponent& transform)
 		{
 			glm::dvec4 position(glm::dvec3(transform.position), 1.0);
 			eastl::unordered_set<ECS::Entity> visited;
@@ -27,7 +28,7 @@ namespace NeneEngine
 			{
 				entity = hierarchy->parent;
 				if (!registry.valid(entity)) break;
-				if (!visited.insert(entity).second) return std::nullopt;
+				if (!visited.insert(entity).second) return eastl::nullopt;
 				if (const auto* parent = registry.try_get<ECS::TransformComponent>(entity))
 					position = glm::dmat4(parent->GetModelMatrix()) * position;
 			}
