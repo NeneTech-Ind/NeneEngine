@@ -217,6 +217,7 @@ namespace NeneEngine
 		{
 			std::optional<LoadedScript> loaded;
 			std::optional<std::filesystem::file_time_type> lastAttemptedWriteTime;
+			bool loadFailed = false;
 		};
 
 		// Destroy loaded scripts and their Lua references before the interpreter
@@ -378,6 +379,11 @@ namespace NeneEngine
 		if (m_impl) m_impl->ReloadScripts(false);
 	}
 
+	bool ScriptEngine::HasScriptLoadErrors() const
+	{
+		return m_impl && std::ranges::any_of(m_impl->scripts, [](const auto& entry) { return entry.second.loadFailed; });
+	}
+
 	const ScriptFieldSchema* ScriptEngine::GetFieldSchema(const std::filesystem::path& path) const
 	{
 		if (!m_impl) return nullptr;
@@ -416,7 +422,9 @@ namespace NeneEngine
 	                                         std::optional<std::filesystem::file_time_type> writeTime, bool isReload)
 	{
 		script.lastAttemptedWriteTime = writeTime;
-		if (auto loaded = TryLoadScript(path))
+		auto loaded = TryLoadScript(path);
+		script.loadFailed = !loaded;
+		if (loaded)
 		{
 			script.loaded = std::move(*loaded);
 			if (isReload) NENE_LOG_INFO("Reloaded Lua script '{}'", path.string());

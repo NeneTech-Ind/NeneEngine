@@ -40,6 +40,9 @@ namespace NeneEngine
 		void ReloadAll();
 		void ReloadChangedScripts();
 
+		// Includes failed attempts that kept the last working version
+		[[nodiscard]] bool HasScriptLoadErrors() const;
+
 		// Returns nullptr if the script has not been loaded successfully
 		[[nodiscard]] const ScriptFieldSchema* GetFieldSchema(const std::filesystem::path& path) const;
 

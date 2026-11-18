@@ -376,10 +376,7 @@ namespace NeneEngine
 			DrawHistoryMenuItems();
 			ImGui::Separator();
 			if (ImGui::MenuItem(NENE_ICON_REFRESH " Reload Scripts", nullptr, false, m_context->CanEdit()))
-			{
-				CommitPendingEdits();
-				m_scriptEngine->ReloadAll();
-			}
+				ReloadScripts();
 			ImGui::EndMenu();
 		}
 
@@ -580,6 +577,12 @@ namespace NeneEngine
 			fail("Resource loader is stopping");
 	}
 
+	void EditorLayer::ReloadScripts()
+	{
+		CommitPendingEdits();
+		m_scriptEngine->ReloadAll();
+	}
+
 	void EditorLayer::DrawStatusBar()
 	{
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
@@ -618,9 +621,13 @@ namespace NeneEngine
 			const std::string sceneLabel =
 			    std::string(NENE_ICON_FILE) + " " + sceneName + (m_history.IsDirty() ? " *" : "");
 			const char* modeLabel = isPlaying ? "Play" : "Edit";
+			const bool hasScriptErrors = m_scriptEngine->HasScriptLoadErrors();
+			const char* reloadLabel = hasScriptErrors ? NENE_ICON_ERROR " Reload scripts###ReloadScripts"
+			                                          : NENE_ICON_REFRESH " Reload scripts###ReloadScripts";
 			const float segmentSpacing = style.ItemSpacing.x * 2.0f;
 			const float rightWidth =
-			    ImGui::CalcTextSize(sceneLabel.c_str()).x + segmentSpacing + ImGui::CalcTextSize(modeLabel).x;
+			    ImGui::CalcTextSize(reloadLabel, nullptr, true).x + style.FramePadding.x * 2.0f + segmentSpacing * 2.0f +
+			    ImGui::CalcTextSize(sceneLabel.c_str()).x + ImGui::CalcTextSize(modeLabel).x;
 			const float startX = ImGui::GetCursorPosX();
 			const float rightX = (std::max)(startX, startX + ImGui::GetContentRegionAvail().x - rightWidth);
 			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x);
@@ -634,6 +641,16 @@ namespace NeneEngine
 				ImGui::SetItemTooltip("%s", status.message.c_str());
 
 			ImGui::SameLine(rightX);
+			ImGui::BeginDisabled(!m_context->CanEdit());
+			ImGui::PushStyleColor(ImGuiCol_Text, hasScriptErrors ? colors.danger : colors.text);
+			if (ImGui::Button(reloadLabel)) ReloadScripts();
+			ImGui::PopStyleColor();
+			ImGui::EndDisabled();
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("%s", hasScriptErrors ? "Lua script load failed. See the Console for details."
+				                                       : "Reload tracked Lua scripts in Edit mode.");
+
+			ImGui::SameLine(0.0f, segmentSpacing);
 			ImGui::TextColored(detailColor, "%s", sceneLabel.c_str());
 			if (!m_scenePath.empty()) ImGui::SetItemTooltip("%s", ToUtf8(m_scenePath).c_str());
 			ImGui::SameLine(0.0f, segmentSpacing);
