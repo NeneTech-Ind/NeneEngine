@@ -18,6 +18,7 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr size_t kMaxLines = 4000;
+		constexpr size_t kMaxCommands = 100;
 		constexpr const char* kContinuationIndent = "           ";
 	} // namespace
 
@@ -83,15 +84,25 @@ namespace NeneEngine
 		const char* commandHint = canExecute ? "Lua command (Enter to run)" : "Enter Play mode to run Lua commands";
 		ImGui::BeginDisabled(!canExecute);
 		ImGui::SetNextItemWidth(-FLT_MIN);
-		const bool submitted =
-		    ImGui::InputTextWithHint("##LuaCommand", commandHint, &m_command, ImGuiInputTextFlags_EnterReturnsTrue);
+		const bool submitted = ImGui::InputTextWithHint(
+		    "##LuaCommand", commandHint, &m_command,
+		    ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, NavigateCommandHistory, this);
 		ImGui::EndDisabled();
 		if (!canExecute && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("%s", commandHint);
 		else if (canExecute)
-			ImGui::SetItemTooltip("Use selected_fields to read the selected entity's script settings");
+			ImGui::SetItemTooltip("Up/Down: command history. Use selected_fields to read the selected entity's script settings.");
 		if (canExecute && submitted)
 		{
+			if (m_command.find_first_not_of(" \t\r\n") != std::string::npos &&
+			    (m_commandHistory.empty() || m_commandHistory.back() != m_command))
+			{
+				m_commandHistory.push_back(m_command);
+				if (m_commandHistory.size() > kMaxCommands) m_commandHistory.pop_front();
+			}
+			m_historyPosition = m_commandHistory.size();
+			m_commandDraft.clear();
+
 			const auto* selectedScript = context.world.GetRegistry().valid(context.selectedEntity)
 			                                 ? context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity)
 			                                 : nullptr;
@@ -99,6 +110,31 @@ namespace NeneEngine
 			m_command.clear();
 			ImGui::SetKeyboardFocusHere(-1);
 		}
+	}
+
+	int ConsolePanel::NavigateCommandHistory(ImGuiInputTextCallbackData* data)
+	{
+		auto& console = *static_cast<ConsolePanel*>(data->UserData);
+		const size_t end = console.m_commandHistory.size();
+		auto& position = console.m_historyPosition;
+		if (data->EventKey == ImGuiKey_UpArrow && position > 0)
+		{
+			if (position == end) console.m_commandDraft.assign(data->Buf, data->BufTextLen);
+			--position;
+		}
+		else if (data->EventKey == ImGuiKey_DownArrow && position < end)
+		{
+			++position;
+		}
+		else
+		{
+			return 0;
+		}
+
+		const auto& command = position == end ? console.m_commandDraft : console.m_commandHistory[position];
+		data->DeleteChars(0, data->BufTextLen);
+		data->InsertChars(0, command.data(), command.data() + command.size());
+		return 0;
 	}
 
 	void ConsolePanel::DrawToolbar()

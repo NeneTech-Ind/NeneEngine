@@ -48,10 +48,14 @@ namespace NeneEngine
 		void DrawToolbar();
 		void DrawLines(const EditorContext& context);
 		void CopyVisibleLines() const;
+		static int NavigateCommandHistory(ImGuiInputTextCallbackData* data);
 		[[nodiscard]] bool IsVisible(const Line& line) const;
 
 		ScriptEngine& m_scriptEngine;
 		std::string m_command;
+		std::deque<std::string> m_commandHistory;
+		size_t m_historyPosition = 0;
+		std::string m_commandDraft;
 		std::deque<Line> m_lines;
 		std::vector<LogEntry> m_incoming;
 		std::vector<size_t> m_visible;
