@@ -23,7 +23,7 @@ namespace NeneEngine
 
 	LogHistorySink::LogHistorySink(size_t capacity) : m_capacity(capacity) {}
 
-	uint64_t LogHistorySink::CopySince(uint64_t sequence, std::vector<LogEntry>& entries)
+	uint64_t LogHistorySink::CopySince(uint64_t sequence, eastl::vector<LogEntry>& entries)
 	{
 		std::lock_guard lock(mutex_);
 		for (const LogEntry& entry : m_entries)
