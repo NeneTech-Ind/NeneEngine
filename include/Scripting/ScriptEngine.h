@@ -2,6 +2,7 @@
 
 #include "Scripting/ScriptFieldSchema.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <sol/forward.hpp>
@@ -42,6 +43,9 @@ namespace NeneEngine
 
 		// Includes failed attempts that kept the last working version
 		[[nodiscard]] bool HasScriptLoadErrors() const;
+
+		// Zero means no successful load. Failed reloads keep the last working revision.
+		[[nodiscard]] std::uint64_t GetScriptRevision(const std::filesystem::path& path) const;
 
 		// Returns nullptr if the script has not been loaded successfully
 		[[nodiscard]] const ScriptFieldSchema* GetFieldSchema(const std::filesystem::path& path) const;

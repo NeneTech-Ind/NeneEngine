@@ -217,6 +217,7 @@ namespace NeneEngine
 		{
 			std::optional<LoadedScript> loaded;
 			std::optional<std::filesystem::file_time_type> lastAttemptedWriteTime;
+			std::uint64_t revision = 0;
 			bool loadFailed = false;
 		};
 
@@ -384,6 +385,13 @@ namespace NeneEngine
 		return m_impl && std::ranges::any_of(m_impl->scripts, [](const auto& entry) { return entry.second.loadFailed; });
 	}
 
+	std::uint64_t ScriptEngine::GetScriptRevision(const std::filesystem::path& path) const
+	{
+		if (!m_impl) return 0;
+		const auto it = m_impl->scripts.find(path.lexically_normal());
+		return it != m_impl->scripts.end() ? it->second.revision : 0;
+	}
+
 	const ScriptFieldSchema* ScriptEngine::GetFieldSchema(const std::filesystem::path& path) const
 	{
 		if (!m_impl) return nullptr;
@@ -427,6 +435,7 @@ namespace NeneEngine
 		if (loaded)
 		{
 			script.loaded = std::move(*loaded);
+			++script.revision;
 			if (isReload) NENE_LOG_INFO("Reloaded Lua script '{}'", path.string());
 		}
 		else if (script.loaded)
