@@ -12,9 +12,15 @@
 
 namespace NeneEngine
 {
+	struct ScriptEntityLifetime {};
 
 	namespace
 	{
+		struct ScriptEntityIdentity
+		{
+			std::shared_ptr<const ScriptEntityLifetime> lifetime = std::make_shared<ScriptEntityLifetime>();
+		};
+
 		ECS::TransformComponent& RequireTransform(ECS::World& world, ECS::Entity entity)
 		{
 			auto* transform = world.GetComponent<ECS::TransformComponent>(entity);
@@ -33,12 +39,15 @@ namespace NeneEngine
 	    : m_lifetime(world.GetLifetime()), m_entity(entity)
 	{
 		if (const auto lifetime = m_lifetime.lock()) m_sceneGeneration = lifetime->sceneGeneration;
+		auto& registry = world.GetRegistry();
+		if (registry.valid(entity))
+			m_entityLifetime = registry.get_or_emplace<ScriptEntityIdentity>(entity).lifetime;
 	}
 
 	ECS::World* ScriptEntity::GetLiveWorld() const
 	{
 		const auto lifetime = m_lifetime.lock();
-		if (!lifetime || lifetime->sceneGeneration != m_sceneGeneration) return nullptr;
+		if (!lifetime || lifetime->sceneGeneration != m_sceneGeneration || m_entityLifetime.expired()) return nullptr;
 		return lifetime->world;
 	}
 

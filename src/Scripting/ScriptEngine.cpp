@@ -3,6 +3,7 @@
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
 #include "ECS/Components/ScriptComponent.h"
+#include "ECS/World.h"
 #include "Scripting/Bindings/BehaviourBindings.h"
 #include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
@@ -223,6 +224,7 @@ namespace NeneEngine
 		// Destroy loaded scripts and their Lua references before the interpreter
 		sol::state lua;
 		sol::protected_function executeConsoleCommand;
+		std::weak_ptr<const ECS::WorldLifetime> worldLifetime;
 		std::filesystem::path scriptsRoot;
 		std::unordered_map<std::filesystem::path, LoadedScript> scripts;
 	};
@@ -235,6 +237,7 @@ namespace NeneEngine
 		if (m_impl) return;
 
 		auto impl = std::make_unique<Impl>();
+		impl->worldLifetime = world.GetLifetime();
 		const std::filesystem::path relativeRoot{"assets/scripts"};
 		impl->scriptsRoot = ResolveFromExecutionRoots(relativeRoot, true);
 		if (impl->scriptsRoot.empty()) impl->scriptsRoot = GetExecutableDirectory() / relativeRoot;
@@ -299,6 +302,8 @@ namespace NeneEngine
 	void ScriptEngine::Shutdown()
 	{
 		if (!m_impl) return;
+		if (const auto lifetime = m_impl->worldLifetime.lock(); lifetime && lifetime->world)
+			lifetime->world->NotifyPlayStopping();
 		m_impl.reset();
 		NENE_LOG_INFO("Script engine shut down");
 	}

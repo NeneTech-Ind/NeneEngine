@@ -16,6 +16,8 @@ namespace NeneEngine
 		struct WorldLifetime;
 	}
 
+	struct ScriptEntityLifetime;
+
 	class ScriptEntity final
 	{
 	  public:
@@ -38,6 +40,7 @@ namespace NeneEngine
 		[[nodiscard]] ECS::World* GetLiveWorld() const;
 
 		std::weak_ptr<const ECS::WorldLifetime> m_lifetime;
+		std::weak_ptr<const ScriptEntityLifetime> m_entityLifetime;
 		ECS::Entity m_entity = ECS::NullEntity;
 		uint64_t m_sceneGeneration = 0;
 	};

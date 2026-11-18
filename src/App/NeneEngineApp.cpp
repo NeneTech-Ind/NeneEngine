@@ -23,7 +23,6 @@ namespace NeneEngine
 		m_editorLayer.Shutdown();
 		m_jobSystem.Shutdown();
 		m_gameStateMachine.Clear();
-		m_world.NotifyPlayStopping();
 		m_scriptEngine.Shutdown();
 		NeneLogger::GetInstance().Shutdown();
 	}
