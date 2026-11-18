@@ -144,6 +144,20 @@ return Mover
 
 Inside `on_start`, use `Ctrl+Space` after `self.` to look for `speed`, then hover over `self.speed` to check its type.
 
+#### Debug Lua in Play mode
+
+Build NeneEngine in x64 Debug, then open the repository root in VS Code.
+Install [OneLuaPro Local Lua Debugger](https://marketplace.visualstudio.com/items?itemName=OneLuaPro.oneluapro-local-lua-debugger)
+for Lua 5.5. If you have `tomblind.local-lua-debugger-vscode` installed, disable
+it for this workspace so OneLuaPro handles the `lua-local` launch profile.
+
+Set a breakpoint on an executable line in a Lua behaviour callback. In
+**Run and Debug**, select **NeneEngine: Debug Lua** and press `F5`. Open your
+scene in NeneEngine, enter Play mode and trigger the callback.
+
+When VS Code pauses at the breakpoint, select the callback in **Call Stack**.
+**Variables** shows the callback's local variables and `self`.
+
 ## Project layout
 
 | Path        | Contents                                                                                        |
