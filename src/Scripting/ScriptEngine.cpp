@@ -23,6 +23,39 @@ namespace NeneEngine
 {
 	namespace
 	{
+		constexpr int kConsoleInstructionLimit = 100'000;
+
+		class ConsoleInstructionLimit
+		{
+		  public:
+			explicit ConsoleInstructionLimit(lua_State* state)
+			    : m_state(state), m_previousHook(lua_gethook(state)), m_previousMask(lua_gethookmask(state)),
+			      m_previousCount(lua_gethookcount(state))
+			{
+				lua_sethook(m_state, OnLimitReached, LUA_MASKCOUNT, kConsoleInstructionLimit);
+			}
+
+			~ConsoleInstructionLimit()
+			{
+				lua_sethook(m_state, m_previousHook, m_previousMask, m_previousCount);
+			}
+
+			ConsoleInstructionLimit(const ConsoleInstructionLimit&) = delete;
+			ConsoleInstructionLimit& operator=(const ConsoleInstructionLimit&) = delete;
+
+		  private:
+			static void OnLimitReached(lua_State* state, lua_Debug*)
+			{
+				lua_sethook(state, OnLimitReached, LUA_MASKCOUNT, 1);
+				luaL_error(state, "Lua console command exceeded its instruction limit");
+			}
+
+			lua_State* m_state;
+			lua_Hook m_previousHook;
+			int m_previousMask;
+			int m_previousCount;
+		};
+
 		std::optional<ScriptFieldValue> ReadFieldValue(const sol::object& value)
 		{
 			switch (value.get_type())
@@ -297,6 +330,7 @@ namespace NeneEngine
 		}
 
 		NENE_LOG_INFO("> {}", command);
+		const ConsoleInstructionLimit instructionLimit(lua.lua_state());
 		const auto result = m_impl->executeConsoleCommand(command, selectedFields);
 		if (!result.valid())
 		{
