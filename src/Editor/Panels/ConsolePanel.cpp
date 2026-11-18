@@ -3,17 +3,22 @@
 #include "Editor/Panels/ConsolePanel.h"
 
 #include "Core/NeneLogger.h"
+#include "ECS/Components/ScriptComponent.h"
+#include "ECS/World.h"
 #include "Editor/EditorContext.h"
 #include "Editor/Theme/EditorThemeConfig.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <format>
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 namespace NeneEngine
 {
 	namespace
 	{
 		constexpr size_t kMaxLines = 4000;
+		constexpr size_t kMaxCommands = 100;
 		constexpr const char* kContinuationIndent = "           ";
 	} // namespace
 
@@ -74,6 +79,62 @@ namespace NeneEngine
 		DrawToolbar();
 		ImGui::Separator();
 		DrawLines(context);
+		ImGui::Separator();
+		const bool canExecute = context.mode == EditorMode::Play;
+		const char* commandHint = canExecute ? "Lua command (Enter to run)" : "Enter Play mode to run Lua commands";
+		ImGui::BeginDisabled(!canExecute);
+		ImGui::SetNextItemWidth(-FLT_MIN);
+		const bool submitted = ImGui::InputTextWithHint(
+		    "##LuaCommand", commandHint, &m_command,
+		    ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, NavigateCommandHistory, this);
+		ImGui::EndDisabled();
+		if (!canExecute && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", commandHint);
+		else if (canExecute)
+			ImGui::SetItemTooltip("Up/Down: command history. Use selected_fields to read the selected entity's script settings.");
+		if (canExecute && submitted)
+		{
+			if (m_command.find_first_not_of(" \t\r\n") != std::string::npos &&
+			    (m_commandHistory.empty() || m_commandHistory.back() != m_command))
+			{
+				m_commandHistory.push_back(m_command);
+				if (m_commandHistory.size() > kMaxCommands) m_commandHistory.pop_front();
+			}
+			m_historyPosition = m_commandHistory.size();
+			m_commandDraft.clear();
+
+			const auto* selectedScript = context.world.GetRegistry().valid(context.selectedEntity)
+			                                 ? context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity)
+			                                 : nullptr;
+			m_scriptEngine.ExecuteConsoleCommand(m_command, selectedScript);
+			m_command.clear();
+			ImGui::SetKeyboardFocusHere(-1);
+		}
+	}
+
+	int ConsolePanel::NavigateCommandHistory(ImGuiInputTextCallbackData* data)
+	{
+		auto& console = *static_cast<ConsolePanel*>(data->UserData);
+		const size_t end = console.m_commandHistory.size();
+		auto& position = console.m_historyPosition;
+		if (data->EventKey == ImGuiKey_UpArrow && position > 0)
+		{
+			if (position == end) console.m_commandDraft.assign(data->Buf, data->BufTextLen);
+			--position;
+		}
+		else if (data->EventKey == ImGuiKey_DownArrow && position < end)
+		{
+			++position;
+		}
+		else
+		{
+			return 0;
+		}
+
+		const auto& command = position == end ? console.m_commandDraft : console.m_commandHistory[position];
+		data->DeleteChars(0, data->BufTextLen);
+		data->InsertChars(0, command.data(), command.data() + command.size());
+		return 0;
 	}
 
 	void ConsolePanel::DrawToolbar()
@@ -103,7 +164,8 @@ namespace NeneEngine
 
 	void ConsolePanel::DrawLines(const EditorContext& context)
 	{
-		if (!ImGui::BeginChild("##ConsoleLines", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None,
+		const float commandHeight = ImGui::GetFrameHeight() + 2.0f * ImGui::GetStyle().ItemSpacing.y + 1.0f;
+		if (!ImGui::BeginChild("##ConsoleLines", ImVec2(0.0f, -commandHeight), ImGuiChildFlags_None,
 		                       ImGuiWindowFlags_HorizontalScrollbar))
 		{
 			ImGui::EndChild();

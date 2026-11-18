@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "ECS/Components/ScriptComponent.h"
 #include "Scripting/Bindings/BehaviourBindings.h"
 #include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
@@ -22,6 +23,39 @@ namespace NeneEngine
 {
 	namespace
 	{
+		constexpr int kConsoleInstructionLimit = 100'000;
+
+		class ConsoleInstructionLimit
+		{
+		  public:
+			explicit ConsoleInstructionLimit(lua_State* state)
+			    : m_state(state), m_previousHook(lua_gethook(state)), m_previousMask(lua_gethookmask(state)),
+			      m_previousCount(lua_gethookcount(state))
+			{
+				lua_sethook(m_state, OnLimitReached, LUA_MASKCOUNT, kConsoleInstructionLimit);
+			}
+
+			~ConsoleInstructionLimit()
+			{
+				lua_sethook(m_state, m_previousHook, m_previousMask, m_previousCount);
+			}
+
+			ConsoleInstructionLimit(const ConsoleInstructionLimit&) = delete;
+			ConsoleInstructionLimit& operator=(const ConsoleInstructionLimit&) = delete;
+
+		  private:
+			static void OnLimitReached(lua_State* state, lua_Debug*)
+			{
+				lua_sethook(state, OnLimitReached, LUA_MASKCOUNT, 1);
+				luaL_error(state, "Lua console command exceeded its instruction limit");
+			}
+
+			lua_State* m_state;
+			lua_Hook m_previousHook;
+			int m_previousMask;
+			int m_previousCount;
+		};
+
 		std::optional<ScriptFieldValue> ReadFieldValue(const sol::object& value)
 		{
 			switch (value.get_type())
@@ -188,6 +222,7 @@ namespace NeneEngine
 
 		// Destroy loaded scripts and their Lua references before the interpreter
 		sol::state lua;
+		sol::protected_function executeConsoleCommand;
 		std::filesystem::path scriptsRoot;
 		std::unordered_map<std::filesystem::path, LoadedScript> scripts;
 	};
@@ -225,6 +260,38 @@ namespace NeneEngine
 		BindEntityApi(nene);
 		BindWorldApi(nene, world, prefabs);
 
+		const auto consoleCommand = lua.script(R"lua(
+			local environment = setmetatable({}, { __index = _G })
+
+			local function format_values(...)
+				local values = table.pack(...)
+				for index = 1, values.n do
+					values[index] = tostring(values[index])
+				end
+				return table.concat(values, "\t", 1, values.n)
+			end
+
+			environment.print = function(...)
+				nene.log.info(format_values(...))
+			end
+
+			return function(command, selected_fields)
+				rawset(environment, "selected_fields", selected_fields)
+				local chunk = load("return " .. command, "=Console", "t", environment)
+				if not chunk then
+					local message
+					chunk, message = load(command, "=Console", "t", environment)
+					if not chunk then error(message, 0) end
+				end
+
+				local values = table.pack(chunk())
+				if values.n > 0 then
+					return format_values(table.unpack(values, 1, values.n))
+				end
+			end
+		)lua");
+		impl->executeConsoleCommand = consoleCommand.get<sol::protected_function>();
+
 		m_impl = std::move(impl);
 		NENE_LOG_INFO("Script engine initialized");
 	}
@@ -234,6 +301,44 @@ namespace NeneEngine
 		if (!m_impl) return;
 		m_impl.reset();
 		NENE_LOG_INFO("Script engine shut down");
+	}
+
+	void ScriptEngine::ExecuteConsoleCommand(std::string_view command, const ECS::ScriptComponent* selectedScript)
+	{
+		if (command.find_first_not_of(" \t\r\n") == std::string_view::npos) return;
+		if (!m_impl)
+		{
+			NENE_LOG_ERROR("Cannot execute Lua command: script engine is not initialized");
+			return;
+		}
+
+		auto& lua = m_impl->lua;
+		sol::object selectedFields = sol::make_object(lua, sol::nil);
+		const auto* schema = selectedScript ? GetFieldSchema(selectedScript->scriptPath) : nullptr;
+		if (schema != nullptr)
+		{
+			auto fields = lua.create_table();
+			for (const auto& field : *schema)
+			{
+				const auto saved = selectedScript->fields.find(field.name);
+				const auto& value = saved != selectedScript->fields.end() && IsValidScriptFieldValue(field, saved->second)
+				                        ? saved->second
+				                        : field.defaultValue;
+				std::visit([&](const auto& fieldValue) { fields.set(field.name, fieldValue); }, value);
+			}
+			selectedFields = std::move(fields);
+		}
+
+		NENE_LOG_INFO("> {}", command);
+		const ConsoleInstructionLimit instructionLimit(lua.lua_state());
+		const auto result = m_impl->executeConsoleCommand(command, selectedFields);
+		if (!result.valid())
+		{
+			const sol::error error = result;
+			NENE_LOG_ERROR("{}", error.what());
+			return;
+		}
+		if (result.return_count() > 0) NENE_LOG_INFO("{}", result.get<std::string>());
 	}
 
 	const sol::table* ScriptEngine::LoadScript(const std::filesystem::path& path)
