@@ -44,6 +44,15 @@ namespace NeneEngine::ECS
 			ClearBehaviours();
 		}
 
+		eastl::unique_ptr<LuaBehaviour> CreateBehaviour(Entity entity, const ScriptComponent& component,
+		                                               const sol::table& scriptClass, const ScriptFieldSchema& fieldSchema)
+		{
+			sol::state_view lua{scriptClass.lua_state()};
+			auto entityApi = sol::make_object(lua, ScriptEntity(world, entity));
+			return eastl::make_unique<LuaBehaviour>(scriptClass, component.scriptPath, fieldSchema, component.fields,
+			                                       entityApi);
+		}
+
 		void Update(float deltaTime)
 		{
 			auto& registry = world.GetRegistry();
@@ -81,12 +90,9 @@ namespace NeneEngine::ECS
 						continue;
 					}
 
-					sol::state_view lua{scriptClass->lua_state()};
-					sol::object entityApi = sol::make_object(lua, ScriptEntity(world, entity));
-					auto behaviour = eastl::make_unique<LuaBehaviour>(*scriptClass, component.scriptPath, *fieldSchema,
-					                                                  component.fields, entityApi);
 					RuntimeBehaviour newRuntime{component.scriptPath, scriptEngine.GetScriptRevision(scriptPath),
-					                            scriptClass->lua_state(), std::move(behaviour)};
+					                            scriptClass->lua_state(),
+					                            CreateBehaviour(entity, component, *scriptClass, *fieldSchema)};
 					runtime = behaviours.emplace(entity, std::move(newRuntime)).first;
 					failedScripts.erase(entity);
 					runtime->second.behaviour->OnStart();
@@ -97,7 +103,15 @@ namespace NeneEngine::ECS
 					const auto* fieldSchema = scriptEngine.GetFieldSchema(scriptPath);
 					if (scriptClass && fieldSchema)
 					{
-						runtime->second.behaviour->Reload(*scriptClass, *fieldSchema, component.fields);
+						auto& behaviour = runtime->second.behaviour;
+						if (behaviour->HasStarted())
+							behaviour->Reload(*scriptClass, *fieldSchema, component.fields);
+						else
+						{
+							behaviour->OnDestroy();
+							behaviour = CreateBehaviour(entity, component, *scriptClass, *fieldSchema);
+							behaviour->OnStart();
+						}
 						runtime->second.scriptRevision = revision;
 					}
 				}

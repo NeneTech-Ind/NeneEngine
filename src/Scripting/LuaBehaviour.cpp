@@ -54,9 +54,9 @@ namespace NeneEngine
 			std::visit([&](const auto& fieldValue) { instance.raw_set(definition.name, fieldValue); }, *value);
 		}
 
-		template <typename... Args> void Invoke(std::string_view methodName, bool allowWhenFaulted, Args&&... args)
+		template <typename... Args> bool Invoke(std::string_view methodName, bool allowWhenFaulted, Args&&... args)
 		{
-			if (destroyed || (faulted && !allowWhenFaulted)) return;
+			if (destroyed || (faulted && !allowWhenFaulted)) return false;
 
 			const LuaInstructionLimit instructionLimit(instance.lua_state(), kBehaviourInstructionLimit);
 			const auto result = invokeCallback(instance, methodName, std::forward<Args>(args)...);
@@ -65,7 +65,9 @@ namespace NeneEngine
 				const sol::error error = result;
 				NENE_LOG_ERROR("Script '{}': '{}' failed: {}", scriptPath, methodName, error.what());
 				faulted = true;
+				return false;
 			}
+			return true;
 		}
 	};
 
@@ -89,6 +91,11 @@ namespace NeneEngine
 	}
 
 	LuaBehaviour::~LuaBehaviour() = default;
+
+	bool LuaBehaviour::HasStarted() const
+	{
+		return m_impl->started;
+	}
 
 	void LuaBehaviour::Reload(const sol::table& scriptClass, const ScriptFieldSchema& fieldSchema,
 	                          const std::map<std::string, ScriptFieldValue>& fields)
@@ -116,8 +123,7 @@ namespace NeneEngine
 	void LuaBehaviour::OnStart()
 	{
 		if (m_impl->started || m_impl->destroyed) return;
-		m_impl->started = true;
-		m_impl->Invoke("on_start", false);
+		m_impl->started = m_impl->Invoke("on_start", false);
 	}
 
 	void LuaBehaviour::OnUpdate(float deltaTime)

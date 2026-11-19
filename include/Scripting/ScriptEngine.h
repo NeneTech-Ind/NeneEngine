@@ -39,7 +39,7 @@ namespace NeneEngine
 		// Call on the main thread in Edit mode
 		void ReloadScript(const std::filesystem::path& path);
 		void ReloadAll();
-		// Also safe between world updates in Play mode; updated behaviours restart on the next update
+		// Also safe between world updates in Play mode. Behaviours pick up new revisions on the next update.
 		void ReloadChangedScripts();
 
 		// Includes failed attempts that kept the last working version
