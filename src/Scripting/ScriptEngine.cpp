@@ -22,6 +22,7 @@
 #include <system_error>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace NeneEngine
 {
@@ -236,6 +237,7 @@ namespace NeneEngine
 			sol::environment environment;
 			sol::table scriptClass;
 			ScriptFieldSchema fieldSchema;
+			bool usesRequire = false;
 		};
 
 		struct TrackedScript
@@ -246,18 +248,29 @@ namespace NeneEngine
 			bool loadFailed = false;
 		};
 
+		struct TrackedModule
+		{
+			std::filesystem::path path;
+			eastl::optional<std::filesystem::file_time_type> lastAttemptedWriteTime;
+		};
+
 		// Destroy loaded scripts and their Lua references before the interpreter
 		sol::state lua;
 		sol::protected_function executeConsoleCommand;
 		std::weak_ptr<const ECS::WorldLifetime> worldLifetime;
 		std::filesystem::path scriptsRoot;
 		std::unordered_map<std::filesystem::path, TrackedScript> scripts;
+		std::unordered_map<std::string, TrackedModule> modules;
+		bool moduleReloadPending = false;
+		bool scriptUsesRequire = false;
 
 		eastl::optional<LoadedScript> TryLoadScript(const std::filesystem::path& path);
+		void ApplyScript(const std::filesystem::path& path, TrackedScript& script, LoadedScript loaded, bool isReload);
 		void LoadTrackedScript(const std::filesystem::path& path, TrackedScript& script,
 		                       eastl::optional<std::filesystem::file_time_type> writeTime, bool isReload);
-		const sol::table* LoadScript(const std::filesystem::path& path, bool reload);
-		void ReloadScripts(bool force);
+		const sol::table* LoadScript(const std::filesystem::path& path);
+		void ReloadScripts(bool force, const std::filesystem::path* target = nullptr);
+		void ReloadModules(bool force, const std::filesystem::path* target);
 	};
 
 	ScriptEngine::ScriptEngine() = default;
@@ -286,6 +299,32 @@ namespace NeneEngine
 		sol::table searchers = package["searchers"];
 		searchers[3] = sol::nil;
 		searchers[4] = sol::nil;
+
+		const auto installModuleTracking = lua.safe_script(R"lua(
+			local searchpath = package.searchpath
+			local searcher = package.searchers[2]
+			local requireModule = require
+			return function(recordFile, recordRequire)
+				package.searchers[2] = function(name)
+					local path = searchpath(name, package.path)
+					if path then recordFile(name, path) end
+					return searcher(name)
+				end
+				require = function(name)
+					recordRequire()
+					return requireModule(name)
+				end
+			end
+		)lua").get<sol::protected_function>();
+		const auto moduleTracking = installModuleTracking(
+		    [tracker = impl.get()](std::string name, std::string filename)
+		    {
+			    std::filesystem::path path(std::move(filename));
+			    auto writeTime = ReadLastWriteTime(path);
+			    tracker->modules.insert_or_assign(std::move(name), Impl::TrackedModule{std::move(path), writeTime});
+		    },
+		    [tracker = impl.get()] { tracker->scriptUsesRequire = true; });
+		if (!moduleTracking.valid()) throw moduleTracking.get<sol::error>();
 
 		auto nene = lua.create_named_table("nene");
 		BindVectorApi(nene);
@@ -389,12 +428,17 @@ namespace NeneEngine
 			NENE_LOG_ERROR("Cannot load script '{}': script engine is not initialized", path.string());
 			return nullptr;
 		}
-		return m_impl->LoadScript(path, false);
+		return m_impl->LoadScript(path);
 	}
 
 	void ScriptEngine::ReloadScript(const std::filesystem::path& path)
 	{
-		if (m_impl) m_impl->LoadScript(path, true);
+		if (!m_impl) return;
+		const auto key = path.lexically_normal();
+		if (m_impl->scripts.contains(key))
+			m_impl->ReloadScripts(false, &key);
+		else
+			m_impl->LoadScript(key);
 	}
 
 	void ScriptEngine::ReloadAll()
@@ -429,30 +473,118 @@ namespace NeneEngine
 		return &it->second.loaded->fieldSchema;
 	}
 
-	const sol::table* ScriptEngine::Impl::LoadScript(const std::filesystem::path& path, bool reload)
+	const sol::table* ScriptEngine::Impl::LoadScript(const std::filesystem::path& path)
 	{
 		const auto scriptPath = path.lexically_normal();
 		auto [it, inserted] = scripts.try_emplace(scriptPath);
 		auto& script = it->second;
-		if (inserted || reload)
+		if (inserted)
 		{
 			if (IsValidScriptPath(scriptPath))
-				LoadTrackedScript(scriptPath, script, ReadLastWriteTime(scriptsRoot / scriptPath), reload);
+				LoadTrackedScript(scriptPath, script, ReadLastWriteTime(scriptsRoot / scriptPath), false);
 			else
 				NENE_LOG_ERROR("Invalid script path '{}': expected a path relative to assets/scripts", path.string());
 		}
 		return script.loaded ? &script.loaded->scriptClass : nullptr;
 	}
 
-	void ScriptEngine::Impl::ReloadScripts(bool force)
+	void ScriptEngine::Impl::ReloadScripts(bool force, const std::filesystem::path* target)
 	{
+		bool moduleChanged = false;
+		for (auto& [name, module] : modules)
+		{
+			const auto writeTime = ReadLastWriteTime(module.path);
+			moduleChanged |= writeTime != module.lastAttemptedWriteTime;
+			module.lastAttemptedWriteTime = writeTime;
+		}
+
+		if (moduleChanged || (force && !modules.empty()))
+		{
+			ReloadModules(force, target);
+			return;
+		}
+
 		for (auto& [path, script] : scripts)
 		{
 			if (!IsValidScriptPath(path)) continue;
 			const auto writeTime = ReadLastWriteTime(scriptsRoot / path);
-			if (force || writeTime != script.lastAttemptedWriteTime)
-				LoadTrackedScript(path, script, writeTime, true);
+			if (target ? *target != path : !force && writeTime == script.lastAttemptedWriteTime) continue;
+			if (moduleReloadPending)
+			{
+				ReloadModules(force, target);
+				return;
+			}
+			LoadTrackedScript(path, script, writeTime, true);
 		}
+	}
+
+	void ScriptEngine::Impl::ReloadModules(bool force, const std::filesystem::path* target)
+	{
+		// Stage behaviours that use require together so their closures share one generation of file modules.
+		auto cache = lua.registry().get<sol::table>(LUA_LOADED_TABLE);
+		std::unordered_map<std::string, sol::object> previousModules;
+		for (const auto& [name, module] : modules)
+		{
+			previousModules.emplace(name, cache.raw_get<sol::object>(name));
+			cache.raw_set(name, sol::lua_nil);
+		}
+
+		struct PendingScript
+		{
+			const std::filesystem::path* path;
+			TrackedScript* script;
+			LoadedScript loaded;
+		};
+		std::vector<PendingScript> pending;
+		pending.reserve(scripts.size());
+		moduleReloadPending = false;
+		for (auto& [path, script] : scripts)
+		{
+			if (!IsValidScriptPath(path)) continue;
+			const auto writeTime = ReadLastWriteTime(scriptsRoot / path);
+			const bool usedRequire = script.loaded && script.loaded->usesRequire;
+			const bool changed = writeTime != script.lastAttemptedWriteTime;
+			const bool retry = !script.loaded && script.loadFailed;
+			if (!usedRequire && !force && !(target && *target == path) && !changed && !retry) continue;
+
+			script.lastAttemptedWriteTime = writeTime;
+			auto loaded = TryLoadScript(path);
+			script.loadFailed = !loaded;
+			if (loaded)
+			{
+				if (usedRequire || loaded->usesRequire)
+					pending.push_back({&path, &script, std::move(*loaded)});
+				else
+					ApplyScript(path, script, std::move(*loaded), true);
+			}
+			else if (usedRequire)
+				moduleReloadPending = true;
+		}
+
+		if (moduleReloadPending)
+		{
+			for (const auto& [name, module] : modules)
+			{
+				const auto previous = previousModules.find(name);
+				if (previous == previousModules.end())
+					cache.raw_set(name, sol::lua_nil);
+				else
+					cache.raw_set(name, previous->second);
+			}
+			NENE_LOG_WARN("Keeping the last working Lua modules and behaviours");
+			return;
+		}
+
+		for (auto& entry : pending)
+			ApplyScript(*entry.path, *entry.script, std::move(entry.loaded), true);
+	}
+
+	void ScriptEngine::Impl::ApplyScript(const std::filesystem::path& path, TrackedScript& script,
+	                                     LoadedScript loaded, bool isReload)
+	{
+		script.loaded = std::move(loaded);
+		++script.revision;
+		if (isReload) NENE_LOG_INFO("Reloaded Lua script '{}'", path.string());
 	}
 
 	void ScriptEngine::Impl::LoadTrackedScript(const std::filesystem::path& path, TrackedScript& script,
@@ -462,11 +594,7 @@ namespace NeneEngine
 		auto loaded = TryLoadScript(path);
 		script.loadFailed = !loaded;
 		if (loaded)
-		{
-			script.loaded = std::move(*loaded);
-			++script.revision;
-			if (isReload) NENE_LOG_INFO("Reloaded Lua script '{}'", path.string());
-		}
+			ApplyScript(path, script, std::move(*loaded), isReload);
 		else if (script.loaded)
 		{
 			NENE_LOG_WARN("Keeping the last working version of Lua script '{}'", path.string());
@@ -478,6 +606,7 @@ namespace NeneEngine
 		const auto fileName = (scriptsRoot / path).string();
 		sol::environment environment(lua, sol::create, lua.globals());
 		const LuaInstructionLimit instructionLimit(lua.lua_state(), kScriptLoadInstructionLimit);
+		scriptUsesRequire = false;
 		const auto result =
 		    lua.safe_script_file(fileName, environment, sol::script_pass_on_error, sol::load_mode::text);
 		if (!result.valid())
@@ -501,7 +630,7 @@ namespace NeneEngine
 			return eastl::nullopt;
 		}
 
-		return LoadedScript{std::move(environment), std::move(scriptClass), std::move(*fieldSchema)};
+		return LoadedScript{std::move(environment), std::move(scriptClass), std::move(*fieldSchema), scriptUsesRequire};
 	}
 
 } // namespace NeneEngine
