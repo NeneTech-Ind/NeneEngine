@@ -5,6 +5,8 @@
 namespace NeneEngine
 {
 
-	void BindEntityApi(sol::table& nene);
+	class ScriptExecutionContext;
+
+	void BindEntityApi(sol::table& nene, const ScriptExecutionContext& execution);
 
 }

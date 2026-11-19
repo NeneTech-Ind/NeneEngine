@@ -10,6 +10,7 @@
 #include "Scripting/Bindings/LogBindings.h"
 #include "Scripting/Bindings/VectorBindings.h"
 #include "Scripting/Bindings/WorldBindings.h"
+#include "Scripting/ScriptExecutionContext.h"
 #include "Scripting/LuaInstructionLimit.h"
 
 #include <EASTL/optional.h>
@@ -254,6 +255,7 @@ namespace NeneEngine
 			eastl::optional<std::filesystem::file_time_type> lastAttemptedWriteTime;
 		};
 
+		ScriptExecutionContext execution;
 		// Destroy loaded scripts and their Lua references before the interpreter
 		sol::state lua;
 		sol::protected_function executeConsoleCommand;
@@ -331,8 +333,8 @@ namespace NeneEngine
 		BindBehaviourApi(nene);
 		BindInputApi(nene, input);
 		BindLogApi(nene);
-		BindEntityApi(nene);
-		BindWorldApi(nene, world, prefabs);
+		BindEntityApi(nene, impl->execution);
+		BindWorldApi(nene, world, prefabs, impl->execution);
 
 		const auto consoleCommand = lua.safe_script(R"lua(
 			local environment = setmetatable({}, { __index = _G })
@@ -603,6 +605,7 @@ namespace NeneEngine
 
 	eastl::optional<ScriptEngine::Impl::LoadedScript> ScriptEngine::Impl::TryLoadScript(const std::filesystem::path& path)
 	{
+		const ScriptExecutionContext::LoadScope loading(execution);
 		const auto fileName = (scriptsRoot / path).string();
 		sol::environment environment(lua, sol::create, lua.globals());
 		const LuaInstructionLimit instructionLimit(lua.lua_state(), kScriptLoadInstructionLimit);
