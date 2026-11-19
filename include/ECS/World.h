@@ -6,6 +6,7 @@
 #include "Entity.h"
 #include "Systems/ISystem.h"
 
+#include <EASTL/deque.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
 #include <cstdint>
@@ -85,7 +86,7 @@ namespace NeneEngine::ECS
 		EventBus m_eventBus;
 		entt::registry m_registry;
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
-		eastl::vector<Entity> m_pendingDestruction;
+		eastl::deque<Entity> m_pendingDestruction;
 		std::shared_ptr<WorldLifetime> m_lifetime;
 		bool m_playStopRequested = false;
 	};
