@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/PathResolver.h"
+#include "Core/Profiler.h"
 #include "ECS/Components/ScriptComponent.h"
 #include "ECS/World.h"
 #include "Scripting/Bindings/BehaviourBindings.h"
@@ -395,6 +396,7 @@ namespace NeneEngine
 			return;
 		}
 
+		NENE_PROFILE_SCOPE("Lua Console Command");
 		auto& lua = m_impl->lua;
 		sol::object selectedFields = sol::make_object(lua, sol::nil);
 		const auto* schema = selectedScript ? GetFieldSchema(selectedScript->scriptPath) : nullptr;
@@ -498,6 +500,7 @@ namespace NeneEngine
 
 	void ScriptEngine::Impl::ReloadScripts(bool force, const std::filesystem::path* target)
 	{
+		NENE_PROFILE_SCOPE("Lua Script Reload");
 		bool moduleChanged = false;
 		for (auto& [name, module] : modules)
 		{
@@ -612,8 +615,10 @@ namespace NeneEngine
 
 	eastl::optional<ScriptEngine::Impl::LoadedScript> ScriptEngine::Impl::TryLoadScript(const std::filesystem::path& path)
 	{
+		NENE_PROFILE_SCOPE("Lua Script Load");
 		const ScriptExecutionContext::LoadScope loading(execution);
 		const auto fileName = (scriptsRoot / path).string();
+		NENE_PROFILE_ZONE_TEXT(fileName.data(), fileName.size());
 		sol::environment environment(lua, sol::create, lua.globals());
 		const LuaInstructionLimit instructionLimit(lua.lua_state(), kScriptLoadInstructionLimit);
 		scriptUsesRequire = false;
