@@ -10,8 +10,8 @@
 #include "Scripting/ScriptExecutionContext.h"
 
 #include <EASTL/optional.h>
-#include <EASTL/unordered_set.h>
 #include <cmath>
+#include <cstddef>
 #include <optional>
 #include <sol/sol.hpp>
 #include <stdexcept>
@@ -24,12 +24,21 @@ namespace NeneEngine
 		                                             const ECS::TransformComponent& transform)
 		{
 			glm::dvec4 position(glm::dvec3(transform.position), 1.0);
-			eastl::unordered_set<ECS::Entity> visited;
+			// Brent's cycle detection follows the same parent chain without allocating a visited set.
+			ECS::Entity checkpoint = entity;
+			std::size_t interval = 1;
+			std::size_t steps = 0;
 			while (const auto* hierarchy = registry.try_get<ECS::HierarchyComponent>(entity))
 			{
 				entity = hierarchy->parent;
 				if (!registry.valid(entity)) break;
-				if (!visited.insert(entity).second) return eastl::nullopt;
+				if (entity == checkpoint) return eastl::nullopt;
+				if (++steps == interval)
+				{
+					checkpoint = entity;
+					interval *= 2;
+					steps = 0;
+				}
 				if (const auto* parent = registry.try_get<ECS::TransformComponent>(entity))
 					position = glm::dmat4(parent->GetModelMatrix()) * position;
 			}
