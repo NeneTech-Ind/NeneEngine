@@ -9,7 +9,7 @@
 
 <p align="center"><b>A small C++20 game engine for Windows with a built-in editor</b></p>
 
-<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_happy_128.png">
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_wave.png">
 
 NeneEngine renders with DirectX 12 and keeps its world in an Entity-Component-System, with Jolt for physics and an editor. Engine settings, scenes and asset descriptions are plain JSON files, so you can change them without recompiling.
 
@@ -21,6 +21,8 @@ Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 </picture>
 
 ## Features
+
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_cheer.png">
 
 ### Editor
 
@@ -50,7 +52,7 @@ Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 
 ## Getting started
 
-<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_search_128.png">
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_tip.png">
 
 ### Requirements
 
@@ -146,6 +148,8 @@ Inside `on_start`, use `Ctrl+Space` after `self.` to look for `speed`, then hove
 
 #### Debug Lua in Play mode
 
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_surprise.png">
+
 Build NeneEngine in x64 Debug, then open the repository root in VS Code.
 Install [OneLuaPro Local Lua Debugger](https://marketplace.visualstudio.com/items?itemName=OneLuaPro.oneluapro-local-lua-debugger)
 for Lua 5.5. If you have `tomblind.local-lua-debugger-vscode` installed, disable
@@ -168,12 +172,16 @@ When VS Code pauses at the breakpoint, select the callback in **Call Stack**.
 | `external/` | Submodules: Diligent Engine, Dear ImGui, ImGuizmo                                               |
 | `docs/`     | Project conventions                                                                             |
 
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_peek.png">
+
 Editor artwork, fonts and built-in shaders live in `assets/engine/`. Demo scenes are in `assets/scenes/`, models in `assets/models/` and scripts in `assets/scripts/`. The Asset Browser skips `assets/engine/`, `assets/readme/` and `assets/icons/`.
 
 The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. Logs are in `%LOCALAPPDATA%/NeneEngine/logs/`. At startup, the editor keeps the 20 most recent logs. Older logs that are still open are kept until a later startup.
 
 
 ## Contributing
+
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_salute.png">
 
 Read the [Git conventions](docs/conventions/git-convention.md) and [naming conventions](docs/conventions/naming-convention.md) before opening a branch.
 
@@ -185,6 +193,6 @@ Read the [Git conventions](docs/conventions/git-convention.md) and [naming conve
 
 ## License
 
-<img align="right" width="96" alt="" src="assets/engine/editor/mascot/mascot_sleep_128.png">
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_heart.png">
 
 NeneEngine is released under the [MIT License](LICENSE.txt). Third-party libraries, fonts, icons and models keep their own licenses, listed in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
