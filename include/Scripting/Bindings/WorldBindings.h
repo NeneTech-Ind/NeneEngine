@@ -11,7 +11,9 @@ namespace NeneEngine
 	}
 
 	class PrefabLibrary;
+	class ScriptExecutionContext;
 
-	void BindWorldApi(sol::table& nene, ECS::World& world, PrefabLibrary& prefabs);
+	void BindWorldApi(sol::table& nene, ECS::World& world, PrefabLibrary& prefabs,
+	                  const ScriptExecutionContext& execution);
 
 }

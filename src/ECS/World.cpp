@@ -5,8 +5,15 @@
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
 
+#include <chrono>
+
 namespace NeneEngine::ECS
 {
+	namespace
+	{
+		constexpr size_t kMaxDeferredDestroyRequestsPerUpdate = 256;
+		constexpr auto kDeferredDestructionBudget = std::chrono::milliseconds{2};
+	}
 
 	World::World() : m_lifetime(std::make_shared<WorldLifetime>())
 	{
@@ -86,16 +93,18 @@ namespace NeneEngine::ECS
 
 	void World::FlushDeferredDestruction()
 	{
+		if (m_pendingDestruction.empty()) return;
+
 		const auto sceneGeneration = m_lifetime->sceneGeneration;
-		while (m_lifetime->sceneGeneration == sceneGeneration && !m_pendingDestruction.empty())
+		const auto deadline = std::chrono::steady_clock::now() + kDeferredDestructionBudget;
+		for (size_t processed = 0; processed < kMaxDeferredDestroyRequestsPerUpdate &&
+		                           m_lifetime->sceneGeneration == sceneGeneration && !m_pendingDestruction.empty();
+		     ++processed)
 		{
-			eastl::vector<Entity> pending;
-			pending.swap(m_pendingDestruction);
-			for (const Entity entity : pending)
-			{
-				if (m_lifetime->sceneGeneration != sceneGeneration) return;
-				DestroyEntity(entity);
-			}
+			const Entity entity = m_pendingDestruction.front();
+			m_pendingDestruction.pop_front();
+			DestroyEntity(entity);
+			if (std::chrono::steady_clock::now() >= deadline) break;
 		}
 	}
 

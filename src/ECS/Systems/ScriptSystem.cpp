@@ -1,5 +1,6 @@
 #include "ECS/Systems/ScriptSystem.h"
 
+#include "Core/Profiler.h"
 #include "ECS/Components/ScriptComponent.h"
 #include "ECS/Events/CollisionEvent.h"
 #include "ECS/World.h"
@@ -31,6 +32,7 @@ namespace NeneEngine::ECS
 		eastl::unordered_map<Entity, RuntimeBehaviour> behaviours;
 		eastl::unordered_map<Entity, std::string> failedScripts;
 		DelegateHandle collisionSubscription;
+		std::uint64_t scriptCacheGeneration = 0;
 
 		Impl(ScriptEngine& engine, World& ecsWorld) : scriptEngine(engine), world(ecsWorld)
 		{
@@ -44,15 +46,47 @@ namespace NeneEngine::ECS
 			ClearBehaviours();
 		}
 
+		eastl::unique_ptr<LuaBehaviour> CreateBehaviour(Entity entity, const ScriptComponent& component,
+		                                               const sol::table& scriptClass, const ScriptFieldSchema& fieldSchema)
+		{
+			sol::state_view lua{scriptClass.lua_state()};
+			auto entityApi = sol::make_object(lua, ScriptEntity(world, entity));
+			return eastl::make_unique<LuaBehaviour>(scriptClass, component.scriptPath, fieldSchema, component.fields,
+			                                       entityApi);
+		}
+
+		void ReloadBehaviourIfChanged(Entity entity, const ScriptComponent& component, RuntimeBehaviour& runtime)
+		{
+			const std::filesystem::path scriptPath{component.scriptPath};
+			const auto revision = scriptEngine.GetScriptRevision(scriptPath);
+			if (runtime.scriptRevision == revision) return;
+
+			const auto* scriptClass = scriptEngine.LoadScript(scriptPath);
+			const auto* fieldSchema = scriptEngine.GetFieldSchema(scriptPath);
+			if (!scriptClass || !fieldSchema) return;
+
+			auto& behaviour = runtime.behaviour;
+			if (behaviour->HasStarted())
+				behaviour->Reload(*scriptClass, *fieldSchema, component.fields);
+			else
+			{
+				behaviour->OnDestroy();
+				behaviour = CreateBehaviour(entity, component, *scriptClass, *fieldSchema);
+				behaviour->OnStart();
+			}
+			runtime.scriptRevision = revision;
+		}
+
 		void Update(float deltaTime)
 		{
+			NENE_PROFILE_SCOPE("ScriptSystem Update");
+			const auto currentGeneration = scriptEngine.GetScriptCacheGeneration();
+			const bool scriptsChanged = std::exchange(scriptCacheGeneration, currentGeneration) != currentGeneration;
 			auto& registry = world.GetRegistry();
 			auto view = registry.view<ScriptComponent>();
 			for (const Entity entity : view)
 			{
 				const ScriptComponent& component = view.get<ScriptComponent>(entity);
-				const std::filesystem::path scriptPath{component.scriptPath};
-				const auto revision = component.scriptPath.empty() ? 0 : scriptEngine.GetScriptRevision(scriptPath);
 				auto runtime = behaviours.find(entity);
 				if (runtime != behaviours.end() && runtime->second.scriptPath != component.scriptPath)
 				{
@@ -69,8 +103,11 @@ namespace NeneEngine::ECS
 				if (runtime == behaviours.end())
 				{
 					const auto failed = failedScripts.find(entity);
-					if (failed != failedScripts.end() && failed->second == component.scriptPath && revision == 0)
-						continue;
+					const bool wasFailed = failed != failedScripts.end() && failed->second == component.scriptPath;
+					if (wasFailed && !scriptsChanged) continue;
+
+					const std::filesystem::path scriptPath{component.scriptPath};
+					if (wasFailed && scriptEngine.GetScriptRevision(scriptPath) == 0) continue;
 					failedScripts.erase(entity);
 
 					const sol::table* scriptClass = scriptEngine.LoadScript(scriptPath);
@@ -81,26 +118,15 @@ namespace NeneEngine::ECS
 						continue;
 					}
 
-					sol::state_view lua{scriptClass->lua_state()};
-					sol::object entityApi = sol::make_object(lua, ScriptEntity(world, entity));
-					auto behaviour = eastl::make_unique<LuaBehaviour>(*scriptClass, component.scriptPath, *fieldSchema,
-					                                                  component.fields, entityApi);
 					RuntimeBehaviour newRuntime{component.scriptPath, scriptEngine.GetScriptRevision(scriptPath),
-					                            scriptClass->lua_state(), std::move(behaviour)};
+					                            scriptClass->lua_state(),
+					                            CreateBehaviour(entity, component, *scriptClass, *fieldSchema)};
 					runtime = behaviours.emplace(entity, std::move(newRuntime)).first;
 					failedScripts.erase(entity);
 					runtime->second.behaviour->OnStart();
 				}
-				else if (runtime->second.scriptRevision != revision)
-				{
-					const auto* scriptClass = scriptEngine.LoadScript(scriptPath);
-					const auto* fieldSchema = scriptEngine.GetFieldSchema(scriptPath);
-					if (scriptClass && fieldSchema)
-					{
-						runtime->second.behaviour->Reload(*scriptClass, *fieldSchema, component.fields);
-						runtime->second.scriptRevision = revision;
-					}
-				}
+				else if (scriptsChanged)
+					ReloadBehaviourIfChanged(entity, component, runtime->second);
 
 				runtime->second.behaviour->OnUpdate(deltaTime);
 			}

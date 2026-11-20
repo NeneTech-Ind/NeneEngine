@@ -653,7 +653,7 @@ namespace NeneEngine
 			if (ImGui::Button(reloadLabel)) ReloadScripts();
 			ImGui::PopStyleColor();
 			ImGui::EndDisabled();
-			const char* reloadHint = isPlaying ? "Reload changed Lua scripts and restart their behaviours."
+			const char* reloadHint = isPlaying ? "Reload changed Lua scripts without leaving Play mode."
 			                                   : "Reload all tracked Lua scripts.";
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 				ImGui::SetTooltip("%s", hasScriptErrors ? "Lua script load failed. See the Console for details."

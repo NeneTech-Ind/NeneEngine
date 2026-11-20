@@ -111,7 +111,7 @@ The `NENEENGINE_ENABLE_TRACY` CMake option turns Tracy on and is on by default. 
 
 ### Lua scripting in VS Code
 
-Install the Lua extension (`sumneko.lua`) and open `assets/scripts` as a folder in VS Code. The folder's `.luarc.json` selects Lua 5.4 and loads the engine API definitions from `meta/nene.lua`.
+Install the Lua extension (`sumneko.lua`) with LuaLS 3.16.0 or later and open `assets/scripts` as a folder in VS Code. The folder's `.luarc.json` selects Lua 5.5 to match the engine and loads the engine API definitions from `meta/nene.lua`.
 
 In a Lua script under `assets/scripts`, type `nene.` and press `Ctrl+Space` to see the available API members. Use `---@field` on the behaviour class to give LuaLS the types of fields copied from `Behaviour.fields` onto `self`.
 

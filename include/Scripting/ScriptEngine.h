@@ -39,7 +39,7 @@ namespace NeneEngine
 		// Call on the main thread in Edit mode
 		void ReloadScript(const std::filesystem::path& path);
 		void ReloadAll();
-		// Also safe between world updates in Play mode; updated behaviours restart on the next update
+		// Also safe between world updates in Play mode. Behaviours pick up new revisions on the next update.
 		void ReloadChangedScripts();
 
 		// Includes failed attempts that kept the last working version
@@ -47,6 +47,9 @@ namespace NeneEngine
 
 		// Zero means no successful load. Failed reloads keep the last working revision.
 		[[nodiscard]] std::uint64_t GetScriptRevision(const std::filesystem::path& path) const;
+
+		// Changes when a script revision is successfully published, including its first load.
+		[[nodiscard]] std::uint64_t GetScriptCacheGeneration() const;
 
 		// Returns nullptr if the script has not been loaded successfully
 		[[nodiscard]] const ScriptFieldSchema* GetFieldSchema(const std::filesystem::path& path) const;
