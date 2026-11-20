@@ -8,12 +8,14 @@
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
+#include "Editor/Commands/CreatePrefabCommand.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Scene/Instantiation/ModelInstanceConfig.h"
+#include "Scene/Prefab/PrefabLibrary.h"
 
-#include <vector>
+#include <EASTL/vector.h>
 
 namespace NeneEngine
 {
@@ -32,7 +34,7 @@ namespace NeneEngine
 		class CreateAssetCommand final : public IEditorCommand
 		{
 		  public:
-			explicit CreateAssetCommand(eastl::shared_ptr<std::vector<CreatedEntity>> entities)
+			explicit CreateAssetCommand(eastl::shared_ptr<eastl::vector<CreatedEntity>> entities)
 			    : m_entities(std::move(entities))
 			{
 			}
@@ -64,22 +66,46 @@ namespace NeneEngine
 			}
 
 		  private:
-			eastl::shared_ptr<std::vector<CreatedEntity>> m_entities;
+			eastl::shared_ptr<eastl::vector<CreatedEntity>> m_entities;
 		};
 	} // namespace
+
+	bool CreateScenePrefab(EditorContext& context, const std::string& path, const glm::vec3& position)
+	{
+		if (!context.CanEdit() || !context.prefabs) return false;
+		auto root = ECS::NullEntity;
+		try
+		{
+			const auto name = std::filesystem::path(path).lexically_relative("assets/prefabs").generic_string();
+			root = context.prefabs->Instantiate(name, position);
+			auto command = eastl::make_unique<CreatePrefabCommand>(context.world, root);
+			context.history.Record(std::move(command));
+			context.selectedEntity = root;
+			context.SetStatus(EditorStatusKind::Success,
+			                  "Created prefab: " + std::filesystem::path(path).filename().string());
+			return true;
+		}
+		catch (const std::exception& exception)
+		{
+			if (context.world.GetRegistry().valid(root)) context.world.DestroyEntity(root);
+			NENE_LOG_ERROR("Prefab spawn failed: {}", exception.what());
+			context.SetStatus(EditorStatusKind::Danger, exception.what());
+			return false;
+		}
+	}
 
 	bool CreateSceneAsset(EditorContext& context, const std::string& path, bool isTexture, const glm::vec3& position)
 	{
 		if (!context.CanEdit() || !context.renderer || !context.resourceLoads) return false;
 		const auto root = context.world.CreateEntity(std::filesystem::path(path).stem().string());
-		auto created = eastl::make_shared<std::vector<CreatedEntity>>();
+		auto created = eastl::make_shared<eastl::vector<CreatedEntity>>();
 		CreatedEntity rootEntry{root, ECS::TagComponent(std::filesystem::path(path).stem().string()), {}, {}, {}, true};
 		rootEntry.transform.position = position;
 		rootEntry.mesh.meshPath = isTexture ? "@quad" : "@cube";
 		if (isTexture)
 		{
 			rootEntry.mesh.texturePath = path;
-			rootEntry.mesh.shaderPath = "assets/shaders/textured_mesh.shader";
+			rootEntry.mesh.shaderPath = "assets/engine/shaders/textured_mesh.shader";
 		}
 		created->push_back(rootEntry);
 		context.history.Execute(eastl::make_unique<CreateAssetCommand>(created), context.world);
@@ -117,7 +143,7 @@ namespace NeneEngine
 					    if (context.sceneGeneration != generation) return;
 					    auto rootEntry = created->front();
 					    rootEntry.hasMesh = false;
-					    std::vector<CreatedEntity> entries{rootEntry};
+					    eastl::vector<CreatedEntity> entries{rootEntry};
 					    const auto& parts = resource->GetData();
 					    const bool exists = context.world.GetRegistry().valid(root);
 					    if (!exists) CreateAssetCommand(created).Execute(context.world);
@@ -131,7 +157,7 @@ namespace NeneEngine
 						    entry.mesh.meshPath = path;
 						    entry.mesh.meshPart = static_cast<int>(index);
 						    entry.mesh.texturePath = PortableAssetPath(parts[index].diffuseTexturePath);
-						    entry.mesh.shaderPath = "assets/shaders/textured_mesh.shader";
+						    entry.mesh.shaderPath = "assets/engine/shaders/textured_mesh.shader";
 						    if (const auto* part = FindPartOverride(config, parts[index].name))
 						    {
 							    entry.transform.position = part->positionOffset;

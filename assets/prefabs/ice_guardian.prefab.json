@@ -1,0 +1,18 @@
+{
+    "components": {
+        "Tag": { "name": "IceGuardian", "tags": ["ice_guardian"] },
+        "MeshRenderer": {
+            "primitiveType": "Cube",
+            "visible": true,
+            "material": { "tint": { "x": 0.35, "y": 0.7, "z": 1, "w": 1.0 } }
+        },
+        "ScriptComponent": {
+            "scriptPath": "ice_guardian.lua",
+            "fields": {
+                "max_hp": { "type": "int", "value": 28 },
+                "attack_damage": { "type": "int", "value": 4 },
+                "charged_damage": { "type": "int", "value": 12 }
+            }
+        }
+    }
+}

@@ -1,0 +1,546 @@
+#include "Scene/EntitySerializer.h"
+
+#include "ECS/Components/CameraComponent.h"
+#include "ECS/Components/CameraControllerComponent.h"
+#include "ECS/Components/ColliderComponent.h"
+#include "ECS/Components/HierarchyComponent.h"
+#include "ECS/Components/MeshRendererComponent.h"
+#include "ECS/Components/MovementComponent.h"
+#include "ECS/Components/PlayerControllerComponent.h"
+#include "ECS/Components/PrimitiveControlComponent.h"
+#include "ECS/Components/RigidbodyComponent.h"
+#include "ECS/Components/ScriptComponent.h"
+#include "ECS/Components/TagComponent.h"
+#include "ECS/Components/TransformComponent.h"
+#include "ECS/World.h"
+
+#include <cmath>
+#include <glm/gtc/quaternion.hpp>
+#include <limits>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+
+namespace NeneEngine
+{
+
+	namespace
+	{
+
+		nlohmann::json ToJson(const glm::vec3& value)
+		{
+			return {{"x", value.x}, {"y", value.y}, {"z", value.z}};
+		}
+
+		nlohmann::json ToJson(const glm::vec4& value)
+		{
+			return {{"x", value.x}, {"y", value.y}, {"z", value.z}, {"w", value.w}};
+		}
+
+		nlohmann::json ToJson(const glm::quat& value)
+		{
+			return {{"x", value.x}, {"y", value.y}, {"z", value.z}, {"w", value.w}};
+		}
+
+		glm::vec3 ReadVec3(const nlohmann::json& value)
+		{
+			return {value.at("x").get<float>(), value.at("y").get<float>(), value.at("z").get<float>()};
+		}
+
+		glm::vec4 ReadVec4(const nlohmann::json& value)
+		{
+			return {value.at("x").get<float>(), value.at("y").get<float>(), value.at("z").get<float>(),
+			        value.at("w").get<float>()};
+		}
+
+		glm::quat ReadQuat(const nlohmann::json& value)
+		{
+			return glm::quat(value.at("w").get<float>(), value.at("x").get<float>(), value.at("y").get<float>(),
+			                 value.at("z").get<float>());
+		}
+
+		float ReadScriptFloat(const nlohmann::json& value)
+		{
+			if (!value.is_number()) throw std::runtime_error("Expected a number");
+			const double number = value.get<double>();
+			if (!std::isfinite(number) || std::abs(number) > (std::numeric_limits<float>::max)())
+				throw std::runtime_error("Expected a finite float within range");
+			return static_cast<float>(number);
+		}
+
+		void ValidateScriptFloat(float value)
+		{
+			if (!std::isfinite(value)) throw std::runtime_error("Script fields must contain finite floats");
+		}
+
+		ECS::ScriptFieldValue ReadScriptField(const nlohmann::json& field)
+		{
+			const auto type = field.at("type").get<std::string>();
+			const auto& value = field.at("value");
+			if (type == "bool") return value.get<bool>();
+			if (type == "string") return value.get<std::string>();
+			if (type == "float") return ReadScriptFloat(value);
+			if (type == "int")
+			{
+				if (!value.is_number_integer()) throw std::runtime_error("Expected an integer");
+				if (value.is_number_unsigned())
+				{
+					if (value.get<uint64_t>() > static_cast<uint64_t>((std::numeric_limits<int>::max)()))
+						throw std::runtime_error("Integer is outside the supported range");
+				}
+				else
+				{
+					const auto number = value.get<int64_t>();
+					if (number < (std::numeric_limits<int>::min)() || number > (std::numeric_limits<int>::max)())
+						throw std::runtime_error("Integer is outside the supported range");
+				}
+				return value.get<int>();
+			}
+			if (type == "vec3")
+				return glm::vec3{ReadScriptFloat(value.at("x")), ReadScriptFloat(value.at("y")),
+				                 ReadScriptFloat(value.at("z"))};
+			throw std::runtime_error("Unknown script field type: " + type);
+		}
+
+		void DeserializeScript(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			ECS::ScriptComponent script;
+			script.scriptPath = value.at("scriptPath").get<std::string>();
+			if (value.contains("fields"))
+			{
+				const auto& fields = value.at("fields");
+				if (!fields.is_object()) throw std::runtime_error("ScriptComponent.fields must be an object");
+				for (const auto& [name, field] : fields.items())
+				{
+					try
+					{
+						script.fields.emplace(name, ReadScriptField(field));
+					}
+					catch (const std::exception& exception)
+					{
+						throw std::runtime_error("ScriptComponent '" + script.scriptPath + "', field '" + name +
+						                         "': " + exception.what());
+					}
+				}
+			}
+			world.AddComponent<ECS::ScriptComponent>(entity, std::move(script));
+		}
+
+		std::string ToString(PrimitiveType primitiveType)
+		{
+			switch (primitiveType)
+			{
+			case PrimitiveType::Line:
+				return "Line";
+			case PrimitiveType::Triangle:
+				return "Triangle";
+			case PrimitiveType::Quad:
+				return "Quad";
+			case PrimitiveType::Cube:
+				return "Cube";
+			default:
+				return "Triangle";
+			}
+		}
+
+		PrimitiveType ReadPrimitiveType(const std::string& value)
+		{
+			if (value == "Line") return PrimitiveType::Line;
+			if (value == "Triangle") return PrimitiveType::Triangle;
+			if (value == "Quad") return PrimitiveType::Quad;
+			if (value == "Cube") return PrimitiveType::Cube;
+
+			throw std::runtime_error("Unknown PrimitiveType: " + value);
+		}
+
+		std::string ToString(ECS::ColliderType colliderType)
+		{
+			return colliderType == ECS::ColliderType::Sphere ? "Sphere" : "Box";
+		}
+
+		ECS::ColliderType ReadColliderType(const std::string& value)
+		{
+			if (value == "Box") return ECS::ColliderType::Box;
+			if (value == "Sphere") return ECS::ColliderType::Sphere;
+
+			throw std::runtime_error("Unknown ColliderType: " + value);
+		}
+
+		nlohmann::json SerializeTag(const ECS::TagComponent& tag)
+		{
+			nlohmann::json value{{"name", tag.name}};
+			if (!tag.tags.empty()) value["tags"] = tag.tags;
+			return value;
+		}
+
+		nlohmann::json SerializeTransform(const ECS::TransformComponent& transform)
+		{
+			return {{"position", ToJson(transform.position)},
+			        {"rotation", ToJson(transform.rotation)},
+			        {"scale", ToJson(transform.scale)}};
+		}
+
+		nlohmann::json SerializeCamera(const ECS::CameraComponent& camera)
+		{
+			return {{"forward", ToJson(camera.forward)}, {"up", ToJson(camera.up)},
+			        {"fovDegrees", camera.fovDegrees},   {"nearPlane", camera.nearPlane},
+			        {"farPlane", camera.farPlane},       {"aspectRatio", camera.aspectRatio},
+			        {"isPrimary", camera.isPrimary}};
+		}
+
+		nlohmann::json SerializeCameraController(const ECS::CameraControllerComponent& controller)
+		{
+			return {{"moveSpeed", controller.moveSpeed},
+			        {"sprintMultiplier", controller.sprintMultiplier},
+			        {"lookSensitivity", controller.lookSensitivity},
+			        {"yawRadians", controller.yawRadians},
+			        {"pitchRadians", controller.pitchRadians},
+			        {"maxPitchRadians", controller.maxPitchRadians},
+			        {"rotateWithRightMouse", controller.rotateWithRightMouse}};
+		}
+
+		nlohmann::json SerializeMeshRenderer(const ECS::MeshRendererComponent& renderer)
+		{
+			return {{"primitiveType", ToString(renderer.primitiveType)},
+			        {"visible", renderer.visible},
+			        {"meshPath", renderer.meshPath},
+			        {"meshPart", renderer.meshPart},
+			        {"material",
+			         {{"tint", ToJson(renderer.tint)},
+			          {"texturePath", renderer.texturePath},
+			          {"shaderPath", renderer.shaderPath}}}};
+		}
+
+		nlohmann::json SerializeMovement(const ECS::MovementComponent& movement)
+		{
+			return {{"velocity", ToJson(movement.velocity)},
+			        {"origin", ToJson(movement.origin)},
+			        {"oscillationAxis", ToJson(movement.oscillationAxis)},
+			        {"oscillationAmplitude", movement.oscillationAmplitude},
+			        {"oscillationSpeed", movement.oscillationSpeed},
+			        {"elapsedTime", movement.elapsedTime},
+			        {"useOscillation", movement.useOscillation}};
+		}
+
+		nlohmann::json SerializeRigidbody(const ECS::RigidbodyComponent& rigidbody)
+		{
+			return {{"velocity", ToJson(rigidbody.velocity)},
+			        {"acceleration", ToJson(rigidbody.acceleration)},
+			        {"mass", rigidbody.mass},
+			        {"useGravity", rigidbody.useGravity},
+			        {"freezeRotation", rigidbody.freezeRotation}};
+		}
+
+		nlohmann::json SerializeCollider(const ECS::ColliderComponent& collider)
+		{
+			return {{"type", ToString(collider.type)},
+			        {"halfExtents", ToJson(collider.halfExtents)},
+			        {"radius", collider.radius},
+			        {"offset", ToJson(collider.offset)}};
+		}
+
+		nlohmann::json SerializePlayerController(const ECS::PlayerControllerComponent& controller)
+		{
+			return {{"moveSpeed", controller.moveSpeed}, {"jumpSpeed", controller.jumpSpeed}};
+		}
+
+		nlohmann::json SerializeHierarchy(const ECS::HierarchyComponent& hierarchy,
+		                                  const EntitySerializationMap& sceneIdsByEntity)
+		{
+			nlohmann::json children = nlohmann::json::array();
+
+			for (ECS::Entity child : hierarchy.children)
+			{
+				const auto childIt = sceneIdsByEntity.find(child);
+				if (childIt == sceneIdsByEntity.end())
+					throw std::runtime_error("Hierarchy child points to entity not present in serialized scene");
+
+				children.push_back(childIt->second);
+			}
+
+			nlohmann::json parent = nullptr;
+			if (hierarchy.parent != ECS::NullEntity)
+			{
+				const auto parentIt = sceneIdsByEntity.find(hierarchy.parent);
+				if (parentIt == sceneIdsByEntity.end())
+					throw std::runtime_error("Hierarchy parent points to entity not present in serialized scene");
+
+				parent = parentIt->second;
+			}
+
+			return {{"parent", std::move(parent)}, {"children", std::move(children)}};
+		}
+
+		nlohmann::json SerializePrimitiveControl(const ECS::PrimitiveControlComponent& control)
+		{
+			return {{"moveSpeed", control.moveSpeed},
+			        {"rotationStepRadians", control.rotationStepRadians},
+			        {"scaleSmoothing", control.scaleSmoothing},
+			        {"rotationSmoothing", control.rotationSmoothing},
+			        {"currentScaleLevel", control.currentScaleLevel},
+			        {"targetRotationRadians", control.targetRotationRadians},
+			        {"targetScale", ToJson(control.targetScale)}};
+		}
+
+		void DeserializeTag(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			ECS::TagComponent parsed(value.at("name").get<std::string>());
+			if (value.contains("tags")) parsed.tags = value.at("tags").get<std::set<std::string>>();
+			auto& tag = world.HasComponent<ECS::TagComponent>(entity) ? *world.GetComponent<ECS::TagComponent>(entity)
+			                                                          : world.AddComponent<ECS::TagComponent>(entity);
+			tag = std::move(parsed);
+		}
+
+		void DeserializeTransform(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& transform = world.AddComponent<ECS::TransformComponent>(entity);
+			transform.position = ReadVec3(value.at("position"));
+			transform.rotation = ReadQuat(value.at("rotation"));
+			transform.scale = ReadVec3(value.at("scale"));
+		}
+
+		void DeserializeCamera(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& camera = world.AddComponent<ECS::CameraComponent>(entity);
+			if (value.contains("forward")) camera.forward = ReadVec3(value.at("forward"));
+			if (value.contains("up")) camera.up = ReadVec3(value.at("up"));
+			camera.fovDegrees = value.at("fovDegrees").get<float>();
+			camera.nearPlane = value.at("nearPlane").get<float>();
+			camera.farPlane = value.at("farPlane").get<float>();
+			camera.aspectRatio = value.at("aspectRatio").get<float>();
+			camera.isPrimary = value.at("isPrimary").get<bool>();
+		}
+
+		void DeserializeCameraController(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& controller = world.AddComponent<ECS::CameraControllerComponent>(entity);
+			controller.moveSpeed = value.at("moveSpeed").get<float>();
+			if (value.contains("sprintMultiplier"))
+				controller.sprintMultiplier = value.at("sprintMultiplier").get<float>();
+			controller.lookSensitivity = value.at("lookSensitivity").get<float>();
+			controller.yawRadians = value.at("yawRadians").get<float>();
+			controller.pitchRadians = value.at("pitchRadians").get<float>();
+			controller.maxPitchRadians = value.at("maxPitchRadians").get<float>();
+			controller.rotateWithRightMouse = value.at("rotateWithRightMouse").get<bool>();
+		}
+
+		void DeserializeMeshRenderer(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& renderer = world.AddComponent<ECS::MeshRendererComponent>(entity);
+			renderer.primitiveType = ReadPrimitiveType(value.at("primitiveType").get<std::string>());
+			renderer.visible = value.at("visible").get<bool>();
+
+			const auto& material = value.at("material");
+			renderer.tint = ReadVec4(material.at("tint"));
+			renderer.meshPath = value.value("meshPath", "");
+			renderer.meshPart = value.value("meshPart", -1);
+			renderer.texturePath = material.value("texturePath", "");
+			renderer.shaderPath = material.value("shaderPath", "");
+		}
+
+		void DeserializeMovement(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& movement = world.AddComponent<ECS::MovementComponent>(entity);
+			movement.velocity = ReadVec3(value.at("velocity"));
+			movement.origin = ReadVec3(value.at("origin"));
+			movement.oscillationAxis = ReadVec3(value.at("oscillationAxis"));
+			movement.oscillationAmplitude = value.at("oscillationAmplitude").get<float>();
+			movement.oscillationSpeed = value.at("oscillationSpeed").get<float>();
+			movement.elapsedTime = value.at("elapsedTime").get<float>();
+			movement.useOscillation = value.at("useOscillation").get<bool>();
+		}
+
+		void DeserializeRigidbody(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& rigidbody = world.AddComponent<ECS::RigidbodyComponent>(entity);
+			if (value.contains("velocity")) rigidbody.velocity = ReadVec3(value.at("velocity"));
+			if (value.contains("acceleration")) rigidbody.acceleration = ReadVec3(value.at("acceleration"));
+			rigidbody.mass = value.value("mass", rigidbody.mass);
+			rigidbody.useGravity = value.value("useGravity", rigidbody.useGravity);
+			rigidbody.freezeRotation = value.value("freezeRotation", rigidbody.freezeRotation);
+		}
+
+		void DeserializeCollider(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& collider = world.AddComponent<ECS::ColliderComponent>(entity);
+			collider.type = ReadColliderType(value.at("type").get<std::string>());
+			if (value.contains("halfExtents")) collider.halfExtents = ReadVec3(value.at("halfExtents"));
+			collider.radius = value.value("radius", collider.radius);
+			if (value.contains("offset")) collider.offset = ReadVec3(value.at("offset"));
+		}
+
+		void DeserializePlayerController(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& controller = world.AddComponent<ECS::PlayerControllerComponent>(entity);
+			controller.moveSpeed = value.value("moveSpeed", controller.moveSpeed);
+			controller.jumpSpeed = value.value("jumpSpeed", controller.jumpSpeed);
+		}
+
+		void DeserializePrimitiveControl(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		{
+			auto& control = world.AddComponent<ECS::PrimitiveControlComponent>(entity);
+			control.moveSpeed = value.at("moveSpeed").get<float>();
+			control.rotationStepRadians = value.at("rotationStepRadians").get<float>();
+			control.scaleSmoothing = value.at("scaleSmoothing").get<float>();
+			control.rotationSmoothing = value.at("rotationSmoothing").get<float>();
+			if (value.contains("currentScaleLevel"))
+				control.currentScaleLevel = value.at("currentScaleLevel").get<size_t>();
+			control.targetRotationRadians = value.at("targetRotationRadians").get<float>();
+			control.targetScale = ReadVec3(value.at("targetScale"));
+		}
+
+		void DeserializeHierarchy(const nlohmann::json& value, ECS::World& world, ECS::Entity entity,
+		                          const EntityDeserializationMap& entitiesBySceneId)
+		{
+			auto& hierarchy = world.AddComponent<ECS::HierarchyComponent>(entity);
+			if (value.contains("parent") && !value.at("parent").is_null())
+			{
+				const uint32_t parentSceneId = value.at("parent").get<uint32_t>();
+				const auto parentIt = entitiesBySceneId.find(parentSceneId);
+				if (parentIt == entitiesBySceneId.end())
+					throw std::runtime_error("Hierarchy parent references unknown scene entity id " +
+					                         std::to_string(parentSceneId));
+				if (!world.GetRegistry().valid(parentIt->second))
+					throw std::runtime_error("Hierarchy parent references an invalid entity");
+
+				hierarchy.parent = parentIt->second;
+			}
+
+			hierarchy.children.clear();
+			if (value.contains("children"))
+			{
+				for (const auto& childValue : value.at("children"))
+				{
+					const uint32_t childSceneId = childValue.get<uint32_t>();
+					const auto childIt = entitiesBySceneId.find(childSceneId);
+					if (childIt == entitiesBySceneId.end())
+						throw std::runtime_error("Hierarchy child references unknown scene entity id " +
+						                         std::to_string(childSceneId));
+					if (!world.GetRegistry().valid(childIt->second))
+						throw std::runtime_error("Hierarchy child references an invalid entity");
+
+					hierarchy.children.push_back(childIt->second);
+				}
+			}
+		}
+
+	}
+
+	nlohmann::json SerializeScriptComponent(const ECS::ScriptComponent& script)
+	{
+		nlohmann::json fields = nlohmann::json::object();
+		for (const auto& [name, value] : script.fields)
+		{
+			fields[name] = std::visit(
+			    [](const auto& field) -> nlohmann::json
+			    {
+				    using T = std::decay_t<decltype(field)>;
+				    if constexpr (std::is_same_v<T, bool>)
+					    return {{"type", "bool"}, {"value", field}};
+				    else if constexpr (std::is_same_v<T, int>)
+					    return {{"type", "int"}, {"value", field}};
+				    else if constexpr (std::is_same_v<T, float>)
+				    {
+					    ValidateScriptFloat(field);
+					    return {{"type", "float"}, {"value", field}};
+				    }
+				    else if constexpr (std::is_same_v<T, std::string>)
+					    return {{"type", "string"}, {"value", field}};
+				    else
+				    {
+					    ValidateScriptFloat(field.x);
+					    ValidateScriptFloat(field.y);
+					    ValidateScriptFloat(field.z);
+					    return {{"type", "vec3"}, {"value", ToJson(field)}};
+				    }
+			    },
+			    value);
+		}
+		return {{"scriptPath", script.scriptPath}, {"fields", std::move(fields)}};
+	}
+
+	nlohmann::json SerializeEntity(const ECS::World& world, ECS::Entity entity, const EntitySerializationMap& entityIds)
+	{
+		if (!world.GetRegistry().valid(entity)) throw std::runtime_error("Cannot serialize an invalid entity");
+		const auto sceneIdIt = entityIds.find(entity);
+		if (sceneIdIt == entityIds.end()) throw std::runtime_error("Serialized entity is missing a scene-local id");
+
+		nlohmann::json entityJson{{"id", sceneIdIt->second}, {"components", nlohmann::json::object()}};
+
+		const auto* tag = world.GetRegistry().try_get<ECS::TagComponent>(entity);
+		if (tag != nullptr) entityJson["components"]["Tag"] = SerializeTag(*tag);
+
+		const auto* transform = world.GetRegistry().try_get<ECS::TransformComponent>(entity);
+		if (transform != nullptr) entityJson["components"]["Transform"] = SerializeTransform(*transform);
+
+		const auto* camera = world.GetRegistry().try_get<ECS::CameraComponent>(entity);
+		if (camera != nullptr) entityJson["components"]["CameraComponent"] = SerializeCamera(*camera);
+
+		const auto* cameraController = world.GetRegistry().try_get<ECS::CameraControllerComponent>(entity);
+		if (cameraController != nullptr)
+			entityJson["components"]["CameraControllerComponent"] = SerializeCameraController(*cameraController);
+
+		const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(entity);
+		if (hierarchy != nullptr)
+			entityJson["components"]["HierarchyComponent"] = SerializeHierarchy(*hierarchy, entityIds);
+
+		const auto* meshRenderer = world.GetRegistry().try_get<ECS::MeshRendererComponent>(entity);
+		if (meshRenderer != nullptr) entityJson["components"]["MeshRenderer"] = SerializeMeshRenderer(*meshRenderer);
+
+		const auto* movement = world.GetRegistry().try_get<ECS::MovementComponent>(entity);
+		if (movement != nullptr) entityJson["components"]["MovementComponent"] = SerializeMovement(*movement);
+
+		const auto* primitiveControl = world.GetRegistry().try_get<ECS::PrimitiveControlComponent>(entity);
+		if (primitiveControl != nullptr)
+			entityJson["components"]["PrimitiveControlComponent"] = SerializePrimitiveControl(*primitiveControl);
+
+		const auto* rigidbody = world.GetRegistry().try_get<ECS::RigidbodyComponent>(entity);
+		if (rigidbody != nullptr) entityJson["components"]["RigidbodyComponent"] = SerializeRigidbody(*rigidbody);
+
+		const auto* collider = world.GetRegistry().try_get<ECS::ColliderComponent>(entity);
+		if (collider != nullptr) entityJson["components"]["ColliderComponent"] = SerializeCollider(*collider);
+
+		const auto* playerController = world.GetRegistry().try_get<ECS::PlayerControllerComponent>(entity);
+		if (playerController != nullptr)
+			entityJson["components"]["PlayerControllerComponent"] = SerializePlayerController(*playerController);
+
+		const auto* script = world.GetRegistry().try_get<ECS::ScriptComponent>(entity);
+		if (script != nullptr) entityJson["components"]["ScriptComponent"] = SerializeScriptComponent(*script);
+		return entityJson;
+	}
+
+	void DeserializeEntity(const nlohmann::json& entityJson, ECS::World& world,
+	                       const EntityDeserializationMap& entitiesById)
+	{
+		const uint32_t sceneId = entityJson.at("id").get<uint32_t>();
+		const auto entityIt = entitiesById.find(sceneId);
+		if (entityIt == entitiesById.end())
+			throw std::runtime_error("Missing ECS entity for scene entity id: " + std::to_string(sceneId));
+
+		const ECS::Entity entity = entityIt->second;
+		if (!world.GetRegistry().valid(entity)) throw std::runtime_error("Cannot deserialize into an invalid entity");
+		const auto& components = entityJson.at("components");
+		if (!components.is_object()) throw std::runtime_error("Entity components must be an object");
+
+		if (components.contains("Tag")) DeserializeTag(components.at("Tag"), world, entity);
+		if (components.contains("Transform")) DeserializeTransform(components.at("Transform"), world, entity);
+		if (components.contains("CameraComponent")) DeserializeCamera(components.at("CameraComponent"), world, entity);
+		if (components.contains("CameraControllerComponent"))
+			DeserializeCameraController(components.at("CameraControllerComponent"), world, entity);
+		if (components.contains("HierarchyComponent"))
+			DeserializeHierarchy(components.at("HierarchyComponent"), world, entity, entitiesById);
+		if (components.contains("MeshRenderer")) DeserializeMeshRenderer(components.at("MeshRenderer"), world, entity);
+		if (components.contains("MovementComponent"))
+			DeserializeMovement(components.at("MovementComponent"), world, entity);
+		if (components.contains("PrimitiveControlComponent"))
+			DeserializePrimitiveControl(components.at("PrimitiveControlComponent"), world, entity);
+		if (components.contains("RigidbodyComponent"))
+			DeserializeRigidbody(components.at("RigidbodyComponent"), world, entity);
+		if (components.contains("ColliderComponent"))
+			DeserializeCollider(components.at("ColliderComponent"), world, entity);
+		if (components.contains("PlayerControllerComponent"))
+			DeserializePlayerController(components.at("PlayerControllerComponent"), world, entity);
+		if (components.contains("ScriptComponent")) DeserializeScript(components.at("ScriptComponent"), world, entity);
+	}
+
+}

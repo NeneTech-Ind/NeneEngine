@@ -14,10 +14,14 @@
 #include "ECS/RenderSettings.h"
 #include "ECS/World.h"
 
+#include <EASTL/unordered_map.h>
 #include <algorithm>
+#include <bit>
 #include <chrono>
+#include <functional>
 #include <glm/gtc/matrix_transform.hpp>
 #include <limits>
+#include <string_view>
 
 namespace NeneEngine::ECS
 {
@@ -28,6 +32,28 @@ namespace NeneEngine::ECS
 		constexpr uint32_t kVisitingDepth = kNoIndex - 1;
 		constexpr uint32_t kMinJobRange = 256;
 		constexpr float kStatsSmoothing = 0.1f;
+
+		struct RenderAssetKey
+		{
+			std::string_view meshPath;
+			std::string_view texturePath;
+			std::string_view shaderPath;
+			int meshPart;
+			PrimitiveType primitive;
+
+			bool operator==(const RenderAssetKey&) const = default;
+		};
+
+		struct RenderAssetKeyHash
+		{
+			size_t operator()(const RenderAssetKey& key) const
+			{
+				const std::hash<std::string_view> pathHash;
+				return pathHash(key.meshPath) ^ std::rotl(pathHash(key.texturePath), 7) ^
+				       std::rotl(pathHash(key.shaderPath), 13) ^ std::rotl(std::hash<int>{}(key.meshPart), 19) ^
+				       std::rotl(std::hash<PrimitiveType>{}(key.primitive), 23);
+			}
+		};
 
 		uint32_t ToEntitySlot(Entity entity)
 		{
@@ -103,9 +129,11 @@ namespace NeneEngine::ECS
 
 		if (activeCameraEntity == NullEntity || activeCamera == nullptr)
 		{
-			NENE_LOG_WARN("RenderSystem: no primary camera found");
+			if (!m_reportedMissingCamera) NENE_LOG_WARN("RenderSystem: no primary camera found");
+			m_reportedMissingCamera = true;
 			return;
 		}
+		m_reportedMissingCamera = false;
 
 		BuildTransformSnapshot(world);
 		ComputeWorldMatrices();
@@ -258,6 +286,7 @@ namespace NeneEngine::ECS
 	{
 		NENE_PROFILE_SCOPE("Render Collect");
 		m_drawRecords.clear();
+		eastl::unordered_map<RenderAssetKey, MeshRenderRuntimeBinding, RenderAssetKeyHash> bindings;
 
 		auto view = world.GetRegistry().view<const TransformComponent, const MeshRendererComponent>();
 		for (auto entity : view)
@@ -268,9 +297,13 @@ namespace NeneEngine::ECS
 			DrawRecord record{entity, FindTransformIndex(entity), meshRenderer.primitiveType, meshRenderer.tint};
 			if (!meshRenderer.meshPath.empty() || !meshRenderer.texturePath.empty() || !meshRenderer.shaderPath.empty())
 			{
-				const auto binding =
-				    m_assets.Resolve(meshRenderer.meshPath, meshRenderer.meshPart, meshRenderer.texturePath,
-				                     meshRenderer.shaderPath, meshRenderer.primitiveType, *m_renderer);
+				const RenderAssetKey key{meshRenderer.meshPath, meshRenderer.texturePath, meshRenderer.shaderPath,
+				                         meshRenderer.meshPart, meshRenderer.primitiveType};
+				const auto [entry, inserted] = bindings.try_emplace(key);
+				if (inserted)
+					entry->second = m_assets.Resolve(meshRenderer.meshPath, meshRenderer.meshPart, meshRenderer.texturePath,
+					                                meshRenderer.shaderPath, meshRenderer.primitiveType, *m_renderer);
+				const auto& binding = entry->second;
 				if (!binding.meshId.IsValid() && !meshRenderer.meshPath.empty()) continue;
 				record.meshId = binding.meshId;
 				record.shaderId = binding.shaderId;

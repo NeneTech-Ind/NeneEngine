@@ -2,6 +2,7 @@
 
 #include "Editor/Panels/InspectorPanel.h"
 
+#include "Core/NeneLogger.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
 #include "ECS/Components/ColliderComponent.h"
@@ -12,26 +13,37 @@
 #include "ECS/Components/PlayerControllerComponent.h"
 #include "ECS/Components/PrimitiveControlComponent.h"
 #include "ECS/Components/RigidbodyComponent.h"
+#include "ECS/Components/ScriptComponent.h"
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
+#include "Editor/Commands/ComponentPresenceCommand.h"
 #include "Editor/EditorContext.h"
 #include "Editor/EditorHistory.h"
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
 #include "Graphics/Backend/IRenderAdapter.h"
+#include "Scene/Prefab/PrefabLibrary.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <algorithm>
+#include <charconv>
+#include <cmath>
+#include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
+#include <limits>
 #include <misc/cpp/imgui_stdlib.h>
+#include <stdexcept>
 #include <string>
+#include <type_traits>
 
 namespace NeneEngine
 {
 	namespace
 	{
+		constexpr const char* kTexturedMeshShaderPath = "assets/engine/shaders/textured_mesh.shader";
 		using FieldEdits = InspectorPanel::FieldEdits;
 
 		constexpr float kPositionDragSpeed = 0.05f;
@@ -45,10 +57,20 @@ namespace NeneEngine
 		constexpr const char* kPrimitiveTypeNames[] = {"Line", "Triangle", "Quad", "Cube"};
 		constexpr const char* kColliderTypeNames[] = {"Box", "Sphere"};
 		constexpr float kMaterialPreviewMaxWidth = 128.0f;
+		constexpr const char* kAddComponentPopup = "##AddComponent";
+
+		template <typename Component> constexpr bool kRemovable = false;
+		template <> constexpr bool kRemovable<ECS::MeshRendererComponent> = true;
+		template <> constexpr bool kRemovable<ECS::ColliderComponent> = true;
+		template <> constexpr bool kRemovable<ECS::RigidbodyComponent> = true;
+		template <> constexpr bool kRemovable<ECS::MovementComponent> = true;
+		template <> constexpr bool kRemovable<ECS::PlayerControllerComponent> = true;
+		template <> constexpr bool kRemovable<ECS::PrimitiveControlComponent> = true;
 
 		void TrackItem(FieldEdits& edits)
 		{
 			edits.activated |= ImGui::IsItemActivated();
+			edits.active |= ImGui::IsItemActive();
 			edits.deactivatedAfterEdit |= ImGui::IsItemDeactivatedAfterEdit();
 		}
 
@@ -82,6 +104,7 @@ namespace NeneEngine
 			const AxisDragResult result = DragFloat3Axes(widgetId.c_str(), values, speed, min, max, flags, axisColors);
 			if (edits.valueFont != nullptr) ImGui::PopFont();
 			edits.activated |= result.activated;
+			edits.active |= ImGui::IsItemActive();
 			edits.deactivatedAfterEdit |= result.deactivatedAfterEdit;
 
 			ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -118,6 +141,113 @@ namespace NeneEngine
 			const bool changed = ImGui::Checkbox(label, &value);
 			TrackItem(edits);
 			return changed;
+		}
+
+		template <typename Number>
+		bool InputScriptNumber(const char* id, Number& value)
+		{
+			char buffer[64];
+			const auto formatted = std::to_chars(buffer, buffer + sizeof(buffer), value);
+			std::string text(buffer, formatted.ptr);
+			const bool submitted = ImGui::InputText(id, &text, ImGuiInputTextFlags_EnterReturnsTrue);
+			const bool finished = submitted || ImGui::IsItemDeactivatedAfterEdit();
+			if (!finished && !ImGui::IsItemActive()) return false;
+
+			const char* first = text.data();
+			const char* end = first + text.size();
+			if (first != end && *first == '+' && first + 1 != end && first[1] != '-') ++first;
+			Number parsed{};
+			const auto result = std::from_chars(first, end, parsed);
+			if (result.ec != std::errc{} || result.ptr != end || !std::isfinite(parsed))
+			{
+				ImGui::SetItemTooltip("Enter a valid number");
+				return false;
+			}
+			if (!finished || parsed == value) return false;
+			value = parsed;
+			return true;
+		}
+
+		template <typename Number>
+		bool DrawRangedScriptField(const char* label, Number& value, Number min, Number max, FieldEdits& edits)
+		{
+			// ImGui sliders require bounds within half the numeric type's range.
+			const bool useSlider = min >= std::numeric_limits<Number>::lowest() / 2 &&
+			                       max <= (std::numeric_limits<Number>::max)() / 2;
+			return DrawValueField(label, edits, [&](const char* id)
+			{
+				if (useSlider)
+				{
+					const float width = ImGui::CalcItemWidth();
+					const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+					const float inputWidth = (std::max)(1.0f, (width - spacing) * 0.35f);
+					ImGui::PushID(id);
+					ImGui::SetNextItemWidth((std::max)(1.0f, width - spacing - inputWidth));
+					bool changed;
+					if constexpr (std::is_same_v<Number, int>)
+						changed = ImGui::SliderInt("##slider", &value, min, max);
+					else
+						changed = ImGui::SliderFloat("##slider", &value, min, max, "%.3f");
+					TrackItem(edits);
+					ImGui::SameLine(0.0f, spacing);
+					ImGui::SetNextItemWidth(inputWidth);
+					auto typedValue = value;
+					const bool typed = InputScriptNumber("##value", typedValue);
+					if (typed && !changed) value = typedValue;
+					TrackItem(edits);
+					ImGui::PopID();
+					if (edits.valueFont == nullptr)
+					{
+						ImGui::SameLine(0.0f, spacing);
+						ImGui::TextUnformatted(label);
+					}
+					return changed || typed;
+				}
+				return InputScriptNumber(id, value);
+			});
+		}
+
+		bool DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
+		{
+			const char* label = field.name.c_str();
+			if (!field.options.empty())
+			{
+				auto& current = std::get<std::string>(value);
+				bool changed = false;
+				if (ImGui::BeginCombo(label, current.c_str()))
+				{
+					for (const auto& option : field.options)
+						if (ImGui::Selectable(option.c_str(), option == current))
+						{
+							current = option;
+							changed = true;
+						}
+					ImGui::EndCombo();
+				}
+				return changed;
+			}
+			return std::visit(
+			    [&](auto& current)
+			    {
+				    using Value = std::decay_t<decltype(current)>;
+				    if constexpr (std::is_same_v<Value, bool>)
+					    return Checkbox(label, current, edits);
+				    else if constexpr (std::is_same_v<Value, int>)
+					    return field.minimum ? DrawRangedScriptField(label, current, std::get<int>(*field.minimum),
+					                                                std::get<int>(*field.maximum), edits)
+					                         : DrawValueField(label, edits, [&](const char* id)
+					                           { return ImGui::DragInt(id, &current); });
+				    else if constexpr (std::is_same_v<Value, float>)
+					    return field.minimum ? DrawRangedScriptField(label, current, std::get<float>(*field.minimum),
+					                                                std::get<float>(*field.maximum), edits)
+					                         : DragFloat(label, current, 0.05f, edits);
+				    else if constexpr (std::is_same_v<Value, std::string>)
+					    return DrawValueField(label, edits,
+					                          [&](const char* id) { return ImGui::InputText(id, &current); });
+				    else if constexpr (std::is_same_v<Value, glm::vec3>)
+					    return DragVec3(label, current, kPositionDragSpeed, edits);
+			    },
+			    value);
 		}
 
 		template <typename Enum, size_t Count>
@@ -174,7 +304,11 @@ namespace NeneEngine
 	{
 		const ECS::Entity entity = context.selectedEntity;
 		Component* component = context.world.GetComponent<Component>(entity);
-		if (component == nullptr || !ComponentHeader(icon, label)) return;
+		if (component == nullptr) return;
+
+		const bool isOpen = ComponentHeader(icon, label);
+		if constexpr (kRemovable<Component>) DrawRemoveMenu<Component>(context, label);
+		if (!isOpen) return;
 
 		const bool isEditMode = context.CanEdit();
 		const Component before = *component;
@@ -213,6 +347,54 @@ namespace NeneEngine
 		}
 	}
 
+	template <typename Component> void InspectorPanel::DrawRemoveMenu(EditorContext& context, const char* label)
+	{
+		if (!ImGui::BeginPopupContextItem()) return;
+
+		using Command = ComponentPresenceCommand<Component>;
+		const std::string itemLabel = std::string(NENE_ICON_CLOSE " Remove ") + label;
+		if (ImGui::MenuItem(itemLabel.c_str(), nullptr, false, context.CanEdit()))
+			m_pendingCommand = eastl::make_unique<Command>(std::string("Remove ") + label, context.selectedEntity,
+			                                               Command::Action::Remove, Component{});
+		ImGui::EndPopup();
+	}
+
+	template <typename Component>
+	bool InspectorPanel::DrawAddItem(EditorContext& context, const char* icon, const char* label)
+	{
+		if (context.world.HasComponent<Component>(context.selectedEntity)) return false;
+
+		using Command = ComponentPresenceCommand<Component>;
+		const std::string itemLabel = std::string(icon) + " " + label;
+		if (ImGui::Selectable(itemLabel.c_str()))
+			m_pendingCommand = eastl::make_unique<Command>(std::string("Add ") + label, context.selectedEntity,
+			                                               Command::Action::Add, Component{});
+		return true;
+	}
+
+	void InspectorPanel::DrawAddComponent(EditorContext& context)
+	{
+		ImGui::Spacing();
+		ImGui::BeginDisabled(!context.CanEdit());
+		if (PillButton("Add Component", ImVec2(-FLT_MIN, 0.0f))) ImGui::OpenPopup(kAddComponentPopup);
+		ImGui::EndDisabled();
+		ImGui::SetItemTooltip("Right-click a component header to remove it");
+
+		if (!ImGui::BeginPopup(kAddComponentPopup)) return;
+
+		bool hasChoices = false;
+		hasChoices |= DrawAddItem<ECS::TagComponent>(context, NENE_ICON_TAG, "Tag");
+		hasChoices |= DrawAddItem<ECS::TransformComponent>(context, NENE_ICON_TRANSFORM, "Transform");
+		hasChoices |= DrawAddItem<ECS::MeshRendererComponent>(context, NENE_ICON_MESH, "Mesh Renderer");
+		hasChoices |= DrawAddItem<ECS::ColliderComponent>(context, NENE_ICON_COLLIDER, "Collider");
+		hasChoices |= DrawAddItem<ECS::RigidbodyComponent>(context, NENE_ICON_RIGIDBODY, "Rigidbody");
+		hasChoices |= DrawAddItem<ECS::MovementComponent>(context, NENE_ICON_MOVEMENT, "Movement");
+		hasChoices |= DrawAddItem<ECS::PlayerControllerComponent>(context, NENE_ICON_CONTROLLER, "Player Controller");
+		hasChoices |= DrawAddItem<ECS::PrimitiveControlComponent>(context, NENE_ICON_CONTROLLER, "Primitive Control");
+		if (!hasChoices) ImGui::TextDisabled("Every component is already added");
+		ImGui::EndPopup();
+	}
+
 	void InspectorPanel::Draw(EditorContext& context)
 	{
 		if (context.selectedEntity != ECS::NullEntity && !context.world.GetRegistry().valid(context.selectedEntity))
@@ -220,6 +402,7 @@ namespace NeneEngine
 
 		if (context.selectedEntity == ECS::NullEntity)
 		{
+			FinishScriptFieldEdit(context);
 			m_commitPendingEdit = nullptr;
 			m_pendingEditLabel = nullptr;
 			m_colorEntity = ECS::NullEntity;
@@ -231,6 +414,171 @@ namespace NeneEngine
 		DrawEntityHeader(context);
 		ImGui::Separator();
 		DrawComponents(context);
+		if (!DrawScript(context)) FinishScriptFieldEdit(context);
+		DrawAddComponent(context);
+
+		if (m_pendingCommand && context.CanEdit()) context.history.Execute(std::move(m_pendingCommand), context.world);
+		m_pendingCommand.reset();
+	}
+
+	bool InspectorPanel::DrawScript(EditorContext& context)
+	{
+		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity);
+		if (script == nullptr || !ComponentHeader(NENE_ICON_FILE_CODE, "Script")) return false;
+
+		ComponentCardScope card;
+		if (script->scriptPath.empty())
+		{
+			ImGui::TextDisabled("No script assigned");
+			return false;
+		}
+
+		ImGui::TextWrapped("Path: %s", script->scriptPath.c_str());
+		const std::filesystem::path path(script->scriptPath);
+		const auto* schema = m_scriptEngine.GetFieldSchema(path);
+		if (schema == nullptr && m_scriptEngine.LoadScript(path) != nullptr)
+			schema = m_scriptEngine.GetFieldSchema(path);
+
+		if (schema == nullptr)
+		{
+			ImGui::TextWrapped("Could not load script. See the Console for details.");
+			if (context.CanEdit() && ImGui::Button("Retry##ScriptLoad")) m_scriptEngine.ReloadScript(path);
+			return false;
+		}
+		if (schema->empty())
+		{
+			ImGui::TextDisabled("This script exposes no fields");
+			return false;
+		}
+
+		const bool canEdit = context.CanEdit();
+		bool editActive = false;
+		ImGui::PushID("Script");
+		ImGui::PushID(static_cast<int>(entt::to_integral(context.selectedEntity)));
+		ImGui::BeginDisabled(!canEdit);
+		for (const auto& field : *schema)
+		{
+			const auto override = script->fields.find(field.name);
+			const auto& saved = override != script->fields.end() ? override->second : field.defaultValue;
+			const bool editing = canEdit && m_scriptFieldEdit && m_scriptFieldEdit->entity == context.selectedEntity &&
+			                     m_scriptFieldEdit->path == script->scriptPath && m_scriptFieldEdit->field == field.name;
+			auto value = editing ? m_scriptFieldEdit->value : saved;
+			if (value.index() != field.defaultValue.index()) value = field.defaultValue;
+			const bool invalid = !IsValidScriptFieldValue(field, editing ? m_scriptFieldEdit->value : saved);
+			FieldEdits edits{};
+			edits.valueFont = context.monospaceFont;
+			edits.colors = context.themeColors;
+			ImGui::PushID(field.name.c_str());
+			if (invalid) ImGui::PushStyleColor(ImGuiCol_FrameBg, context.themeColors ? context.themeColors->danger : ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+			const bool changed = DrawScriptField(field, value, edits) && canEdit;
+			if (invalid) ImGui::PopStyleColor();
+			if (invalid) ImGui::TextColored(context.themeColors ? context.themeColors->danger : ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "Invalid value");
+			ImGui::PopID();
+
+			if (changed)
+			{
+				if (editing)
+					m_scriptFieldEdit->value = std::move(value);
+				else
+				{
+					ScriptFieldEdit edit{context.selectedEntity, script->scriptPath, field.name, saved, std::move(value)};
+					FinishScriptFieldEdit(context);
+					m_scriptFieldEdit = std::move(edit);
+				}
+			}
+			if (editing || changed)
+			{
+				editActive = edits.active;
+				if (!editActive) FinishScriptFieldEdit(context);
+			}
+		}
+		ImGui::EndDisabled();
+		DrawSaveToPrefab(context, *schema);
+		ImGui::PopID();
+		ImGui::PopID();
+		return editActive;
+	}
+
+	void InspectorPanel::DrawSaveToPrefab(EditorContext& context, const ScriptFieldSchema& schema)
+	{
+		if (!context.prefabs) return;
+		constexpr const char* popup = "Choose prefab";
+		ImGui::BeginDisabled(!context.CanEdit());
+		if (ImGui::Button("Save to prefab")) ImGui::OpenPopup(popup);
+		ImGui::EndDisabled();
+		if (!ImGui::BeginPopup(popup)) return;
+
+		bool hasPrefabs = false;
+		if (context.CanEdit())
+		{
+			for (const auto& asset : context.assets.Entries())
+			{
+				if (asset.kind != AssetKind::Prefab) continue;
+				hasPrefabs = true;
+				const auto name = std::filesystem::path(asset.path).lexically_relative("assets/prefabs").generic_string();
+				if (!ImGui::MenuItem(name.c_str())) continue;
+
+				try
+				{
+					FinishScriptFieldEdit(context);
+					if (m_scriptFieldEdit && m_scriptFieldEdit->entity == context.selectedEntity)
+						throw std::runtime_error("Correct the invalid script field before saving");
+					const auto& script = *context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity);
+					ECS::ScriptComponent saved{script.scriptPath, {}};
+					for (const auto& field : schema)
+					{
+						const auto override = script.fields.find(field.name);
+						const auto& value = override == script.fields.end() ? field.defaultValue : override->second;
+						if (!IsValidScriptFieldValue(field, value))
+							throw std::runtime_error("Invalid script field: " + field.name);
+						saved.fields.emplace(field.name, value);
+					}
+					context.prefabs->SaveScriptFields(name, saved);
+					context.SetStatus(EditorStatusKind::Success, "Script fields saved to " + name);
+				}
+				catch (const std::exception& exception)
+				{
+					NENE_LOG_ERROR("Could not save script fields to prefab '{}': {}", name, exception.what());
+					context.SetStatus(EditorStatusKind::Danger, exception.what());
+				}
+				break;
+			}
+		}
+		else
+		{
+			ImGui::CloseCurrentPopup();
+		}
+		if (!hasPrefabs) ImGui::TextDisabled("No prefab assets found");
+		ImGui::EndPopup();
+	}
+
+	void InspectorPanel::FinishScriptFieldEdit(EditorContext& context)
+	{
+		if (!m_scriptFieldEdit) return;
+		if (const auto* schema = m_scriptEngine.GetFieldSchema(m_scriptFieldEdit->path))
+		{
+			const auto field = std::find_if(schema->begin(), schema->end(), [&](const auto& item) {
+				return item.name == m_scriptFieldEdit->field;
+			});
+			if (field != schema->end() && !IsValidScriptFieldValue(*field, m_scriptFieldEdit->value)) return;
+		}
+
+		auto edit = std::move(*m_scriptFieldEdit);
+		m_scriptFieldEdit.reset();
+		if (!context.CanEdit() || edit.before == edit.value || !context.world.GetRegistry().valid(edit.entity)) return;
+
+		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(edit.entity);
+		if (script == nullptr || script->scriptPath != edit.path) return;
+		const auto* schema = m_scriptEngine.GetFieldSchema(edit.path);
+		if (schema == nullptr) return;
+		const auto field = std::find_if(schema->begin(), schema->end(), [&](const auto& item) { return item.name == edit.field; });
+		if (field == schema->end() || !IsValidScriptFieldValue(*field, edit.value)) return;
+
+		auto after = *script;
+		after.fields.insert_or_assign(edit.field, std::move(edit.value));
+		auto command = eastl::make_unique<ComponentChangeCommand<ECS::ScriptComponent>>(
+		    "Edit Script Field", edit.entity, *script, std::move(after));
+		context.history.Execute(std::move(command), context.world);
 	}
 
 	void InspectorPanel::DrawEntityHeader(EditorContext& context)
@@ -375,7 +723,7 @@ namespace NeneEngine
 		const auto before = material;
 		(texture ? material.texturePath : material.shaderPath) = path;
 		if (texture && !path.empty() && material.shaderPath.empty())
-			material.shaderPath = "assets/shaders/textured_mesh.shader";
+			material.shaderPath = kTexturedMeshShaderPath;
 		context.history.RecordComponentChange("Edit Material", context.selectedEntity, before, material);
 		m_materialError.clear();
 	}
@@ -392,6 +740,8 @@ namespace NeneEngine
 		{
 			if (ImGui::Selectable(texture ? "None" : "Default", path.empty()))
 				SetMaterialAsset(context, material, "", texture);
+			if (!texture && ImGui::Selectable("Textured Mesh", path == kTexturedMeshShaderPath))
+				SetMaterialAsset(context, material, kTexturedMeshShaderPath, false);
 			for (const auto& entry : context.assets.Entries())
 				if (entry.kind == kind && ImGui::Selectable(entry.path.c_str(), entry.path == path))
 					SetMaterialAsset(context, material, entry.path, texture);

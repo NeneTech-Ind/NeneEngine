@@ -9,11 +9,11 @@
 
 <p align="center"><b>A small C++20 game engine for Windows with a built-in editor</b></p>
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_happy_128.png">
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_wave.png">
 
 NeneEngine renders with DirectX 12 and keeps its world in an Entity-Component-System, with Jolt for physics and an editor. Engine settings, scenes and asset descriptions are plain JSON files, so you can change them without recompiling.
 
-Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine), [EnTT](https://github.com/skypjack/entt), [Jolt Physics](https://github.com/jrouwe/JoltPhysics), [Dear ImGui](https://github.com/ocornut/imgui), [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo), [Assimp](https://github.com/assimp/assimp), [EASTL](https://github.com/electronicarts/EASTL), [enkiTS](https://github.com/dougbinks/enkiTS), [spdlog](https://github.com/gabime/spdlog) and [Tracy](https://github.com/wolfpld/tracy).
+Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine), [EnTT](https://github.com/skypjack/entt), [Jolt Physics](https://github.com/jrouwe/JoltPhysics), [Dear ImGui](https://github.com/ocornut/imgui), [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo), [Assimp](https://github.com/assimp/assimp), [EASTL](https://github.com/electronicarts/EASTL), [enkiTS](https://github.com/dougbinks/enkiTS), [spdlog](https://github.com/gabime/spdlog), [Tracy](https://github.com/wolfpld/tracy), [Lua](https://www.lua.org/) and [sol2](https://github.com/ThePhD/sol2).
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="assets/readme/screenshots/main-day.png">
@@ -21,6 +21,8 @@ Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 </picture>
 
 ## Features
+
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_cheer.png">
 
 ### Editor
 
@@ -50,7 +52,7 @@ Built with [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 
 ## Getting started
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_search_128.png">
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_tip.png">
 
 ### Requirements
 
@@ -74,15 +76,21 @@ cmake --build out/build/x64-debug --config Debug
 
 Use the `x64-release` preset and `out/build/x64-release` for a Release build. vcpkg installs the remaining dependencies during configure.
 
-To get a self-contained folder with the executable, DLLs and assets in `out/install/x64-debug/bin/`:
+To get a self-contained folder with the executable, DLLs and assets in `out/install/x64-debug/`:
 
 ```bash
 cmake --install out/build/x64-debug --config Debug --component Runtime
 ```
 
+To pack a Release build into `out/package/NeneEngine-<version>-win64.zip`:
+
+```bash
+cpack --config out/build/x64-release/CPackConfig.cmake
+```
+
 ### Run
 
-Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. The log goes to `logs/nene_engine.log` next to the executable.
+Start `NeneEngine.exe`. The editor opens the demo scene from `assets/scenes/demo_scene.json` in Edit mode. A stress scene with ten thousand cubes, `assets/scenes/stress_scene.json`, can be opened from the File menu. Each run writes a separate `nene_engine-<date>-<time>-<timestamp>-<pid>.log` file in `%LOCALAPPDATA%/NeneEngine/logs/`.
 
 | Option                | Effect                                                                  |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -103,6 +111,57 @@ The `NENEENGINE_ENABLE_TRACY` CMake option turns Tracy on and is on by default. 
 | `X`                      | Switch gizmo between local and world |
 | `F3`                     | Show or hide colliders               |
 
+### Lua scripting in VS Code
+
+Install the Lua extension (`sumneko.lua`) with LuaLS 3.16.0 or later and open `assets/scripts` as a folder in VS Code. The folder's `.luarc.json` selects Lua 5.5 to match the engine and loads the engine API definitions from `meta/nene.lua`.
+
+In a Lua script under `assets/scripts`, type `nene.` and press `Ctrl+Space` to see the available API members. Use `---@field` on the behaviour class to give LuaLS the types of fields copied from `Behaviour.fields` onto `self`.
+
+Declare field defaults in `fields` and add optional editor metadata separately:
+
+```lua
+Mover.fields = { speed = 4.0, enabled = true, mode = "walk" }
+Mover.field_metadata = {
+    speed = { type = "float", min = 0, max = 10 },
+    enabled = { type = "bool" },
+    mode = { type = "enum", options = { "walk", "run" } },
+}
+```
+
+Supported types are `bool`, `int`, `float`, `string`, `vec3` and string-valued `enum`. For a numeric range, set both `min` and `max`. For an enum, provide a nonempty `options` array that includes the default. Write float defaults as Lua floats (for example `4.0`). Fields without metadata continue to work. The inspector highlights invalid edits and does not apply them to the component.
+
+```lua
+---@class Mover : nene.Behaviour
+---@field speed number
+local Mover = nene.Behaviour:extend()
+
+Mover.fields = { speed = 3.0 }
+
+function Mover:on_start()
+    nene.log.info(tostring(self.speed))
+end
+
+return Mover
+```
+
+Inside `on_start`, use `Ctrl+Space` after `self.` to look for `speed`, then hover over `self.speed` to check its type.
+
+#### Debug Lua in Play mode
+
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_surprise.png">
+
+Build NeneEngine in x64 Debug, then open the repository root in VS Code.
+Install [OneLuaPro Local Lua Debugger](https://marketplace.visualstudio.com/items?itemName=OneLuaPro.oneluapro-local-lua-debugger)
+for Lua 5.5. If you have `tomblind.local-lua-debugger-vscode` installed, disable
+it for this workspace so OneLuaPro handles the `lua-local` launch profile.
+
+Set a breakpoint on an executable line in a Lua behaviour callback. In
+**Run and Debug**, select **NeneEngine: Debug Lua** and press `F5`. Open your
+scene in NeneEngine, enter Play mode and trigger the callback.
+
+When VS Code pauses at the breakpoint, select the callback in **Call Stack**.
+**Variables** shows the callback's local variables and `self`.
+
 ## Project layout
 
 | Path        | Contents                                                                                        |
@@ -113,7 +172,16 @@ The `NENEENGINE_ENABLE_TRACY` CMake option turns Tracy on and is on by default. 
 | `external/` | Submodules: Diligent Engine, Dear ImGui, ImGuizmo                                               |
 | `docs/`     | Project conventions                                                                             |
 
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_peek.png">
+
+Editor artwork, fonts and built-in shaders live in `assets/engine/`. Demo scenes are in `assets/scenes/`, models in `assets/models/` and scripts in `assets/scripts/`. The Asset Browser skips `assets/engine/`, `assets/readme/` and `assets/icons/`.
+
+The editor saves the theme to `%LOCALAPPDATA%/NeneEngine/editor_theme.json` and the window layout to `%LOCALAPPDATA%/NeneEngine/imgui.ini`. Logs are in `%LOCALAPPDATA%/NeneEngine/logs/`. At startup, the editor keeps the 20 most recent logs. Older logs that are still open are kept until a later startup.
+
+
 ## Contributing
+
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_salute.png">
 
 Read the [Git conventions](docs/conventions/git-convention.md) and [naming conventions](docs/conventions/naming-convention.md) before opening a branch.
 
@@ -125,6 +193,6 @@ Read the [Git conventions](docs/conventions/git-convention.md) and [naming conve
 
 ## License
 
-<img align="right" width="96" alt="" src="assets/editor/mascot/mascot_sleep_128.png">
+<img align="right" width="96" alt="" src="assets/stickers/NeneStickers/mascot_heart.png">
 
 NeneEngine is released under the [MIT License](LICENSE.txt). Third-party libraries, fonts, icons and models keep their own licenses, listed in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).

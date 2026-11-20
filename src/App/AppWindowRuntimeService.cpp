@@ -314,6 +314,12 @@ namespace NeneEngine
 		return mainWindow != nullptr ? mainWindow->imguiBackend.get() : nullptr;
 	}
 
+	IWindow* AppWindowRuntimeService::GetMainWindow()
+	{
+		AppWindowContext* mainWindow = FindMainWindow();
+		return mainWindow != nullptr ? mainWindow->window.get() : nullptr;
+	}
+
 	IRenderAdapter* AppWindowRuntimeService::GetMainRenderer()
 	{
 		AppWindowContext* mainWindow = FindMainWindow();
@@ -336,6 +342,15 @@ namespace NeneEngine
 	{
 		AppWindowContext* mainWindow = FindMainWindow();
 		return mainWindow != nullptr ? mainWindow->cameraEntity : ECS::NullEntity;
+	}
+
+	eastl::vector<ECS::Entity> AppWindowRuntimeService::GetWindowCameraEntities() const
+	{
+		eastl::vector<ECS::Entity> cameras;
+		cameras.reserve(m_windows.size());
+		for (const auto& window : m_windows)
+			if (window.cameraEntity != ECS::NullEntity) cameras.push_back(window.cameraEntity);
+		return cameras;
 	}
 
 	AppWindowContext* AppWindowRuntimeService::FindMainWindow()

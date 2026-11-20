@@ -11,6 +11,8 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/PathResolver.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/Profiler.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/ResourceManager.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/Core/LogHistorySink.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/LogHistorySink.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/NeneLogger.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EASTLAllocator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GameTimer.cpp"

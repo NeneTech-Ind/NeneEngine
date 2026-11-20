@@ -14,6 +14,8 @@
 #include "Editor/EditorLayer.h"
 #include "GameStates/GameStateMachine.h"
 #include "Input/InputManager.h"
+#include "Scene/Prefab/PrefabLibrary.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <atomic>
 
@@ -34,15 +36,19 @@ namespace NeneEngine
 		const InputManager& GetInputManager() const { return m_inputManager; }
 		ResourceLoadQueue& GetResourceLoads() { return m_resourceLoads; }
 		SceneAssetResolver& GetSceneAssets() { return m_sceneAssets; }
+		ScriptEngine& GetScriptEngine() { return m_scriptEngine; }
+		PrefabLibrary& GetPrefabLibrary() { return m_prefabLibrary; }
 
 	  private:
 		JobSystem m_jobSystem;
 		ResourceLoadQueue m_resourceLoads{m_jobSystem};
 		SceneAssetResolver m_sceneAssets{&m_resourceLoads};
+		InputManager m_inputManager;
+		ScriptEngine m_scriptEngine;
 		GameTimer m_timer;
 		GameStateMachine m_gameStateMachine;
 		ECS::World m_world;
-		InputManager m_inputManager;
+		PrefabLibrary m_prefabLibrary{m_world};
 		AppBootstrapService m_bootstrapService;
 		AppFrameLoopService m_frameLoopService;
 		AppRuntimeConfigService m_runtimeConfigService;

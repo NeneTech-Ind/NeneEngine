@@ -55,8 +55,12 @@ namespace NeneEngine
 			Listener listener;
 			listener.handle = DelegateHandleFactory::Create();
 			listener.callback = std::move(callback);
-			m_listeners.push_back(std::move(listener));
-			return m_listeners.back().handle;
+			const DelegateHandle handle = listener.handle;
+			if (IsBroadcasting())
+				m_pendingListeners.push_back(std::move(listener));
+			else
+				m_listeners.push_back(std::move(listener));
+			return handle;
 		}
 
 		template <typename Lambda> [[nodiscard]] DelegateHandle AddLambda(Lambda&& lambda)
@@ -70,7 +74,7 @@ namespace NeneEngine
 
 			for (auto& listener : m_listeners)
 			{
-				if (listener.handle == handle)
+				if (listener.handle == handle && !listener.pendingRemove)
 				{
 					// Removal can be requested from inside a callback, so compaction is deferred until broadcast ends.
 					listener.pendingRemove = true;
@@ -79,6 +83,12 @@ namespace NeneEngine
 				}
 			}
 
+			for (auto it = m_pendingListeners.begin(); it != m_pendingListeners.end(); ++it)
+			{
+				if (it->handle != handle) continue;
+				m_pendingListeners.erase(it);
+				return true;
+			}
 			return false;
 		}
 
@@ -87,16 +97,20 @@ namespace NeneEngine
 			++m_broadcastDepth;
 			const size_t listenerCount = m_listeners.size();
 
-			// New listeners added during broadcast are handled by the next broadcast, keeping iteration stable.
-			for (size_t index = 0; index < listenerCount; ++index)
+			try
 			{
-				auto& listener = m_listeners[index];
-				if (!listener.pendingRemove && listener.callback) listener.callback(args...);
+				for (size_t index = 0; index < listenerCount; ++index)
+				{
+					auto& listener = m_listeners[index];
+					if (!listener.pendingRemove && listener.callback) listener.callback(args...);
+				}
 			}
-
-			--m_broadcastDepth;
-
-			if (!IsBroadcasting()) Compact();
+			catch (...)
+			{
+				FinishBroadcast();
+				throw;
+			}
+			FinishBroadcast();
 		}
 
 	  private:
@@ -109,12 +123,22 @@ namespace NeneEngine
 
 		[[nodiscard]] bool IsBroadcasting() const { return m_broadcastDepth > 0; }
 
+		void FinishBroadcast()
+		{
+			--m_broadcastDepth;
+			if (IsBroadcasting()) return;
+			Compact();
+			for (auto& listener : m_pendingListeners) m_listeners.push_back(std::move(listener));
+			m_pendingListeners.clear();
+		}
+
 		void Compact()
 		{
 			eastl::erase_if(m_listeners, [](const Listener& listener) { return listener.pendingRemove; });
 		}
 
 		eastl::vector<Listener> m_listeners;
+		eastl::vector<Listener> m_pendingListeners;
 		uint32_t m_broadcastDepth = 0;
 	};
 

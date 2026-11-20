@@ -21,6 +21,7 @@ add_subdirectory(Graphics)
 add_subdirectory(Input)
 add_subdirectory(Platform)
 add_subdirectory(Scene)
+add_subdirectory(Scripting)
 add_subdirectory(GameStates)
 
 target_include_directories(NeneEngine
@@ -58,6 +59,8 @@ find_package(enkiTS         CONFIG REQUIRED)
 find_package(glm            CONFIG REQUIRED)
 find_package(Stb            MODULE REQUIRED)
 find_package(Jolt           CONFIG REQUIRED)
+find_package(unofficial-lua CONFIG REQUIRED)
+find_package(sol2           CONFIG REQUIRED)
 
 target_compile_definitions(NeneEngine PRIVATE NENEENGINE_VERSION="${PROJECT_VERSION}")
 
@@ -73,7 +76,7 @@ if(NENEENGINE_ENABLE_TRACY)
             $<TARGET_FILE:Tracy::TracyClient>
             $<TARGET_FILE_DIR:NeneEngine>
     )
-    install(FILES $<TARGET_FILE:Tracy::TracyClient> DESTINATION bin COMPONENT Runtime)
+    install(FILES $<TARGET_FILE:Tracy::TracyClient> DESTINATION . COMPONENT Runtime)
 endif()
 
 target_include_directories(NeneEngine PRIVATE ${Stb_INCLUDE_DIR})
@@ -88,6 +91,8 @@ target_link_libraries(NeneEngine
         enkiTS::enkiTS
         glm::glm
         Jolt::Jolt
+        unofficial::lua::lua
+        sol2::sol2
         Diligent-Win32Platform
         Diligent-GraphicsEngineD3D12-shared
         Diligent-TextureLoader
@@ -95,8 +100,24 @@ target_link_libraries(NeneEngine
 		comdlg32
 )
 
+get_target_property(NENEENGINE_LUA_LIBRARY_TYPE unofficial::lua::lua TYPE)
+if(WIN32 AND NENEENGINE_LUA_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+    add_custom_command(TARGET NeneEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:unofficial::lua::lua>"
+            "$<TARGET_FILE_DIR:NeneEngine>"
+        VERBATIM
+    )
+    install(FILES "$<TARGET_FILE:unofficial::lua::lua>" DESTINATION . COMPONENT Runtime)
+endif()
+
 file(GLOB NENEENGINE_VCPKG_DEBUG_DLLS   "${NENEENGINE_VCPKG_ROOT_DIR}/debug/bin/*.dll")
 file(GLOB NENEENGINE_VCPKG_RELEASE_DLLS "${NENEENGINE_VCPKG_ROOT_DIR}/bin/*.dll")
+# Lua is deployed from its imported target, which selects the active build configuration.
+list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/lua[.]dll$")
+list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/lua[.]dll$")
+list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/draco[.]dll$")
+list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/draco[.]dll$")
 
 set(NENEENGINE_VCPKG_RUNTIME_DLLS "${NENEENGINE_VCPKG_RELEASE_DLLS}")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -115,15 +136,14 @@ endif()
 install(TARGETS
     NeneEngine
     Diligent-GraphicsEngineD3D12-shared
-    Diligent-Archiver-shared
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION .
     COMPONENT Runtime
 )
 
 if(NENEENGINE_VCPKG_DEBUG_DLLS)
     install(FILES ${NENEENGINE_VCPKG_DEBUG_DLLS}
         CONFIGURATIONS Debug
-        DESTINATION bin
+        DESTINATION .
         COMPONENT Runtime
     )
 endif()
@@ -131,25 +151,32 @@ endif()
 if(NENEENGINE_VCPKG_RELEASE_DLLS)
     install(FILES ${NENEENGINE_VCPKG_RELEASE_DLLS}
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
-        DESTINATION bin
+        DESTINATION .
         COMPONENT Runtime
     )
 endif()
 
-if(D3D_COMPILER_PATH)
-    install(FILES "${D3D_COMPILER_PATH}" DESTINATION bin COMPONENT Runtime)
-endif()
+configure_file("${CMAKE_SOURCE_DIR}/packaging/README.txt.in" "${CMAKE_CURRENT_BINARY_DIR}/README.txt" @ONLY NEWLINE_STYLE CRLF)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/README.txt"
+    "${CMAKE_SOURCE_DIR}/LICENSE.txt"
+    "${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt"
+    DESTINATION .
+    COMPONENT Runtime
+)
 
-if(DXC_COMPILER_PATH AND DXIL_SIGNER_PATH)
-    install(FILES
-        "${DXC_COMPILER_PATH}"
-        "${DXIL_SIGNER_PATH}"
-        DESTINATION bin
-        COMPONENT Runtime
-    )
-endif()
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+include(InstallRequiredSystemLibraries)
+list(FILTER CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS INCLUDE REGEX "/(msvcp140|vcruntime140|vcruntime140_1)[.]dll$")
+install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION . COMPONENT Runtime)
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../assets" DESTINATION . COMPONENT Runtime)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
+    DESTINATION .
+    COMPONENT Runtime
+    PATTERN "readme" EXCLUDE
+    PATTERN "icons" EXCLUDE
+    PATTERN "config/editor_theme.json" EXCLUDE
+)
 
 if(COMMAND copy_required_dlls)
     copy_required_dlls(NeneEngine)

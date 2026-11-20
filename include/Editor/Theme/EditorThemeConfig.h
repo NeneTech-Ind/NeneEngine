@@ -51,11 +51,11 @@ namespace NeneEngine
 
 	struct EditorThemeFontsConfig
 	{
-		std::string uiFontPath = "assets/fonts/nunito_regular.ttf";
-		std::string japaneseFontPath = "assets/fonts/m_plus_rounded_1c_regular.ttf";
-		std::string monospaceFontPath = "assets/fonts/jetbrains_mono_regular.ttf";
-		std::string iconFontPath = "assets/fonts/lucide_icons.ttf";
-		std::string logoFontPath = "assets/fonts/nene_font.ttf";
+		std::string uiFontPath = "assets/engine/fonts/nunito_regular.ttf";
+		std::string japaneseFontPath = "assets/engine/fonts/m_plus_rounded_1c_regular.ttf";
+		std::string monospaceFontPath = "assets/engine/fonts/jetbrains_mono_regular.ttf";
+		std::string iconFontPath = "assets/engine/fonts/lucide_icons.ttf";
+		std::string logoFontPath = "assets/engine/fonts/nene_font.ttf";
 		float size = 16.0f;
 	};
 

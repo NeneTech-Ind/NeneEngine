@@ -22,9 +22,20 @@ namespace NeneEngine
 		}
 		try
 		{
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(
-			         root, std::filesystem::directory_options::skip_permission_denied))
+			for (auto it = std::filesystem::recursive_directory_iterator(
+			         root, std::filesystem::directory_options::skip_permission_denied);
+			     it != std::filesystem::recursive_directory_iterator{}; ++it)
 			{
+				const auto& entry = *it;
+				if (it.depth() == 0 && entry.is_directory())
+				{
+					const auto name = entry.path().filename();
+					if (name == "engine" || name == "readme" || name == "icons")
+					{
+						it.disable_recursion_pending();
+						continue;
+					}
+				}
 				if (!entry.is_regular_file()) continue;
 				std::string extension = entry.path().extension().string();
 				std::transform(extension.begin(), extension.end(), extension.begin(),
@@ -38,6 +49,12 @@ namespace NeneEngine
 					kind = AssetKind::Texture;
 				else if (extension == ".shader")
 					kind = AssetKind::Shader;
+				else if (entry.path().filename().string().ends_with(".prefab.json"))
+				{
+					const auto relative = entry.path().lexically_relative(root / "prefabs");
+					if (relative.empty() || relative.has_root_path() || *relative.begin() == "..") continue;
+					kind = AssetKind::Prefab;
+				}
 				else
 					continue;
 				m_entries.push_back({PortableAssetPath(entry.path()), kind});

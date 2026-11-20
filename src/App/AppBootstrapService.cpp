@@ -17,6 +17,7 @@
 #include "ECS/Systems/PhysicsSystem.h"
 #include "ECS/Systems/PlayerControllerSystem.h"
 #include "ECS/Systems/PrimitiveControlSystem.h"
+#include "ECS/Systems/ScriptSystem.h"
 #include "GameStates/GameStateMachine.h"
 #include "GameStates/PlayState.h"
 #include "Graphics/Loaders/ResourceLoaderRegistration.h"
@@ -50,7 +51,7 @@ namespace NeneEngine
 			world.GetEventBus().Subscribe<ECS::CollisionEvent>(
 			    [&world](const ECS::CollisionEvent& event)
 			    {
-				    NENE_LOG_INFO(
+				    NENE_LOG_DEBUG(
 				        "Collision: '{}' <-> '{}' at ({:.2f}, {:.2f}, {:.2f}), normal ({:.2f}, {:.2f}, {:.2f})",
 				        DescribeEntity(world, event.entityA), DescribeEntity(world, event.entityB),
 				        event.contactPoint.x, event.contactPoint.y, event.contactPoint.z, event.normal.x,
@@ -62,11 +63,12 @@ namespace NeneEngine
 	bool AppBootstrapService::Initialize(NeneEngineApp& app, JobSystem& jobSystem, GameStateMachine& gameStateMachine,
 	                                     ECS::World& world, AppRuntimeConfigService& runtimeConfigService,
 	                                     AppWindowRuntimeService& windowRuntimeService,
-	                                     ApplyConfigCallback applyRuntimeConfig, const std::string& logFilePath,
+	                                     ApplyConfigCallback applyRuntimeConfig, const std::filesystem::path& logFilePath,
 	                                     uint32_t width, uint32_t height)
 	{
 		if (!NeneLogger::GetInstance().Initialize(logFilePath, spdlog::level::info, true)) return false;
 		NENE_LOG_INFO("===== NeneEngine v{} starting =====", NENEENGINE_VERSION);
+		app.GetScriptEngine().Initialize(app.GetInputManager(), world, app.GetPrefabLibrary());
 		jobSystem.Initialize();
 		RegisterGraphicsResourceLoaders(ResourceManager::GetInstance());
 		RunStartupLibraryChecks(jobSystem);
@@ -81,6 +83,7 @@ namespace NeneEngine
 		world.AddSystem(eastl::make_unique<ECS::MovementSystem>(jobSystem));
 		world.AddSystem(eastl::make_unique<ECS::PlayerControllerSystem>(app.GetInputManager()));
 		world.AddSystem(eastl::make_unique<ECS::PrimitiveControlSystem>(app.GetInputManager()));
+		world.AddSystem(eastl::make_unique<ECS::ScriptSystem>(app.GetScriptEngine(), world));
 		world.AddSystem(eastl::make_unique<ECS::PhysicsSystem>(jobSystem));
 		SubscribeCollisionLogger(world);
 		DemoScene::LoadOrCreate(world, app.GetResourceLoads(), width, height);

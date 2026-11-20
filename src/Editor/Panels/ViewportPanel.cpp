@@ -150,10 +150,12 @@ namespace NeneEngine
 		context.isViewportHovered = ImGui::IsItemHovered();
 		if (context.CanEdit() && ImGui::BeginDragDropTarget())
 		{
-			for (const bool isTexture : {false, true})
+			for (const auto kind : {AssetKind::Model, AssetKind::Texture, AssetKind::Prefab})
 			{
-				if (const auto* payload =
-				        ImGui::AcceptDragDropPayload(isTexture ? TextureAssetPayload : ModelAssetPayload))
+				const auto* payloadType = kind == AssetKind::Prefab    ? PrefabAssetPayload
+				                          : kind == AssetKind::Texture ? TextureAssetPayload
+				                                                       : ModelAssetPayload;
+				if (const auto* payload = ImGui::AcceptDragDropPayload(payloadType))
 				{
 					glm::vec3 position(0.0f);
 					if (const auto* camera = context.world.GetComponent<ECS::CameraComponent>(context.cameraEntity))
@@ -170,7 +172,11 @@ namespace NeneEngine
 						const float distance = std::abs(ray.y) > 1e-5f ? -origin.y / ray.y : -1.0f;
 						position = origin + ray * (distance > 0.1f && distance < 1000.0f ? distance : 5.0f);
 					}
-					CreateSceneAsset(context, static_cast<const char*>(payload->Data), isTexture, position);
+					if (kind == AssetKind::Prefab)
+						CreateScenePrefab(context, static_cast<const char*>(payload->Data), position);
+					else
+						CreateSceneAsset(context, static_cast<const char*>(payload->Data), kind == AssetKind::Texture,
+						                 position);
 				}
 			}
 			ImGui::EndDragDropTarget();
@@ -196,7 +202,9 @@ namespace NeneEngine
 
 		if (ImGui::IsKeyPressed(ImGuiKey_W, false)) m_operation = GizmoOperation::Translate;
 		if (ImGui::IsKeyPressed(ImGuiKey_E, false)) m_operation = GizmoOperation::Rotate;
-		if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_operation = GizmoOperation::Scale;
+		const ImGuiIO& io = ImGui::GetIO();
+		if (!(io.KeyCtrl && io.KeyShift) && ImGui::IsKeyPressed(ImGuiKey_R, false))
+			m_operation = GizmoOperation::Scale;
 		if (ImGui::IsKeyPressed(ImGuiKey_X, false))
 			m_space = m_space == GizmoSpace::World ? GizmoSpace::Local : GizmoSpace::World;
 	}

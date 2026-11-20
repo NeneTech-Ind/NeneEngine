@@ -1,0 +1,163 @@
+#include "Scripting/LuaBehaviour.h"
+
+#include "Core/NeneLogger.h"
+#include "Core/Profiler.h"
+#include "Scripting/LuaInstructionLimit.h"
+
+#include <algorithm>
+#include <sol/sol.hpp>
+#include <utility>
+
+namespace NeneEngine
+{
+	namespace
+	{
+		constexpr int kBehaviourInstructionLimit = 100'000;
+
+		int InvokeBehaviourCallback(lua_State* state)
+		{
+			// This runs inside the protected call, so Lua code in __index is covered by the same budget
+			lua_pushvalue(state, 2);
+			lua_gettable(state, 1);
+			if (lua_isnil(state, -1)) return 0;
+			if (!lua_isfunction(state, -1))
+				return luaL_error(state, "'%s' must be a function", lua_tostring(state, 2));
+
+			lua_remove(state, 2);
+			lua_insert(state, 1);
+			lua_call(state, lua_gettop(state) - 1, 0);
+			return 0;
+		}
+	}
+
+	struct LuaBehaviour::Impl
+	{
+		sol::table instance;
+		sol::protected_function invokeCallback;
+		std::string scriptPath;
+		ScriptFieldSchema fieldSchema;
+		bool started = false;
+		bool destroyed = false;
+		bool faulted = false;
+
+		void SetField(const ScriptFieldDefinition& definition, const std::map<std::string, ScriptFieldValue>& fields)
+		{
+			const auto field = fields.find(definition.name);
+			const ScriptFieldValue* value = &definition.defaultValue;
+			if (field != fields.end())
+			{
+				if (IsValidScriptFieldValue(definition, field->second))
+					value = &field->second;
+				else
+					NENE_LOG_WARN("Script '{}': invalid value for field '{}'; using its default", scriptPath,
+					              definition.name);
+			}
+			std::visit([&](const auto& fieldValue) { instance.raw_set(definition.name, fieldValue); }, *value);
+		}
+
+		[[nodiscard]] bool CanInvoke() const { return !destroyed && !faulted; }
+
+		template <typename... Args> bool Invoke(std::string_view methodName, Args&&... args)
+		{
+			const LuaInstructionLimit instructionLimit(instance.lua_state(), kBehaviourInstructionLimit);
+			const auto result = invokeCallback(instance, methodName, std::forward<Args>(args)...);
+			if (!result.valid())
+			{
+				const sol::error error = result;
+				NENE_LOG_ERROR("Script '{}': '{}' failed: {}", scriptPath, methodName, error.what());
+				faulted = true;
+				return false;
+			}
+			return true;
+		}
+	};
+
+	LuaBehaviour::LuaBehaviour(const sol::table& scriptClass, std::string_view scriptPath,
+	                           const ScriptFieldSchema& fieldSchema,
+	                           const std::map<std::string, ScriptFieldValue>& fields, const sol::object& entityApi)
+	    : m_impl(std::make_unique<Impl>())
+	{
+		m_impl->scriptPath = scriptPath;
+		sol::state_view lua{scriptClass.lua_state()};
+		m_impl->instance = lua.create_table();
+		m_impl->invokeCallback = sol::make_reference<sol::protected_function>(lua.lua_state(), &InvokeBehaviourCallback);
+		m_impl->instance[sol::metatable_key] = scriptClass;
+
+		// Initialize engine-owned fields without invoking a script's __newindex.
+		for (const auto& definition : fieldSchema)
+			m_impl->SetField(definition, fields);
+
+		m_impl->instance.raw_set("entity", entityApi);
+		m_impl->fieldSchema = fieldSchema;
+	}
+
+	LuaBehaviour::~LuaBehaviour() = default;
+
+	bool LuaBehaviour::HasStarted() const
+	{
+		return m_impl->started;
+	}
+
+	void LuaBehaviour::Reload(const sol::table& scriptClass, const ScriptFieldSchema& fieldSchema,
+	                          const std::map<std::string, ScriptFieldValue>& fields)
+	{
+		for (const auto& previous : m_impl->fieldSchema)
+		{
+			if (previous.name != "entity" &&
+			    std::ranges::find(fieldSchema, previous.name, &ScriptFieldDefinition::name) == fieldSchema.end())
+				m_impl->instance.raw_set(previous.name, sol::lua_nil);
+		}
+		for (const auto& definition : fieldSchema)
+		{
+			if (definition.name == "entity") continue;
+			const auto previous = std::ranges::find(m_impl->fieldSchema, definition.name, &ScriptFieldDefinition::name);
+			if (previous == m_impl->fieldSchema.end() || previous->defaultValue != definition.defaultValue ||
+			    previous->minimum != definition.minimum || previous->maximum != definition.maximum ||
+			    previous->options != definition.options)
+				m_impl->SetField(definition, fields);
+		}
+		m_impl->instance[sol::metatable_key] = scriptClass;
+		m_impl->fieldSchema = fieldSchema;
+		m_impl->faulted = false;
+	}
+
+	void LuaBehaviour::OnStart()
+	{
+		if (m_impl->started || !m_impl->CanInvoke()) return;
+
+		NENE_PROFILE_SCOPE("on_start");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
+		m_impl->started = m_impl->Invoke("on_start");
+	}
+
+	void LuaBehaviour::OnUpdate(float deltaTime)
+	{
+		if (!m_impl->started || !m_impl->CanInvoke()) return;
+
+		NENE_PROFILE_SCOPE("on_update");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
+		m_impl->Invoke("on_update", deltaTime);
+	}
+
+	void LuaBehaviour::OnDestroy()
+	{
+		if (m_impl->destroyed) return;
+
+		NENE_PROFILE_SCOPE("on_destroy");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
+		// Destroy callback is allowed to run after an earlier callback faulted
+		m_impl->Invoke("on_destroy");
+		m_impl->destroyed = true;
+	}
+
+	void LuaBehaviour::OnCollision(const sol::object& other, const glm::vec3& normal)
+	{
+		if (!m_impl->started) OnStart();
+		if (!m_impl->CanInvoke()) return;
+
+		NENE_PROFILE_SCOPE("on_collision");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
+		m_impl->Invoke("on_collision", other, normal);
+	}
+
+} // namespace NeneEngine

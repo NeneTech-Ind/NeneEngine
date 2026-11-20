@@ -43,9 +43,11 @@ namespace NeneEngine
 		[[nodiscard]] InputDevice* GetFocusedInput();
 		[[nodiscard]] const InputDevice* GetFocusedInput() const;
 		[[nodiscard]] IImGuiBackend* GetMainImGuiBackend();
+		[[nodiscard]] IWindow* GetMainWindow();
 		[[nodiscard]] IRenderAdapter* GetMainRenderer();
 		[[nodiscard]] InputDevice* GetMainWindowInput();
 		[[nodiscard]] ECS::Entity GetMainCameraEntity();
+		[[nodiscard]] eastl::vector<ECS::Entity> GetWindowCameraEntities() const;
 		void SetMainWindowCloseRequestHandler(IWindow::CloseRequestHandler handler);
 		[[nodiscard]] eastl::vector<IRenderAdapter*> GetRenderers() const;
 

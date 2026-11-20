@@ -42,6 +42,12 @@ namespace NeneEngine
 			(void)isDpiAware;
 		}
 
+		int GetResizeFrameThickness(HWND hwnd, int frameMetric)
+		{
+			const UINT dpi = GetDpiForWindow(hwnd);
+			return GetSystemMetricsForDpi(frameMetric, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+		}
+
 		std::wstring ToWideString(const std::string& value)
 		{
 			if (value.empty()) return {};
@@ -135,6 +141,35 @@ namespace NeneEngine
 		SetWindowTextW(m_hwnd, wideTitle.c_str());
 	}
 
+	void Win32Window::SetCustomTitleBar(TitleBarHitTest hitTest)
+	{
+		m_titleBarHitTest = std::move(hitTest);
+		if (!m_hwnd) return;
+
+		SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0,
+		             SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+
+	void Win32Window::Minimize()
+	{
+		if (m_hwnd) ShowWindow(m_hwnd, SW_MINIMIZE);
+	}
+
+	void Win32Window::ToggleMaximize()
+	{
+		if (m_hwnd) ShowWindow(m_hwnd, IsZoomed(m_hwnd) ? SW_RESTORE : SW_MAXIMIZE);
+	}
+
+	bool Win32Window::IsWindowMaximized() const
+	{
+		return m_hwnd && IsZoomed(m_hwnd);
+	}
+
+	void Win32Window::RequestClose()
+	{
+		if (m_hwnd) PostMessageW(m_hwnd, WM_CLOSE, 0, 0);
+	}
+
 	LRESULT CALLBACK Win32Window::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		if (message == WM_NCCREATE)
@@ -194,6 +229,40 @@ namespace NeneEngine
 			if (!m_isMinimized) m_resized.Broadcast(m_width, m_height);
 			return 0;
 
+		case WM_NCCALCSIZE:
+			if (wParam == TRUE && m_titleBarHitTest) return CalcCustomFrameClientRect(wParam, lParam);
+			break;
+
+		case WM_NCHITTEST:
+			if (m_titleBarHitTest) return HitTestCustomFrame(wParam, lParam);
+			break;
+
+		case WM_NCMOUSEMOVE:
+			if (!m_titleBarHitTest) break;
+			m_isMaximizeButtonHovered = wParam == HTMAXBUTTON;
+			if (!m_isMaximizeButtonHovered) m_isMaximizeButtonPressed = false;
+			BeginNonClientMouseLeaveTracking();
+			if (m_isMaximizeButtonHovered) return 0;
+			break;
+
+		case WM_NCMOUSELEAVE:
+			m_isTrackingNonClientMouseLeave = false;
+			m_isMaximizeButtonHovered = false;
+			m_isMaximizeButtonPressed = false;
+			break;
+
+		case WM_NCLBUTTONDOWN:
+		case WM_NCLBUTTONDBLCLK:
+			if (!m_titleBarHitTest || wParam != HTMAXBUTTON) break;
+			m_isMaximizeButtonPressed = true;
+			return 0;
+
+		case WM_NCLBUTTONUP:
+			if (!m_titleBarHitTest || wParam != HTMAXBUTTON) break;
+			if (m_isMaximizeButtonPressed) ToggleMaximize();
+			m_isMaximizeButtonPressed = false;
+			return 0;
+
 		case WM_DPICHANGED:
 		{
 			const RECT* suggestedRect = reinterpret_cast<const RECT*>(lParam);
@@ -204,6 +273,9 @@ namespace NeneEngine
 		}
 
 		case WM_MOUSEMOVE:
+			m_isMaximizeButtonHovered = false;
+			m_isMaximizeButtonPressed = false;
+			m_isTrackingNonClientMouseLeave = false;
 			BeginMouseLeaveTracking();
 			m_input.NotifyMouseMove(
 			    {static_cast<float>(GET_X_LPARAM(lParam)), static_cast<float>(GET_Y_LPARAM(lParam))});
@@ -289,6 +361,42 @@ namespace NeneEngine
 		return KeyCode::None;
 	}
 
+	LRESULT Win32Window::CalcCustomFrameClientRect(WPARAM wParam, LPARAM lParam)
+	{
+		auto* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+		const LONG windowTop = params->rgrc[0].top;
+		const LRESULT result = DefWindowProcW(m_hwnd, WM_NCCALCSIZE, wParam, lParam);
+		if (result != 0) return result;
+
+		params->rgrc[0].top = windowTop;
+		if (IsZoomed(m_hwnd)) params->rgrc[0].top += GetResizeFrameThickness(m_hwnd, SM_CYFRAME);
+		return 0;
+	}
+
+	LRESULT Win32Window::HitTestCustomFrame(WPARAM wParam, LPARAM lParam)
+	{
+		const LRESULT hit = DefWindowProcW(m_hwnd, WM_NCHITTEST, wParam, lParam);
+
+		POINT point{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+		ScreenToClient(m_hwnd, &point);
+		const bool isOnTopEdge = !IsZoomed(m_hwnd) && point.y < GetResizeFrameThickness(m_hwnd, SM_CYFRAME);
+
+		if (isOnTopEdge && hit == HTLEFT) return HTTOPLEFT;
+		if (isOnTopEdge && hit == HTRIGHT) return HTTOPRIGHT;
+		if (hit != HTCLIENT) return hit;
+		if (isOnTopEdge) return HTTOP;
+
+		switch (m_titleBarHitTest(point.x, point.y))
+		{
+		case WindowHitArea::Caption:
+			return HTCAPTION;
+		case WindowHitArea::MaximizeButton:
+			return HTMAXBUTTON;
+		default:
+			return HTCLIENT;
+		}
+	}
+
 	void Win32Window::BeginMouseLeaveTracking()
 	{
 		if (m_isTrackingMouseLeave || !m_hwnd) return;
@@ -298,6 +406,17 @@ namespace NeneEngine
 		trackMouseEvent.dwFlags = TME_LEAVE;
 		trackMouseEvent.hwndTrack = m_hwnd;
 		m_isTrackingMouseLeave = TrackMouseEvent(&trackMouseEvent) == TRUE;
+	}
+
+	void Win32Window::BeginNonClientMouseLeaveTracking()
+	{
+		if (m_isTrackingNonClientMouseLeave || !m_hwnd) return;
+
+		TRACKMOUSEEVENT trackMouseEvent{};
+		trackMouseEvent.cbSize = sizeof(trackMouseEvent);
+		trackMouseEvent.dwFlags = TME_LEAVE | TME_NONCLIENT;
+		trackMouseEvent.hwndTrack = m_hwnd;
+		m_isTrackingNonClientMouseLeave = TrackMouseEvent(&trackMouseEvent) == TRUE;
 	}
 
 	KeyCode Win32Window::TranslateMouseButton(UINT message, WPARAM wParam)

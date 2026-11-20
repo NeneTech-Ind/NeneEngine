@@ -18,6 +18,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/PlayerControllerComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/PrimitiveControlComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/RigidbodyComponent.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/ScriptComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/TagComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Components/TransformComponent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/CameraControllerSystem.h"
@@ -28,6 +29,7 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/PlayerControllerSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/PrimitiveControlSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/RenderSystem.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/ECS/Systems/ScriptSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/World.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/CameraControllerSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/DebugDrawControlSystem.cpp"
@@ -36,4 +38,5 @@ target_sources(NeneEngine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/PlayerControllerSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/PrimitiveControlSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Systems/RenderSystem.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Systems/ScriptSystem.cpp"
 )

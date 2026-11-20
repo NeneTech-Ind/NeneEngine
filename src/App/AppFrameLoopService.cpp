@@ -13,6 +13,7 @@
 #include "Input/InputDevice.h"
 #include "Input/InputManager.h"
 
+#include <algorithm>
 #include <format>
 
 namespace NeneEngine
@@ -20,6 +21,7 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr uint32_t kPausedWaitTimeoutMs = 100;
+		constexpr float kMaxFrameDeltaTime = 0.1f;
 	} // namespace
 
 	void AppFrameLoopService::Run(std::atomic<bool>& running, GameTimer& timer, GameStateMachine& gameStateMachine,
@@ -47,7 +49,7 @@ namespace NeneEngine
 
 			timer.Start();
 			timer.Tick();
-			const float deltaTime = timer.GetDeltaTime();
+			const float deltaTime = (std::min)(timer.GetDeltaTime(), kMaxFrameDeltaTime);
 
 			const bool isGameplayRunning = editorLayer.IsGameplayRunning();
 			InputPhase(deltaTime, inputManager, windowRuntimeService, getFocusedInput);

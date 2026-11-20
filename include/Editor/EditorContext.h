@@ -19,6 +19,7 @@ struct ImFont;
 namespace NeneEngine
 {
 	class EditorHistory;
+	class PrefabLibrary;
 	class IRenderAdapter;
 	struct EditorThemeColorsConfig;
 
@@ -57,6 +58,7 @@ namespace NeneEngine
 		EditorHistory& history;
 		ECS::Entity selectedEntity = ECS::NullEntity;
 		ECS::Entity cameraEntity = ECS::NullEntity;
+		eastl::vector<ECS::Entity> windowCameras;
 		EditorMode mode = EditorMode::Edit;
 		bool isViewportHovered = false;
 		bool isViewportFocused = false;
@@ -64,6 +66,7 @@ namespace NeneEngine
 		AssetCatalog assets;
 		SceneAssetResolver assetResolver{};
 		ResourceLoadQueue* resourceLoads = nullptr;
+		PrefabLibrary* prefabs = nullptr;
 		uint64_t sceneGeneration = 0;
 		bool isSceneLoading = false;
 		eastl::vector<ResourceLoadQueue::Completion> pendingAssets;

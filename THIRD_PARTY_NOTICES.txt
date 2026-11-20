@@ -125,7 +125,7 @@ INCLUDED COMPONENTS
    License:
    SIL Open Font License 1.1
    Local license file:
-   assets/fonts/nunito_license.txt
+   assets/engine/fonts/nunito_license.txt
 
 
 14. JetBrains Mono font
@@ -134,7 +134,7 @@ INCLUDED COMPONENTS
    License:
    SIL Open Font License 1.1
    Local license file:
-   assets/fonts/jetbrains_mono_license.txt
+   assets/engine/fonts/jetbrains_mono_license.txt
 
 
 15. M PLUS Rounded 1c font
@@ -143,7 +143,7 @@ INCLUDED COMPONENTS
    License:
    SIL Open Font License 1.1
    Local license file:
-   assets/fonts/m_plus_rounded_1c_license.txt
+   assets/engine/fonts/m_plus_rounded_1c_license.txt
 
 
 16. Lucide icons
@@ -152,7 +152,7 @@ INCLUDED COMPONENTS
    License:
    ISC (portions from Feather under MIT)
    Local license file:
-   assets/fonts/lucide_icons_license.txt
+   assets/engine/fonts/lucide_icons_license.txt
 
 
 17. Dear ImGui (docking branch)
@@ -171,6 +171,24 @@ INCLUDED COMPONENTS
    BSD 2-Clause
    Local license file:
    external/imguizmo/LICENSE
+
+
+19. Lua
+   Purpose:
+   Embedded scripting runtime
+   License:
+   MIT
+   Local license file:
+   out/build/x64-debug/vcpkg_installed/x64-windows/share/lua/copyright
+
+
+20. sol2
+   Purpose:
+   C++ bindings for Lua
+   License:
+   MIT
+   Local license file:
+   out/build/x64-debug/vcpkg_installed/x64-windows/share/sol2/copyright
 
 
 NOTES

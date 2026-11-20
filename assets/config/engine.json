@@ -30,6 +30,8 @@
       "PlayerMoveLeft": ["Left"],
       "PlayerMoveRight": ["Right"],
       "PlayerJump": ["Enter"],
+      "DuelAttack": ["J"],
+      "DuelFire": ["K"],
       "ToggleDebugDraw": ["F3"]
     }
   },
