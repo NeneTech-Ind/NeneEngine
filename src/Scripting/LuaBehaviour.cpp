@@ -55,13 +55,10 @@ namespace NeneEngine
 			std::visit([&](const auto& fieldValue) { instance.raw_set(definition.name, fieldValue); }, *value);
 		}
 
-		template <typename... Args> bool Invoke(std::string_view methodName, bool allowWhenFaulted, Args&&... args)
-		{
-			if (destroyed || (faulted && !allowWhenFaulted)) return false;
+		[[nodiscard]] bool CanInvoke() const { return !destroyed && !faulted; }
 
-			NENE_PROFILE_SCOPE("Lua Callback");
-			NENE_PROFILE_ZONE_NAME(methodName.data(), methodName.size());
-			NENE_PROFILE_ZONE_TEXT(scriptPath.data(), scriptPath.size());
+		template <typename... Args> bool Invoke(std::string_view methodName, Args&&... args)
+		{
 			const LuaInstructionLimit instructionLimit(instance.lua_state(), kBehaviourInstructionLimit);
 			const auto result = invokeCallback(instance, methodName, std::forward<Args>(args)...);
 			if (!result.valid())
@@ -126,28 +123,41 @@ namespace NeneEngine
 
 	void LuaBehaviour::OnStart()
 	{
-		if (m_impl->started || m_impl->destroyed) return;
-		m_impl->started = m_impl->Invoke("on_start", false);
+		if (m_impl->started || !m_impl->CanInvoke()) return;
+
+		NENE_PROFILE_SCOPE("on_start");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
+		m_impl->started = m_impl->Invoke("on_start");
 	}
 
 	void LuaBehaviour::OnUpdate(float deltaTime)
 	{
-		if (!m_impl->started || m_impl->destroyed) return;
-		m_impl->Invoke("on_update", false, deltaTime);
+		if (!m_impl->started || !m_impl->CanInvoke()) return;
+
+		NENE_PROFILE_SCOPE("on_update");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
+		m_impl->Invoke("on_update", deltaTime);
 	}
 
 	void LuaBehaviour::OnDestroy()
 	{
 		if (m_impl->destroyed) return;
+
+		NENE_PROFILE_SCOPE("on_destroy");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
 		// Destroy callback is allowed to run after an earlier callback faulted
-		m_impl->Invoke("on_destroy", true);
+		m_impl->Invoke("on_destroy");
 		m_impl->destroyed = true;
 	}
 
 	void LuaBehaviour::OnCollision(const sol::object& other, const glm::vec3& normal)
 	{
 		if (!m_impl->started) OnStart();
-		m_impl->Invoke("on_collision", false, other, normal);
+		if (!m_impl->CanInvoke()) return;
+
+		NENE_PROFILE_SCOPE("on_collision");
+		NENE_PROFILE_ZONE_TEXT(m_impl->scriptPath.data(), m_impl->scriptPath.size());
+		m_impl->Invoke("on_collision", other, normal);
 	}
 
 } // namespace NeneEngine
