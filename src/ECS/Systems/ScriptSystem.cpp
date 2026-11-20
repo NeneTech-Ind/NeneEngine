@@ -1,5 +1,6 @@
 #include "ECS/Systems/ScriptSystem.h"
 
+#include "Core/Profiler.h"
 #include "ECS/Components/ScriptComponent.h"
 #include "ECS/Events/CollisionEvent.h"
 #include "ECS/World.h"
@@ -55,6 +56,7 @@ namespace NeneEngine::ECS
 
 		void Update(float deltaTime)
 		{
+			NENE_PROFILE_SCOPE("ScriptSystem Update");
 			auto& registry = world.GetRegistry();
 			auto view = registry.view<ScriptComponent>();
 			for (const Entity entity : view)

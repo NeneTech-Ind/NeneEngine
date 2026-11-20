@@ -1,6 +1,7 @@
 #include "Scripting/LuaBehaviour.h"
 
 #include "Core/NeneLogger.h"
+#include "Core/Profiler.h"
 #include "Scripting/LuaInstructionLimit.h"
 
 #include <algorithm>
@@ -58,6 +59,9 @@ namespace NeneEngine
 		{
 			if (destroyed || (faulted && !allowWhenFaulted)) return false;
 
+			NENE_PROFILE_SCOPE("Lua Callback");
+			NENE_PROFILE_ZONE_NAME(methodName.data(), methodName.size());
+			NENE_PROFILE_ZONE_TEXT(scriptPath.data(), scriptPath.size());
 			const LuaInstructionLimit instructionLimit(instance.lua_state(), kBehaviourInstructionLimit);
 			const auto result = invokeCallback(instance, methodName, std::forward<Args>(args)...);
 			if (!result.valid())
