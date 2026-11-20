@@ -263,6 +263,7 @@ namespace NeneEngine
 		std::filesystem::path scriptsRoot;
 		std::unordered_map<std::filesystem::path, TrackedScript> scripts;
 		std::unordered_map<std::string, TrackedModule> modules;
+		std::uint64_t scriptCacheGeneration = 0;
 		bool moduleReloadPending = false;
 		bool scriptUsesRequire = false;
 
@@ -467,6 +468,11 @@ namespace NeneEngine
 		return it != m_impl->scripts.end() ? it->second.revision : 0;
 	}
 
+	std::uint64_t ScriptEngine::GetScriptCacheGeneration() const
+	{
+		return m_impl ? m_impl->scriptCacheGeneration : 0;
+	}
+
 	const ScriptFieldSchema* ScriptEngine::GetFieldSchema(const std::filesystem::path& path) const
 	{
 		if (!m_impl) return nullptr;
@@ -586,6 +592,7 @@ namespace NeneEngine
 	{
 		script.loaded = std::move(loaded);
 		++script.revision;
+		++scriptCacheGeneration;
 		if (isReload) NENE_LOG_INFO("Reloaded Lua script '{}'", path.string());
 	}
 

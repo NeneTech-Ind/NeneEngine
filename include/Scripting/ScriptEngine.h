@@ -48,6 +48,9 @@ namespace NeneEngine
 		// Zero means no successful load. Failed reloads keep the last working revision.
 		[[nodiscard]] std::uint64_t GetScriptRevision(const std::filesystem::path& path) const;
 
+		// Changes when a script revision is successfully published, including its first load.
+		[[nodiscard]] std::uint64_t GetScriptCacheGeneration() const;
+
 		// Returns nullptr if the script has not been loaded successfully
 		[[nodiscard]] const ScriptFieldSchema* GetFieldSchema(const std::filesystem::path& path) const;
 
