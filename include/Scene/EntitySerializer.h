@@ -18,9 +18,16 @@ namespace NeneEngine
 	using EntitySerializationMap = eastl::unordered_map<ECS::Entity, uint32_t>;
 	using EntityDeserializationMap = eastl::unordered_map<uint32_t, ECS::Entity>;
 
+	struct SerializedEntityHierarchy
+	{
+		nlohmann::json entities;
+		EntityDeserializationMap entitiesById;
+	};
+
 	[[nodiscard]] nlohmann::json SerializeScriptComponent(const ECS::ScriptComponent& script);
 	[[nodiscard]] nlohmann::json SerializeEntity(const ECS::World& world, ECS::Entity entity,
 	                                             const EntitySerializationMap& entityIds);
+	[[nodiscard]] SerializedEntityHierarchy SerializeEntityHierarchy(const ECS::World& world, ECS::Entity root);
 	void DeserializeEntity(const nlohmann::json& entityJson, ECS::World& world,
 	                       const EntityDeserializationMap& entitiesById);
 
