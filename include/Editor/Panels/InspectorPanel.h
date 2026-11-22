@@ -13,6 +13,7 @@
 #include <EASTL/functional.h>
 #include <EASTL/optional.h>
 #include <EASTL/unique_ptr.h>
+#include <EASTL/vector.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <string>
@@ -78,6 +79,7 @@ namespace NeneEngine
 		void DrawEntityHeader(EditorContext& context);
 		void DrawComponents(EditorContext& context);
 		void DrawAddComponent(EditorContext& context);
+		bool DrawAddScript(EditorContext& context);
 		void DrawTransformFields(ECS::Entity entity, ECS::TransformComponent& transform, FieldEdits& edits);
 		void DrawMaterial(EditorContext& context);
 		void DrawMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, bool texture);
@@ -93,6 +95,7 @@ namespace NeneEngine
 		const char* m_pendingEditLabel = nullptr;
 
 		ScriptEngine& m_scriptEngine;
+		eastl::vector<std::string> m_scriptChoices;
 		eastl::optional<ScriptFieldEdit> m_scriptFieldEdit;
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 

@@ -3,6 +3,7 @@
 #include "Editor/Panels/InspectorPanel.h"
 
 #include "Core/NeneLogger.h"
+#include "Core/PathResolver.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/CameraControllerComponent.h"
 #include "ECS/Components/ColliderComponent.h"
@@ -30,6 +31,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <cwctype>
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -381,6 +383,12 @@ namespace NeneEngine
 		ImGui::SetItemTooltip("Right-click a component header to remove it");
 
 		if (!ImGui::BeginPopup(kAddComponentPopup)) return;
+		if (!context.CanEdit())
+		{
+			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+			return;
+		}
 
 		bool hasChoices = false;
 		hasChoices |= DrawAddItem<ECS::TagComponent>(context, NENE_ICON_TAG, "Tag");
@@ -391,8 +399,50 @@ namespace NeneEngine
 		hasChoices |= DrawAddItem<ECS::MovementComponent>(context, NENE_ICON_MOVEMENT, "Movement");
 		hasChoices |= DrawAddItem<ECS::PlayerControllerComponent>(context, NENE_ICON_CONTROLLER, "Player Controller");
 		hasChoices |= DrawAddItem<ECS::PrimitiveControlComponent>(context, NENE_ICON_CONTROLLER, "Primitive Control");
+		hasChoices |= DrawAddScript(context);
 		if (!hasChoices) ImGui::TextDisabled("Every component is already added");
 		ImGui::EndPopup();
+	}
+
+	bool InspectorPanel::DrawAddScript(EditorContext& context)
+	{
+		if (context.world.HasComponent<ECS::ScriptComponent>(context.selectedEntity)) return false;
+		if (!ImGui::BeginMenu(NENE_ICON_FILE_CODE " Script")) return true;
+
+		if (ImGui::IsWindowAppearing())
+		{
+			m_scriptChoices.clear();
+			const auto root = ResolveFromExecutionRoots("assets/scripts");
+			if (!root.empty())
+			{
+				std::error_code error;
+				for (std::filesystem::recursive_directory_iterator
+				         it(root, std::filesystem::directory_options::skip_permission_denied, error),
+				     end;
+				     !error && it != end; it.increment(error))
+				{
+					std::error_code entryError;
+					if (!it->is_regular_file(entryError)) continue;
+					auto extension = it->path().extension().wstring();
+					std::ranges::transform(extension, extension.begin(), std::towlower);
+					if (extension == L".lua")
+						m_scriptChoices.push_back(it->path().lexically_relative(root).generic_string());
+				}
+			}
+			std::sort(m_scriptChoices.begin(), m_scriptChoices.end());
+		}
+
+		if (m_scriptChoices.empty()) ImGui::TextDisabled("No Lua scripts found in assets/scripts");
+		for (const auto& path : m_scriptChoices)
+		{
+			if (!ImGui::MenuItem(path.c_str())) continue;
+			using Command = ComponentPresenceCommand<ECS::ScriptComponent>;
+			m_pendingCommand = eastl::make_unique<Command>("Add Script", context.selectedEntity, Command::Action::Add,
+			                                               ECS::ScriptComponent{path, {}});
+			break;
+		}
+		ImGui::EndMenu();
+		return true;
 	}
 
 	void InspectorPanel::Draw(EditorContext& context)
