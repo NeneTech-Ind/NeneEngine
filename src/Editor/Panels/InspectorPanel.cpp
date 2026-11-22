@@ -495,6 +495,12 @@ namespace NeneEngine
 			if (context.CanEdit() && ImGui::Button("Retry##ScriptLoad")) m_scriptEngine.ReloadScript(path);
 			return false;
 		}
+
+		const auto revision = m_scriptEngine.GetScriptRevision(path);
+		if (m_scriptFieldEdit && m_scriptFieldEdit->path == script->scriptPath &&
+		    m_scriptFieldEdit->scriptRevision != revision)
+			FinishScriptFieldEdit(context);
+
 		if (schema->empty())
 		{
 			ImGui::TextDisabled("This script exposes no fields");
@@ -505,6 +511,8 @@ namespace NeneEngine
 		bool editActive = false;
 		ImGui::PushID("Script");
 		ImGui::PushID(static_cast<int>(entt::to_integral(context.selectedEntity)));
+		ImGui::PushID(script->scriptPath.c_str());
+		ImGui::PushID(std::to_string(revision).c_str());
 		ImGui::BeginDisabled(!canEdit);
 		for (const auto& field : *schema)
 		{
@@ -531,7 +539,8 @@ namespace NeneEngine
 					m_scriptFieldEdit->value = std::move(value);
 				else
 				{
-					ScriptFieldEdit edit{context.selectedEntity, script->scriptPath, field.name, saved, std::move(value)};
+					ScriptFieldEdit edit{context.selectedEntity, script->scriptPath, revision, field.name, saved,
+					                     std::move(value)};
 					FinishScriptFieldEdit(context);
 					m_scriptFieldEdit = std::move(edit);
 				}
@@ -543,6 +552,8 @@ namespace NeneEngine
 			}
 		}
 		ImGui::EndDisabled();
+		ImGui::PopID();
+		ImGui::PopID();
 		DrawSaveToPrefab(context, *schema);
 		ImGui::PopID();
 		ImGui::PopID();
@@ -605,29 +616,35 @@ namespace NeneEngine
 	void InspectorPanel::FinishScriptFieldEdit(EditorContext& context)
 	{
 		if (!m_scriptFieldEdit) return;
-		if (const auto* schema = m_scriptEngine.GetFieldSchema(m_scriptFieldEdit->path))
+		auto& pending = *m_scriptFieldEdit;
+		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(pending.entity);
+		if (!context.CanEdit() || pending.before == pending.value || script == nullptr ||
+		    script->scriptPath != pending.path)
 		{
-			const auto field = std::find_if(schema->begin(), schema->end(), [&](const auto& item) {
-				return item.name == m_scriptFieldEdit->field;
-			});
-			if (field != schema->end() && !IsValidScriptFieldValue(*field, m_scriptFieldEdit->value)) return;
+			m_scriptFieldEdit.reset();
+			return;
 		}
 
-		auto edit = std::move(*m_scriptFieldEdit);
-		m_scriptFieldEdit.reset();
-		if (!context.CanEdit() || edit.before == edit.value || !context.world.GetRegistry().valid(edit.entity)) return;
-
-		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(edit.entity);
-		if (script == nullptr || script->scriptPath != edit.path) return;
-		const auto* schema = m_scriptEngine.GetFieldSchema(edit.path);
-		if (schema == nullptr) return;
-		const auto field = std::find_if(schema->begin(), schema->end(), [&](const auto& item) { return item.name == edit.field; });
-		if (field == schema->end() || !IsValidScriptFieldValue(*field, edit.value)) return;
+		const auto* schema = m_scriptEngine.GetFieldSchema(pending.path);
+		if (schema == nullptr)
+		{
+			m_scriptFieldEdit.reset();
+			return;
+		}
+		const auto field =
+		    std::find_if(schema->begin(), schema->end(), [&](const auto& item) { return item.name == pending.field; });
+		if (field == schema->end() || !IsValidScriptFieldValue(*field, pending.value))
+		{
+			if (field == schema->end() || pending.scriptRevision != m_scriptEngine.GetScriptRevision(pending.path))
+				m_scriptFieldEdit.reset();
+			return;
+		}
 
 		auto after = *script;
-		after.fields.insert_or_assign(edit.field, std::move(edit.value));
+		after.fields.insert_or_assign(pending.field, std::move(pending.value));
 		auto command = eastl::make_unique<ComponentChangeCommand<ECS::ScriptComponent>>(
-		    "Edit Script Field", edit.entity, *script, std::move(after));
+		    "Edit Script Field", pending.entity, *script, std::move(after));
+		m_scriptFieldEdit.reset();
 		context.history.Execute(std::move(command), context.world);
 	}
 
