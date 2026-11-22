@@ -25,6 +25,11 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr const char* kPrefabSuffix = ".prefab.json";
+		enum class PrefabWriteMode
+		{
+			Create,
+			Replace
+		};
 
 		nlohmann::json ReadDefinition(const std::filesystem::path& path)
 		{
@@ -35,7 +40,7 @@ namespace NeneEngine
 			return definition;
 		}
 
-		void WriteDefinition(const std::filesystem::path& path, const std::string& contents)
+		void WriteDefinition(const std::filesystem::path& path, const std::string& contents, PrefabWriteMode mode)
 		{
 			wchar_t tempPath[MAX_PATH]{};
 			if (GetTempFileNameW(path.parent_path().c_str(), L"NNE", 0, tempPath) == 0)
@@ -47,8 +52,16 @@ namespace NeneEngine
 				file << contents;
 				file.close();
 				if (!file) throw std::runtime_error("Could not write the prefab");
-				if (!MoveFileExW(tempPath, path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-					throw std::runtime_error("Could not replace the prefab file");
+				const DWORD flags =
+				    MOVEFILE_WRITE_THROUGH | (mode == PrefabWriteMode::Replace ? MOVEFILE_REPLACE_EXISTING : 0);
+				if (!MoveFileExW(tempPath, path.c_str(), flags))
+				{
+					const auto error = GetLastError();
+					if (mode == PrefabWriteMode::Create &&
+					    (error == ERROR_ALREADY_EXISTS || error == ERROR_FILE_EXISTS))
+						throw std::runtime_error("Prefab already exists: " + path.filename().string());
+					throw std::runtime_error("Could not save prefab: " + path.string());
+				}
 			}
 			catch (...)
 			{
@@ -295,6 +308,33 @@ namespace NeneEngine
 		m_prefabs.clear();
 	}
 
+	void PrefabLibrary::CreateFromEntity(const std::string& name, ECS::Entity root)
+	{
+		const auto key = NormalizeName(name);
+		const std::filesystem::path relativePath(key);
+		for (const auto& part : relativePath)
+		{
+			const auto& component = part.native();
+			if (component.find_first_of(L"<>:\"|?*") != std::wstring::npos || component.ends_with(L'.') ||
+			    component.ends_with(L' '))
+				throw std::runtime_error("Invalid prefab name: " + name);
+		}
+		const auto directory = std::filesystem::weakly_canonical(m_directory);
+		const auto parent = std::filesystem::weakly_canonical(directory / relativePath.parent_path());
+		const auto relative = parent.lexically_relative(directory);
+		if (relative.empty() || relative.has_root_path() || *relative.begin() == "..")
+			throw std::runtime_error("Prefab path leaves the prefab directory");
+
+		auto hierarchy = SerializeEntityHierarchy(m_world, root);
+		auto definition = PreparePrefab({{"version", SceneSerializer::CurrentVersion},
+		                                 {"root", hierarchy.entities.front().at("id")},
+		                                 {"entities", std::move(hierarchy.entities)}});
+		const auto contents = definition.dump(4) + "\n";
+		std::filesystem::create_directories(parent);
+		WriteDefinition(parent / relativePath.filename(), contents, PrefabWriteMode::Create);
+		m_prefabs.erase(key);
+	}
+
 	void PrefabLibrary::SaveScriptFields(const std::string& name, const ECS::ScriptComponent& script)
 	{
 		const auto key = NormalizeName(name);
@@ -323,7 +363,7 @@ namespace NeneEngine
 		if (!target->contains("fields")) (*target)["fields"] = nlohmann::json::object();
 		target->at("fields").update(saved.at("fields"));
 		(void)PreparePrefab(definition);
-		WriteDefinition(path, definition.dump(4) + "\n");
+		WriteDefinition(path, definition.dump(4) + "\n", PrefabWriteMode::Replace);
 		ClearCache();
 	}
 

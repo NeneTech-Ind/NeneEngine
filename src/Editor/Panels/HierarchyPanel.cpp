@@ -12,13 +12,16 @@
 #include "Editor/Theme/EditorIcons.h"
 #include "Editor/Theme/EditorThemeConfig.h"
 #include "Editor/Theme/EditorWidgets.h"
+#include "Scene/Prefab/PrefabLibrary.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
 #include <cstdint>
+#include <filesystem>
 #include <glm/common.hpp>
 #include <glm/vector_relational.hpp>
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include <string>
 
 namespace NeneEngine
@@ -29,6 +32,7 @@ namespace NeneEngine
 		constexpr float kMotionEpsilon = 1.0e-4f;
 		constexpr double kMotionHoldSeconds = 0.3;
 		constexpr float kMotionDotRadius = 3.5f;
+		constexpr const char* kCreatePrefabDialog = "Create Prefab";
 
 		bool HasChanged(const glm::vec3& current, const glm::vec3& previous)
 		{
@@ -91,31 +95,28 @@ namespace NeneEngine
 		ImGui::TextDisabled("%zu entities", entityCount);
 		ImGui::Separator();
 
-		if (!ImGui::BeginChild("##EntityTree"))
+		if (ImGui::BeginChild("##EntityTree"))
 		{
-			ImGui::EndChild();
-			return;
-		}
+			if (entityCount == 0)
+			{
+				DrawEmptyState(context.GetMascot(EditorMascotPose::Happy), "The scene is empty");
+			}
+			else if (m_filter.IsActive())
+			{
+				DrawFilteredList(context);
+			}
+			else
+			{
+				CollectRoots(world);
+				UpdateRevealPath(context);
+				for (const ECS::Entity root : m_roots) DrawEntityTree(context, root, 0);
+			}
 
-		if (entityCount == 0)
-		{
-			DrawEmptyState(context.GetMascot(EditorMascotPose::Happy), "The scene is empty");
+			if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
+				context.selectedEntity = ECS::NullEntity;
 		}
-		else if (m_filter.IsActive())
-		{
-			DrawFilteredList(context);
-		}
-		else
-		{
-			CollectRoots(world);
-			UpdateRevealPath(context);
-			for (const ECS::Entity root : m_roots) DrawEntityTree(context, root, 0);
-		}
-
-		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
-			context.selectedEntity = ECS::NullEntity;
-
 		ImGui::EndChild();
+		DrawPrefabDialog(context);
 	}
 
 	void HierarchyPanel::UpdateMotionTracking(const EditorContext& context)
@@ -217,6 +218,7 @@ namespace NeneEngine
 		if (entity == context.selectedEntity) DrawSelectionMarker(context.themeColors->accent);
 		DrawMotionDot(context, entity);
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) context.selectedEntity = entity;
+		DrawEntityContextMenu(context, entity);
 
 		if (!hasChildren || !isOpen) return;
 
@@ -257,9 +259,83 @@ namespace NeneEngine
 				if (ImGui::Selectable(label.c_str(), isSelected)) context.selectedEntity = entity;
 				if (isSelected) DrawSelectionMarker(context.themeColors->accent);
 				DrawMotionDot(context, entity);
+				DrawEntityContextMenu(context, entity);
 				ImGui::PopID();
 			}
 		}
+	}
+
+	void HierarchyPanel::DrawEntityContextMenu(EditorContext& context, ECS::Entity entity)
+	{
+		if (!ImGui::BeginPopupContextItem()) return;
+		if (ImGui::MenuItem("Create Prefab...", nullptr, false, context.CanEdit() && context.prefabs != nullptr))
+			m_prefabDraft = PrefabDraft{entity, context.sceneGeneration, {}, {}};
+		ImGui::EndPopup();
+	}
+
+	void HierarchyPanel::DrawPrefabDialog(EditorContext& context)
+	{
+		if (!m_prefabDraft) return;
+		auto& draft = *m_prefabDraft;
+		const auto& registry = context.world.GetRegistry();
+		const bool canSave = context.CanEdit() && context.prefabs != nullptr &&
+		                     draft.sceneGeneration == context.sceneGeneration && registry.valid(draft.entity);
+		if (canSave && !ImGui::IsPopupOpen(kCreatePrefabDialog)) ImGui::OpenPopup(kCreatePrefabDialog);
+		const auto* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		const auto flags =
+		    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove;
+		if (!ImGui::BeginPopupModal(kCreatePrefabDialog, nullptr, flags))
+		{
+			if (!canSave) m_prefabDraft.reset();
+			return;
+		}
+		if (!canSave)
+		{
+			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+			m_prefabDraft.reset();
+			return;
+		}
+
+		const float width = ScaledSize(320.0f);
+		ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + width);
+		ImGui::Text("Entity: %s", GetDisplayName(registry, draft.entity).c_str());
+		if (!draft.error.empty()) StatusText(*context.themeColors, EditorStatusKind::Danger, draft.error.c_str());
+		ImGui::PopTextWrapPos();
+
+		ImGui::SetNextItemWidth(width);
+		if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+		const bool submitted =
+		    ImGui::InputTextWithHint("##PrefabName", "Prefab name", &draft.name, ImGuiInputTextFlags_EnterReturnsTrue);
+		if (ImGui::IsItemEdited()) draft.error.clear();
+		const auto first = draft.name.find_first_not_of(" \t");
+		ImGui::BeginDisabled(first == std::string::npos);
+		const bool save = ImGui::Button("Create") || submitted;
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		const bool cancel = ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+
+		bool saved = false;
+		if (save && !cancel && first != std::string::npos)
+		{
+			try
+			{
+				const auto name = draft.name.substr(first, draft.name.find_last_not_of(" \t") - first + 1);
+				const auto path = std::filesystem::path(std::u8string(name.begin(), name.end()));
+				context.prefabs->CreateFromEntity(path.string(), draft.entity);
+				context.assets.Refresh();
+				context.SetStatus(EditorStatusKind::Success, "Created prefab: " + name);
+				saved = true;
+			}
+			catch (const std::exception& exception)
+			{
+				draft.error = exception.what();
+			}
+		}
+		if (saved || cancel) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+		if (saved || cancel) m_prefabDraft.reset();
 	}
 
 } // namespace NeneEngine
