@@ -15,6 +15,8 @@
 #include <EASTL/unique_ptr.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+#include <cstdint>
 #include <string>
 
 namespace NeneEngine
@@ -64,6 +66,7 @@ namespace NeneEngine
 		{
 			ECS::Entity entity;
 			std::string path;
+			std::uint64_t scriptRevision;
 			std::string field;
 			ScriptFieldValue before;
 			ScriptFieldValue value;
