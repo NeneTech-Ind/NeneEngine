@@ -581,7 +581,7 @@ namespace NeneEngine
 			{
 				if (asset.kind != AssetKind::Prefab) continue;
 				hasPrefabs = true;
-				const auto name = std::filesystem::path(asset.path).lexically_relative("assets/prefabs").generic_string();
+				const auto name = GenericPathToUtf8(PathFromUtf8(asset.path).lexically_relative("assets/prefabs"));
 				if (!ImGui::MenuItem(name.c_str())) continue;
 
 				try

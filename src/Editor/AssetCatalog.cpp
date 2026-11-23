@@ -49,11 +49,13 @@ namespace NeneEngine
 					kind = AssetKind::Texture;
 				else if (extension == ".shader")
 					kind = AssetKind::Shader;
-				else if (entry.path().filename().string().ends_with(".prefab.json"))
+				else if (entry.path().filename().u8string().ends_with(u8".prefab.json"))
 				{
 					const auto relative = entry.path().lexically_relative(root / "prefabs");
 					if (relative.empty() || relative.has_root_path() || *relative.begin() == "..") continue;
-					kind = AssetKind::Prefab;
+					m_entries.push_back({GenericPathToUtf8(std::filesystem::path("assets/prefabs") / relative),
+					                     AssetKind::Prefab});
+					continue;
 				}
 				else
 					continue;

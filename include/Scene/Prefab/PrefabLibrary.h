@@ -23,6 +23,8 @@ namespace NeneEngine
 	  public:
 		explicit PrefabLibrary(ECS::World& world, std::filesystem::path directory = {});
 
+		// Prefab names are UTF-8 paths relative to the prefab directory.
+
 		[[nodiscard]] const nlohmann::json& Load(const std::string& name);
 		const nlohmann::json& Reload(const std::string& name);
 		void ClearCache();

@@ -63,6 +63,17 @@ namespace NeneEngine
 		}
 	} // namespace
 
+	std::filesystem::path PathFromUtf8(std::string_view path)
+	{
+		return std::filesystem::path(std::u8string(path.begin(), path.end()));
+	}
+
+	std::string GenericPathToUtf8(const std::filesystem::path& path)
+	{
+		const auto utf8 = path.generic_u8string();
+		return std::string(utf8.begin(), utf8.end());
+	}
+
 	std::filesystem::path GetExecutableDirectory()
 	{
 		wchar_t modulePath[MAX_PATH]{};
