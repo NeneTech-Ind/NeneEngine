@@ -67,6 +67,15 @@ namespace NeneEngine
 	  private:
 		using PendingEditCommit = eastl::function<void(EditorContext&)>;
 
+		struct SectionNavigation
+		{
+			bool listing = false;
+			bool hasSections = false;
+			const char* target = nullptr;
+
+			bool DrawHeader(const char* icon, const char* label);
+		};
+
 		struct ScriptFieldEdit
 		{
 			ECS::Entity entity;
@@ -78,23 +87,25 @@ namespace NeneEngine
 		};
 
 		template <typename Component, typename DrawFields>
-		void DrawComponent(EditorContext& context, const char* icon, const char* label, DrawFields&& drawFields);
+		void DrawComponent(EditorContext& context, SectionNavigation& navigation, const char* icon, const char* label,
+		                   DrawFields&& drawFields);
 
 		template <typename Component> void DrawRemoveMenu(EditorContext& context, const char* label);
 		template <typename Component> bool DrawAddItem(EditorContext& context, const char* icon, const char* label);
 
 		void DrawEntityHeader(EditorContext& context);
-		void DrawComponents(EditorContext& context);
-		void DrawAddComponent(EditorContext& context);
+		void DrawComponentToolbar(EditorContext& context, SectionNavigation& navigation);
+		void DrawComponents(EditorContext& context, SectionNavigation& navigation);
+		void DrawAddComponent(EditorContext& context, float width);
 		bool DrawAddScript(EditorContext& context);
 		void DrawTransformFields(ECS::Entity entity, ECS::TransformComponent& transform, FieldEdits& edits);
-		void DrawMaterial(EditorContext& context);
+		void DrawMaterial(EditorContext& context, SectionNavigation& navigation);
 		void DrawMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, bool texture);
 		void DrawMaterialPreview(EditorContext& context, const ECS::MeshRendererComponent& material);
 		void SetMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, const std::string& path,
 		                      bool texture);
 
-		bool DrawScript(EditorContext& context);
+		bool DrawScript(EditorContext& context, SectionNavigation& navigation);
 		void DrawSaveToPrefab(EditorContext& context, const ScriptFieldSchema& schema);
 		void FinishScriptFieldEdit(EditorContext& context);
 
