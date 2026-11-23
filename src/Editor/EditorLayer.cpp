@@ -653,21 +653,32 @@ namespace NeneEngine
 			const char* modeLabel = isPlaying ? "Play" : "Edit";
 			const char* reloadLabel = hasScriptErrors ? NENE_ICON_ERROR " Reload scripts###ReloadScripts"
 			                                          : NENE_ICON_REFRESH " Reload scripts###ReloadScripts";
+			constexpr const char* consoleLabel = "Open Console";
 			const float segmentSpacing = style.ItemSpacing.x * 2.0f;
 			const float rightWidth =
 			    ImGui::CalcTextSize(reloadLabel, nullptr, true).x + style.FramePadding.x * 2.0f + segmentSpacing * 2.0f +
 			    ImGui::CalcTextSize(sceneLabel.c_str()).x + ImGui::CalcTextSize(modeLabel).x;
 			const float startX = ImGui::GetCursorPosX();
-			const float rightX = (std::max)(startX, startX + ImGui::GetContentRegionAvail().x - rightWidth);
-			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x);
+			const float consoleSpace = hasScriptErrors ? ImGui::CalcTextSize(consoleLabel).x +
+			                                                style.FramePadding.x * 2.0f + style.ItemSpacing.x
+			                                          : 0.0f;
+			const float rightX = (std::max)(startX + consoleSpace, startX + ImGui::GetContentRegionAvail().x - rightWidth);
+			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x - consoleSpace);
+			const float labelWidth = ImGui::CalcTextSize(label.c_str()).x;
 			const ImVec2 start = ImGui::GetCursorScreenPos();
 
 			ImGui::AlignTextToFramePadding();
 			ImGui::PushClipRect(start, ImVec2(start.x + messageWidth, start.y + ImGui::GetFrameHeight()), true);
 			ImGui::TextColored(messageColor, "%s", label.c_str());
 			ImGui::PopClipRect();
-			if (ImGui::CalcTextSize(label.c_str()).x > messageWidth)
-				ImGui::SetItemTooltip("%s", label.c_str());
+			if (labelWidth > messageWidth) ImGui::SetItemTooltip("%s", label.c_str());
+
+			if (hasScriptErrors)
+			{
+				const float textSpace = messageWidth > 0.0f ? (std::min)(labelWidth, messageWidth) + style.ItemSpacing.x : 0.0f;
+				ImGui::SameLine(startX + textSpace);
+				if (ImGui::Button(consoleLabel)) OpenConsole();
+			}
 
 			ImGui::SameLine(rightX);
 			ImGui::BeginDisabled(m_context->isSceneLoading);
@@ -694,6 +705,16 @@ namespace NeneEngine
 			ImGui::TextColored(detailColor, "%s", modeLabel);
 		}
 		ImGui::End();
+	}
+
+	void EditorLayer::OpenConsole()
+	{
+		const auto console = std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
+		                                  { return dynamic_cast<const ConsolePanel*>(entry.panel.get()) != nullptr; });
+		if (console == m_panels.end()) return;
+
+		console->isOpen = true;
+		console->focusRequested = true;
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()
@@ -1008,6 +1029,12 @@ namespace NeneEngine
 		for (auto& entry : m_panels)
 		{
 			if (!entry.isOpen) continue;
+			if (entry.focusRequested)
+			{
+				ImGui::SetNextWindowCollapsed(false);
+				ImGui::SetNextWindowFocus();
+				entry.focusRequested = false;
+			}
 
 			if (ImGui::Begin(entry.windowTitle.c_str(), &entry.isOpen, entry.panel->GetWindowFlags()))
 			{
