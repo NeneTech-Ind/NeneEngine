@@ -379,7 +379,7 @@ git fetch --prune
 
 ## Releases
 
-The release maintainer runs every step in this section.
+The release maintainer runs every step in this section. Follow the [release convention](release-convention.md) to build and test the package from the local tag and publish it on GitHub.
 
 ### Starting a Release
 
@@ -406,7 +406,7 @@ Choose the version by the rules in [Tags](#tags). The branch name is a plan: if 
        VERSION 1.1.0
    ```
 
-3. Commit the bump on the release branch, then merge the release into `main`, tag the merge and push both:
+3. Commit the bump on the release branch, then merge the release into `main` and tag the merge:
 
    ```shell
    git switch release/1.1.0
@@ -418,12 +418,17 @@ Choose the version by the rules in [Tags](#tags). The branch name is a plan: if 
    git pull --ff-only
    git merge --no-ff release/1.1.0
    git tag -a v1.1.0 -m "NeneEngine v1.1.0"
-   git push origin main v1.1.0
    ```
 
    The body of the release merge is a short release note: one to three lines on what the release delivers as a whole.
 
-4. Delete the release branch and start the next one:
+4. Build and test the ZIP from the local tag. Once it passes, push `main` and the tag, then publish the GitHub release.
+
+   ```shell
+   git push origin main v1.1.0
+   ```
+
+5. Delete the release branch and start the next one:
 
    ```shell
    git branch -d release/1.1.0
@@ -443,7 +448,7 @@ git pull --ff-only
 git switch -c fix/crash-on-empty-scene
 ```
 
-The fix branch ends with its own bump commit that raises `PATCH`: `chore(release): bump version to 1.1.1`. The release maintainer merges it into `main` with `--no-ff`, tags the merge `v1.1.1`, pushes both and then merges `main` into the open release branch, so the fix is not lost:
+The fix branch ends with its own bump commit that raises `PATCH`: `chore(release): bump version to 1.1.1`. The release maintainer merges it into `main` with `--no-ff` and tags the merge `v1.1.1`. Build and test the ZIP from that tag, push `main` and the tag, and publish the GitHub release. Merge `main` into the open release branch to carry the fix forward:
 
 ```shell
 git switch release/1.2.0
