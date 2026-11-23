@@ -467,10 +467,14 @@ namespace NeneEngine
 		}
 
 		DrawEntityHeader(context);
-		ImGui::Separator();
-		DrawComponents(context);
-		if (!DrawScript(context)) FinishScriptFieldEdit(context);
 		DrawAddComponent(context);
+		ImGui::Separator();
+		if (ImGui::BeginChild("##InspectorComponents", ImVec2(0.0f, 0.0f), ImGuiChildFlags_NavFlattened))
+		{
+			DrawComponents(context);
+			if (!DrawScript(context)) FinishScriptFieldEdit(context);
+		}
+		ImGui::EndChild();
 
 		if (m_pendingCommand && context.CanEdit()) context.history.Execute(std::move(m_pendingCommand), context.world);
 		m_pendingCommand.reset();

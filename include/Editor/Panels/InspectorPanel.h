@@ -37,6 +37,10 @@ namespace NeneEngine
 		[[nodiscard]] const char* GetName() const override { return "Inspector"; }
 		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_INSPECTOR; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Right; }
+		[[nodiscard]] ImGuiWindowFlags GetWindowFlags() const override
+		{
+			return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+		}
 
 		void Draw(EditorContext& context) override;
 		void CommitPendingEdits(EditorContext& context) override { FinishScriptFieldEdit(context); }
