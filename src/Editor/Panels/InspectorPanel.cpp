@@ -292,10 +292,15 @@ namespace NeneEngine
 			                   { return registry.valid(child) && registry.all_of<ECS::MeshRendererComponent>(child); });
 		}
 
-		std::string GetEntityLabel(const ECS::World& world, ECS::Entity entity)
+		const char* GetEntityName(const entt::registry& registry, ECS::Entity entity)
 		{
-			const auto* tag = world.GetRegistry().try_get<ECS::TagComponent>(entity);
-			const std::string name = tag != nullptr && !tag->name.empty() ? tag->name : "Entity";
+			const auto* tag = registry.try_get<ECS::TagComponent>(entity);
+			return tag != nullptr && !tag->name.empty() ? tag->name.c_str() : "Entity";
+		}
+
+		std::string GetEntityLabel(const entt::registry& registry, ECS::Entity entity)
+		{
+			const std::string name = GetEntityName(registry, entity);
 			return name + " (" + std::to_string(entt::to_integral(entity)) + ")";
 		}
 	} // namespace
@@ -655,16 +660,18 @@ namespace NeneEngine
 
 	void InspectorPanel::DrawEntityHeader(EditorContext& context)
 	{
-		const ECS::World& world = context.world;
+		const auto& registry = context.world.GetRegistry();
+		const ECS::Entity entity = context.selectedEntity;
+		ImGui::TextWrapped("%s", GetEntityName(registry, entity));
 		ImGui::AlignTextToFramePadding();
-		ImGui::Text("Entity %u", static_cast<uint32_t>(entt::to_integral(context.selectedEntity)));
+		ImGui::TextDisabled("ID: %u", static_cast<uint32_t>(entt::to_integral(entity)));
 
 		if (!context.CanEdit()) DrawReadOnlyPill(*context.themeColors);
 
-		if (const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(context.selectedEntity))
+		if (const auto* hierarchy = registry.try_get<ECS::HierarchyComponent>(entity))
 		{
-			if (hierarchy->parent != ECS::NullEntity && world.GetRegistry().valid(hierarchy->parent))
-				ImGui::TextDisabled("Parent: %s", GetEntityLabel(world, hierarchy->parent).c_str());
+			if (hierarchy->parent != ECS::NullEntity && registry.valid(hierarchy->parent))
+				ImGui::TextDisabled("Parent: %s", GetEntityLabel(registry, hierarchy->parent).c_str());
 			if (!hierarchy->children.empty()) ImGui::TextDisabled("Children: %zu", hierarchy->children.size());
 		}
 	}
