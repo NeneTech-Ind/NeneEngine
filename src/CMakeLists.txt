@@ -64,7 +64,6 @@ find_package(sol2           CONFIG REQUIRED)
 
 target_compile_definitions(NeneEngine PRIVATE NENEENGINE_VERSION="${PROJECT_VERSION}")
 
-option(NENEENGINE_ENABLE_TRACY "Enable Tracy CPU profiling" ON)
 if(NENEENGINE_ENABLE_TRACY)
     find_package(Tracy CONFIG REQUIRED)
     target_link_libraries(NeneEngine PRIVATE Tracy::TracyClient)
@@ -113,9 +112,9 @@ endif()
 
 file(GLOB NENEENGINE_VCPKG_DEBUG_DLLS   "${NENEENGINE_VCPKG_ROOT_DIR}/debug/bin/*.dll")
 file(GLOB NENEENGINE_VCPKG_RELEASE_DLLS "${NENEENGINE_VCPKG_ROOT_DIR}/bin/*.dll")
-# Lua is deployed from its imported target, which selects the active build configuration.
-list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/lua[.]dll$")
-list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/lua[.]dll$")
+# Lua and Tracy are deployed from their imported targets for the active configuration.
+list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/(lua|TracyClient)[.]dll$")
+list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/(lua|TracyClient)[.]dll$")
 list(FILTER NENEENGINE_VCPKG_DEBUG_DLLS EXCLUDE REGEX "/draco[.]dll$")
 list(FILTER NENEENGINE_VCPKG_RELEASE_DLLS EXCLUDE REGEX "/draco[.]dll$")
 
