@@ -421,18 +421,23 @@ namespace NeneEngine
 				     end;
 				     !error && it != end; it.increment(error))
 				{
+					const auto& path = it->path();
+					if (it.depth() == 0 && (path.filename() == "modules" || path.filename() == "meta"))
+					{
+						it.disable_recursion_pending();
+						continue;
+					}
 					std::error_code entryError;
 					if (!it->is_regular_file(entryError)) continue;
-					auto extension = it->path().extension().wstring();
+					auto extension = path.extension().wstring();
 					std::ranges::transform(extension, extension.begin(), std::towlower);
-					if (extension == L".lua")
-						m_scriptChoices.push_back(it->path().lexically_relative(root).generic_string());
+					if (extension == L".lua") m_scriptChoices.push_back(path.lexically_relative(root).generic_string());
 				}
 			}
 			std::sort(m_scriptChoices.begin(), m_scriptChoices.end());
 		}
 
-		if (m_scriptChoices.empty()) ImGui::TextDisabled("No Lua scripts found in assets/scripts");
+		if (m_scriptChoices.empty()) ImGui::TextDisabled("No attachable Lua scripts found in assets/scripts");
 		for (const auto& path : m_scriptChoices)
 		{
 			if (!ImGui::MenuItem(path.c_str())) continue;

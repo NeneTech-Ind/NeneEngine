@@ -295,8 +295,11 @@ namespace NeneEngine
 		sol::protected_function::set_default_handler(sol::object(lua.lua_state(), sol::in_place, &TraceLuaError));
 
 		sol::table package = lua["package"];
+		const auto modulesRoot = impl->scriptsRoot / "modules";
 		package["path"] = (impl->scriptsRoot / "?.lua").generic_string() + ";" +
-		                  (impl->scriptsRoot / "?" / "init.lua").generic_string();
+		                  (impl->scriptsRoot / "?" / "init.lua").generic_string() + ";" +
+		                  (modulesRoot / "?.lua").generic_string() + ";" +
+		                  (modulesRoot / "?" / "init.lua").generic_string();
 		// Keep require available for Lua modules and exclude native library loading
 		package["loadlib"] = sol::nil;
 		package["cpath"] = "";
