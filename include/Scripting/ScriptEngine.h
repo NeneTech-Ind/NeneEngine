@@ -42,8 +42,8 @@ namespace NeneEngine
 		// Also safe between world updates in Play mode. Behaviours pick up new revisions on the next update.
 		void ReloadChangedScripts();
 
-		// Includes failed attempts that kept the last working version
-		[[nodiscard]] bool HasScriptLoadErrors() const;
+		// Returns a tracked path with a load error, including failed reloads that kept the last working version.
+		[[nodiscard]] const std::filesystem::path* FindFailedScript() const;
 
 		// Zero means no successful load. Failed reloads keep the last working revision.
 		[[nodiscard]] std::uint64_t GetScriptRevision(const std::filesystem::path& path) const;

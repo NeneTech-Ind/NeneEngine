@@ -104,6 +104,7 @@ namespace NeneEngine
 		IWindow* m_window = nullptr;
 		ScriptEngine* m_scriptEngine = nullptr;
 		std::chrono::steady_clock::time_point m_nextScriptReloadCheck{};
+		EditorStatus m_scriptReloadStatus;
 		TitleBarRect m_titleBar;
 		TitleBarRect m_maximizeButtonRect;
 		eastl::vector<TitleBarRect> m_titleBarInteractiveRects;

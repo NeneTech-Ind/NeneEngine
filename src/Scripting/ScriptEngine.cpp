@@ -461,9 +461,16 @@ namespace NeneEngine
 		if (m_impl) m_impl->ReloadScripts(false);
 	}
 
-	bool ScriptEngine::HasScriptLoadErrors() const
+	const std::filesystem::path* ScriptEngine::FindFailedScript() const
 	{
-		return m_impl && std::ranges::any_of(m_impl->scripts, [](const auto& entry) { return entry.second.loadFailed; });
+		if (!m_impl) return nullptr;
+
+		const std::filesystem::path* failedPath = nullptr;
+		for (const auto& [path, script] : m_impl->scripts)
+		{
+			if (script.loadFailed && (failedPath == nullptr || path < *failedPath)) failedPath = &path;
+		}
+		return failedPath;
 	}
 
 	std::uint64_t ScriptEngine::GetScriptRevision(const std::filesystem::path& path) const
