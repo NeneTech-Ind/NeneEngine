@@ -8,14 +8,22 @@
     "spdlog",
     "glm",
     "stb",
-    {
-      "name": "tracy",
-      "features": [ "on-demand" ]
-    },
     "joltphysics",
     "lua",
     "sol2"
   ],
+  "default-features": [ "tracy" ],
+  "features": {
+    "tracy": {
+      "description": "Enable Tracy CPU profiling",
+      "dependencies": [
+        {
+          "name": "tracy",
+          "features": [ "on-demand" ]
+        }
+      ]
+    }
+  },
   "overrides": [
     {
       "name": "tracy",

@@ -2,6 +2,16 @@
 
 cmake_minimum_required(VERSION 3.19)
 
+# The vcpkg toolchain resolves manifest features during project().
+option(NENEENGINE_ENABLE_TRACY "Enable Tracy CPU profiling" ON)
+if(NENEENGINE_ENABLE_TRACY)
+    list(APPEND VCPKG_MANIFEST_FEATURES tracy)
+    list(REMOVE_DUPLICATES VCPKG_MANIFEST_FEATURES)
+else()
+    set(VCPKG_MANIFEST_NO_DEFAULT_FEATURES ON)
+    list(REMOVE_ITEM VCPKG_MANIFEST_FEATURES tracy)
+endif()
+
 project(
     NeneEngine
     VERSION 1.1.1
