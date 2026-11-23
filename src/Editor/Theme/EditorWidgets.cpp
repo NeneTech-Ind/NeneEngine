@@ -128,22 +128,36 @@ namespace NeneEngine
 		ImGui::TextDisabled("%s", hint);
 	}
 
-	AxisDragResult DragFloat3Axes(const char* id, float* values, float speed, float min, float max,
-	                              ImGuiSliderFlags flags, const ImVec4 (&axisColors)[3])
+	AxisDragResult DragFloat3Axes(const char* label, float* values, float speed, float min, float max,
+	                              ImGuiSliderFlags flags, const ImVec4 (&axisColors)[3], ImFont* valueFont)
 	{
 		const ImGuiStyle& style = ImGui::GetStyle();
+		const float spacing = style.ItemInnerSpacing.x;
+		// Reserve room for a signed value with four integer digits and the displayed precision.
+		const float rowWidth = ImGui::GetContentRegionAvail().x;
+		const float labelWidth = ImGui::CalcTextSize(label).x;
+		ImGui::PushFont(valueFont, 0.0f);
 		const float frameHeight = ImGui::GetFrameHeight();
 		const float chipWidth = ImGui::CalcTextSize(kAxisNames[0]).x + style.FramePadding.x * 2.0f;
-		const float spacing = style.ItemInnerSpacing.x;
-		const float fieldWidth = (std::max)(1.0f, (ImGui::CalcItemWidth() - chipWidth * 3.0f - spacing * 2.0f) / 3.0f);
+		const float minFieldWidth = ImGui::CalcTextSize("-0000.000").x + style.FramePadding.x * 2.0f;
+		const float inlineFieldWidth = (rowWidth - labelWidth - 3.0f * (chipWidth + spacing)) / 3.0f;
+		const bool stacked = inlineFieldWidth < minFieldWidth;
+		const float fieldWidth = stacked ? (std::max)(1.0f, rowWidth - chipWidth) : inlineFieldWidth;
+		if (stacked)
+		{
+			ImGui::PopFont();
+			ImGui::TextWrapped("%s", label);
+			ImGui::PushFont(valueFont, 0.0f);
+		}
 		ImDrawList* drawList = ImGui::GetWindowDrawList();
 
 		AxisDragResult result;
-		ImGui::PushID(id);
+		const std::string id = std::string("##") + label;
+		ImGui::PushID(id.c_str());
 		ImGui::BeginGroup();
 		for (int axis = 0; axis < 3; ++axis)
 		{
-			if (axis > 0) ImGui::SameLine(0.0f, spacing);
+			if (axis > 0 && !stacked) ImGui::SameLine(0.0f, spacing);
 
 			const ImVec2 chipMin = ImGui::GetCursorScreenPos();
 			const ImVec2 chipMax(chipMin.x + chipWidth, chipMin.y + frameHeight);
@@ -158,11 +172,19 @@ namespace NeneEngine
 			ImGui::SetNextItemWidth(fieldWidth);
 			result.changed |= ImGui::DragFloat("##Value", &values[axis], speed, min, max, "%.3f", flags);
 			result.activated |= ImGui::IsItemActivated();
+			result.active |= ImGui::IsItemActive();
 			result.deactivatedAfterEdit |= ImGui::IsItemDeactivatedAfterEdit();
 			ImGui::PopID();
 		}
 		ImGui::EndGroup();
 		ImGui::PopID();
+		ImGui::PopFont();
+		if (!stacked)
+		{
+			ImGui::SameLine(0.0f, spacing);
+			ImGui::AlignTextToFramePadding();
+			ImGui::TextUnformatted(label);
+		}
 		return result;
 	}
 

@@ -21,6 +21,7 @@ namespace NeneEngine
 	{
 		bool changed = false;
 		bool activated = false;
+		bool active = false;
 		bool deactivatedAfterEdit = false;
 	};
 
@@ -34,8 +35,8 @@ namespace NeneEngine
 	[[nodiscard]] const ImVec4& GetStatusColor(const EditorThemeColorsConfig& colors, EditorStatusKind kind);
 	void StatusText(const EditorThemeColorsConfig& colors, EditorStatusKind kind, const char* text);
 	void DrawEmptyState(const ImGuiTexture& mascot, const char* hint);
-	AxisDragResult DragFloat3Axes(const char* id, float* values, float speed, float min, float max,
-	                              ImGuiSliderFlags flags, const ImVec4 (&axisColors)[3]);
+	AxisDragResult DragFloat3Axes(const char* label, float* values, float speed, float min, float max,
+	                              ImGuiSliderFlags flags, const ImVec4 (&axisColors)[3], ImFont* valueFont);
 
 	class ComponentCardScope final
 	{

@@ -101,16 +101,10 @@ namespace NeneEngine
 		                   FieldEdits& edits)
 		{
 			const ImVec4 axisColors[3] = {edits.colors->axisX, edits.colors->axisY, edits.colors->axisZ};
-			const std::string widgetId = std::string("##") + label;
-			if (edits.valueFont != nullptr) ImGui::PushFont(edits.valueFont, 0.0f);
-			const AxisDragResult result = DragFloat3Axes(widgetId.c_str(), values, speed, min, max, flags, axisColors);
-			if (edits.valueFont != nullptr) ImGui::PopFont();
+			const AxisDragResult result = DragFloat3Axes(label, values, speed, min, max, flags, axisColors, edits.valueFont);
 			edits.activated |= result.activated;
-			edits.active |= ImGui::IsItemActive();
+			edits.active |= result.active;
 			edits.deactivatedAfterEdit |= result.deactivatedAfterEdit;
-
-			ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-			ImGui::TextUnformatted(label);
 			return result.changed;
 		}
 
