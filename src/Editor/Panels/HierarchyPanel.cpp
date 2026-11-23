@@ -31,7 +31,7 @@ namespace NeneEngine
 		constexpr float kMotionEpsilon = 1.0e-4f;
 		constexpr double kMotionHoldSeconds = 0.3;
 		constexpr float kMotionDotRadius = 3.5f;
-		constexpr const char* kCreatePrefabDialog = "Create Prefab";
+		constexpr const char* kCreatePrefabDialog = "Create Prefab from Entity";
 
 		bool HasChanged(const glm::vec3& current, const glm::vec3& previous)
 		{
@@ -267,7 +267,7 @@ namespace NeneEngine
 	void HierarchyPanel::DrawEntityContextMenu(EditorContext& context, ECS::Entity entity)
 	{
 		if (!ImGui::BeginPopupContextItem()) return;
-		if (ImGui::MenuItem("Create Prefab...", nullptr, false, context.CanEdit() && context.prefabs != nullptr))
+		if (ImGui::MenuItem("Create Prefab from Entity...", nullptr, false, context.CanEdit() && context.prefabs != nullptr))
 			m_prefabDraft = PrefabDraft{entity, context.sceneGeneration, {}, {}};
 		ImGui::EndPopup();
 	}

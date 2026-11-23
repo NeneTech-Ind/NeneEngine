@@ -570,7 +570,7 @@ namespace NeneEngine
 		if (!context.prefabs) return;
 		constexpr const char* popup = "Choose prefab";
 		ImGui::BeginDisabled(!context.CanEdit());
-		if (ImGui::Button("Save to prefab")) ImGui::OpenPopup(popup);
+		if (ImGui::Button("Save Script Fields to Prefab...")) ImGui::OpenPopup(popup);
 		ImGui::EndDisabled();
 		if (!ImGui::BeginPopup(popup)) return;
 
