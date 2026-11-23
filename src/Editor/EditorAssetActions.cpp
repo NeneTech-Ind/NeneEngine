@@ -3,6 +3,7 @@
 #include "Editor/EditorAssetActions.h"
 
 #include "Core/NeneLogger.h"
+#include "Core/PathResolver.h"
 #include "Core/ResourceManager.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
@@ -76,13 +77,13 @@ namespace NeneEngine
 		auto root = ECS::NullEntity;
 		try
 		{
-			const auto name = std::filesystem::path(path).lexically_relative("assets/prefabs").generic_string();
+			const auto assetPath = PathFromUtf8(path);
+			const auto name = GenericPathToUtf8(assetPath.lexically_relative("assets/prefabs"));
 			root = context.prefabs->Instantiate(name, position);
 			auto command = eastl::make_unique<CreatePrefabCommand>(context.world, root);
 			context.history.Record(std::move(command));
 			context.selectedEntity = root;
-			context.SetStatus(EditorStatusKind::Success,
-			                  "Created prefab: " + std::filesystem::path(path).filename().string());
+			context.SetStatus(EditorStatusKind::Success, "Created prefab: " + GenericPathToUtf8(assetPath.filename()));
 			return true;
 		}
 		catch (const std::exception& exception)

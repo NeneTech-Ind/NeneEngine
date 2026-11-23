@@ -34,7 +34,7 @@ namespace NeneEngine
 		nlohmann::json ReadDefinition(const std::filesystem::path& path)
 		{
 			std::ifstream file(path, std::ios::binary);
-			if (!file) throw std::runtime_error("Could not open prefab: " + path.string());
+			if (!file) throw std::runtime_error("Could not open prefab: " + GenericPathToUtf8(path));
 			nlohmann::json definition;
 			file >> definition;
 			return definition;
@@ -59,8 +59,8 @@ namespace NeneEngine
 					const auto error = GetLastError();
 					if (mode == PrefabWriteMode::Create &&
 					    (error == ERROR_ALREADY_EXISTS || error == ERROR_FILE_EXISTS))
-						throw std::runtime_error("Prefab already exists: " + path.filename().string());
-					throw std::runtime_error("Could not save prefab: " + path.string());
+						throw std::runtime_error("Prefab already exists: " + GenericPathToUtf8(path.filename()));
+					throw std::runtime_error("Could not save prefab: " + GenericPathToUtf8(path));
 				}
 			}
 			catch (...)
@@ -254,13 +254,14 @@ namespace NeneEngine
 
 	std::string PrefabLibrary::NormalizeName(const std::string& name) const
 	{
-		const std::filesystem::path relative(name);
-		if (name.empty() || name.find('\0') != std::string::npos || relative.has_root_path() ||
-		    !relative.has_filename())
+		if (name.empty() || name.find('\0') != std::string::npos)
+			throw std::runtime_error("Invalid prefab name: " + name);
+		const auto relative = PathFromUtf8(name);
+		if (relative.has_root_path() || !relative.has_filename())
 			throw std::runtime_error("Invalid prefab name: " + name);
 		for (const auto& part : relative)
 			if (part == "..") throw std::runtime_error("Prefab name must stay inside the prefab directory");
-		auto key = relative.lexically_normal().generic_string();
+		auto key = GenericPathToUtf8(relative.lexically_normal());
 		if (relative.filename() == "." || relative.filename() == kPrefabSuffix)
 			throw std::runtime_error("Invalid prefab name: " + name);
 		if (!key.ends_with(kPrefabSuffix)) key += kPrefabSuffix;
@@ -270,7 +271,7 @@ namespace NeneEngine
 	std::filesystem::path PrefabLibrary::ResolvePath(const std::string& name) const
 	{
 		const auto root = std::filesystem::weakly_canonical(m_directory);
-		const auto path = std::filesystem::canonical(root / name);
+		const auto path = std::filesystem::canonical(root / PathFromUtf8(name));
 		const auto relative = path.lexically_relative(root);
 		if (relative.empty() || relative.has_root_path() || *relative.begin() == "..")
 			throw std::runtime_error("Prefab path leaves the prefab directory");
@@ -311,7 +312,7 @@ namespace NeneEngine
 	void PrefabLibrary::CreateFromEntity(const std::string& name, ECS::Entity root)
 	{
 		const auto key = NormalizeName(name);
-		const std::filesystem::path relativePath(key);
+		const auto relativePath = PathFromUtf8(key);
 		for (const auto& part : relativePath)
 		{
 			const auto& component = part.native();

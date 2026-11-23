@@ -3,10 +3,14 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
+#include <string_view>
 
 namespace NeneEngine
 {
 
+	[[nodiscard]] std::filesystem::path PathFromUtf8(std::string_view path);
+	[[nodiscard]] std::string GenericPathToUtf8(const std::filesystem::path& path);
 	[[nodiscard]] std::filesystem::path GetExecutableDirectory();
 	[[nodiscard]] std::filesystem::path GetEditorLogPath();
 	[[nodiscard]] std::filesystem::path GetEditorLayoutPath();

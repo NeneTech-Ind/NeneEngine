@@ -17,7 +17,6 @@
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
 #include <cstdint>
-#include <filesystem>
 #include <glm/common.hpp>
 #include <glm/vector_relational.hpp>
 #include <imgui.h>
@@ -322,8 +321,7 @@ namespace NeneEngine
 			try
 			{
 				const auto name = draft.name.substr(first, draft.name.find_last_not_of(" \t") - first + 1);
-				const auto path = std::filesystem::path(std::u8string(name.begin(), name.end()));
-				context.prefabs->CreateFromEntity(path.string(), draft.entity);
+				context.prefabs->CreateFromEntity(name, draft.entity);
 				context.assets.Refresh();
 				context.SetStatus(EditorStatusKind::Success, "Created prefab: " + name);
 				saved = true;
