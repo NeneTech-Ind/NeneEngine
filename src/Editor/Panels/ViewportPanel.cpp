@@ -120,6 +120,16 @@ namespace NeneEngine
 
 	void ViewportPanel::Draw(EditorContext& context)
 	{
+		DrawViewport(context, true);
+	}
+
+	void ViewportPanel::DrawPlayPreview(EditorContext& context)
+	{
+		DrawViewport(context, false);
+	}
+
+	void ViewportPanel::DrawViewport(EditorContext& context, bool showToolbar)
+	{
 		context.isViewportFocused = ImGui::IsWindowFocused();
 		if (context.renderer == nullptr)
 		{
@@ -127,9 +137,13 @@ namespace NeneEngine
 			return;
 		}
 
-		DrawToolbar(context);
-		const bool toolbarHovered = ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
-		ImGui::Separator();
+		bool toolbarHovered = false;
+		if (showToolbar)
+		{
+			DrawToolbar(context);
+			toolbarHovered = ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+			ImGui::Separator();
+		}
 		m_imagePosition = ImGui::GetCursorScreenPos();
 		m_imageSize = ImGui::GetContentRegionAvail();
 		if (m_imageSize.x < 1.0f || m_imageSize.y < 1.0f) return;

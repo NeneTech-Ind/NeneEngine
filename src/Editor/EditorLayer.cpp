@@ -35,6 +35,11 @@ namespace NeneEngine
 	{
 		constexpr const char* kDockSpaceName = "EditorMainDockSpace";
 		constexpr const char* kDockHostName = "##EditorDockHost";
+		constexpr const char* kFocusedViewportName = "##FocusedPlayViewport";
+		constexpr const char* kFocusedConsoleName = NENE_ICON_FILE_CODE " Console###FocusedPlayConsole";
+		constexpr ImGuiWindowFlags kFocusedPanelFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+		                                                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking |
+		                                                ImGuiWindowFlags_NoSavedSettings;
 		constexpr ImGuiWindowFlags kDockHostFlags =
 		    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
 		    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
@@ -44,6 +49,7 @@ namespace NeneEngine
 		constexpr float kMaxSideDockRatio = 0.35f;
 		constexpr float kMinSideDockWidth = 234.0f;
 		constexpr float kBottomDockRatio = 0.25f;
+		constexpr float kFocusedConsoleHeightRatio = 0.35f;
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
@@ -239,6 +245,8 @@ namespace NeneEngine
 		m_layoutInitialized = false;
 		m_showLeftDock = true;
 		m_showRightDock = true;
+		m_focusPlayViewport = false;
+		m_showPlayConsole = false;
 		m_exitRequested = false;
 		m_pendingSceneAction = SceneAction::None;
 		m_saveChangesError.clear();
@@ -387,37 +395,27 @@ namespace NeneEngine
 
 		if (ImGui::BeginMenu("View"))
 		{
-			if (ImGui::MenuItem("Left Sidebar", nullptr, &m_showLeftDock) && !m_showLeftDock)
+			if (m_context->mode == EditorMode::Play)
 			{
-				for (auto& entry : m_panels)
+				ImGui::MenuItem("Focus Viewport", nullptr, &m_focusPlayViewport);
+				ImGui::Separator();
+			}
+			if (m_focusPlayViewport)
+			{
+				if (ImGui::MenuItem(NENE_ICON_FILE_CODE " Console", nullptr, m_showPlayConsole))
 				{
-					if (!entry.isOpen || entry.panel->GetDefaultDockSlot() != EditorDockSlot::Left) continue;
-					const ImGuiWindow* window = ImGui::FindWindowByName(entry.windowTitle.c_str());
-					entry.focusRequested = window && window->DockNode && window->DockNode->VisibleWindow == window;
+					if (m_showPlayConsole)
+					{
+						m_showPlayConsole = false;
+						ImGui::SetWindowFocus(kFocusedViewportName);
+					}
+					else OpenConsole();
 				}
 			}
-			if (ImGui::MenuItem("Right Sidebar", nullptr, &m_showRightDock) && !m_showRightDock) CommitPendingEdits();
-			ImGui::Separator();
-			for (auto& entry : m_panels)
-			{
-				const auto slot = entry.panel->GetDefaultDockSlot();
-				bool* sideVisible = GetSideDockVisibility(slot);
-				const bool visible = entry.isOpen && (sideVisible == nullptr || *sideVisible);
-				if (!ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, visible)) continue;
-
-				entry.isOpen = !visible;
-				if (!entry.isOpen) continue;
-				if (sideVisible != nullptr && !*sideVisible)
-				{
-					*sideVisible = true;
-					for (auto& peer : m_panels)
-						if (peer.panel->GetDefaultDockSlot() == slot) peer.focusRequested = false;
-				}
-				entry.focusRequested = true;
-			}
+			else DrawWorkspacePanelMenu();
 			ImGui::Separator();
 			DrawThemeMenu();
-			if (ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
+			if (!m_focusPlayViewport && ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
 			{
 				m_showLeftDock = true;
 				m_showRightDock = true;
@@ -444,6 +442,38 @@ namespace NeneEngine
 		DrawPlayControls();
 		DrawWindowButtons();
 		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::DrawWorkspacePanelMenu()
+	{
+		if (ImGui::MenuItem("Left Sidebar", nullptr, &m_showLeftDock) && !m_showLeftDock)
+		{
+			for (auto& entry : m_panels)
+			{
+				if (!entry.isOpen || entry.panel->GetDefaultDockSlot() != EditorDockSlot::Left) continue;
+				const ImGuiWindow* window = ImGui::FindWindowByName(entry.windowTitle.c_str());
+				entry.focusRequested = window && window->DockNode && window->DockNode->VisibleWindow == window;
+			}
+		}
+		if (ImGui::MenuItem("Right Sidebar", nullptr, &m_showRightDock) && !m_showRightDock) CommitPendingEdits();
+		ImGui::Separator();
+		for (auto& entry : m_panels)
+		{
+			const auto slot = entry.panel->GetDefaultDockSlot();
+			bool* sideVisible = GetSideDockVisibility(slot);
+			const bool visible = entry.isOpen && (sideVisible == nullptr || *sideVisible);
+			if (!ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, visible)) continue;
+
+			entry.isOpen = !visible;
+			if (!entry.isOpen) continue;
+			if (sideVisible != nullptr && !*sideVisible)
+			{
+				*sideVisible = true;
+				for (auto& peer : m_panels)
+					if (peer.panel->GetDefaultDockSlot() == slot) peer.focusRequested = false;
+			}
+			entry.focusRequested = true;
+		}
 	}
 
 	void EditorLayer::DrawThemeMenu()
@@ -747,6 +777,13 @@ namespace NeneEngine
 
 	void EditorLayer::OpenConsole()
 	{
+		if (m_focusPlayViewport)
+		{
+			m_showPlayConsole = true;
+			ImGui::SetWindowFocus(kFocusedConsoleName);
+			return;
+		}
+
 		const auto console = std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
 		                                  { return dynamic_cast<const ConsolePanel*>(entry.panel.get()) != nullptr; });
 		if (console == m_panels.end()) return;
@@ -796,6 +833,20 @@ namespace NeneEngine
 
 		AddTitleBarInteractiveRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+
+		if (m_context->mode != EditorMode::Play) return;
+
+		const char* focusLabel = m_focusPlayViewport ? "Restore Layout###PlayViewportFocus"
+		                                            : "Focus Viewport###PlayViewportFocus";
+		const float focusWidth = ImGui::CalcTextSize(focusLabel, nullptr, true).x + style.FramePadding.x * 2.0f;
+		const float titleHeight = m_titleBar.max.y - m_titleBar.min.y;
+		const float windowButtonsWidth = m_window == nullptr ? 0.0f : ImFloor(titleHeight * kWindowButtonAspect) *
+		                                                                 static_cast<int>(WindowButton::Count);
+		if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + focusWidth > m_titleBar.max.x - windowButtonsWidth) return;
+
+		ImGui::SameLine();
+		if (PillButton(focusLabel)) m_focusPlayViewport = !m_focusPlayViewport;
+		AddTitleBarInteractiveRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 	}
 
 	void EditorLayer::SetWindow(IWindow* window)
@@ -928,6 +979,8 @@ namespace NeneEngine
 			world.NotifyPlayStopping();
 			m_sceneSnapshot.Restore(world);
 			if (!world.GetRegistry().valid(m_context->selectedEntity)) m_context->selectedEntity = ECS::NullEntity;
+			m_focusPlayViewport = false;
+			m_showPlayConsole = false;
 		}
 
 		m_context->mode = mode;
@@ -998,6 +1051,16 @@ namespace NeneEngine
 		}
 		m_layoutInitialized = true;
 
+		const ImVec2 workMax(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y + viewport->WorkSize.y);
+		ImGui::GetBackgroundDrawList(viewport)->AddRectFilled(
+		    viewport->WorkPos, workMax, ImGui::GetColorU32(m_themeService.GetColors().backgroundSunken));
+
+		if (m_focusPlayViewport)
+		{
+			ImGui::DockSpace(dockSpaceId, ImVec2(), ImGuiDockNodeFlags_KeepAliveOnly);
+			return;
+		}
+
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(viewport->WorkSize);
 		ImGui::SetNextWindowViewport(viewport->ID);
@@ -1011,10 +1074,6 @@ namespace NeneEngine
 		ImGui::DockSpace(dockSpaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 		ImGui::PopStyleColor(2);
 		ImGui::End();
-
-		const ImVec2 workMax(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y + viewport->WorkSize.y);
-		ImGui::GetBackgroundDrawList(viewport)->AddRectFilled(
-		    viewport->WorkPos, workMax, ImGui::GetColorU32(m_themeService.GetColors().backgroundSunken));
 	}
 
 	void EditorLayer::BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size)
@@ -1073,6 +1132,11 @@ namespace NeneEngine
 	void EditorLayer::DrawPanels()
 	{
 		for (auto& entry : m_panels) entry.panel->Update(*m_context);
+		if (m_focusPlayViewport)
+		{
+			DrawFocusedPlayPanels();
+			return;
+		}
 
 		const char* requestedFocus = nullptr;
 		for (auto& entry : m_panels)
@@ -1097,6 +1161,38 @@ namespace NeneEngine
 
 		// A later tab can take focus as it reappears. Apply the explicit request after all panels are submitted.
 		if (requestedFocus != nullptr) ImGui::SetWindowFocus(requestedFocus);
+	}
+
+	void EditorLayer::DrawFocusedPlayPanels()
+	{
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		const float gap = ImGui::GetStyle().DockingSeparatorSize;
+		const ImVec2 size = ComputeDockSpaceSize();
+		const ImVec2 pos(viewport->WorkPos.x + gap, viewport->WorkPos.y + gap);
+		const float consoleHeight = m_showPlayConsole ? size.y * kFocusedConsoleHeightRatio : 0.0f;
+		const float viewportHeight = (std::max)(1.0f, size.y - consoleHeight - (m_showPlayConsole ? gap : 0.0f));
+
+		for (auto& entry : m_panels)
+		{
+			if (auto* scene = dynamic_cast<ViewportPanel*>(entry.panel.get()))
+			{
+				ImGui::SetNextWindowViewport(viewport->ID);
+				ImGui::SetNextWindowPos(pos);
+				ImGui::SetNextWindowSize(ImVec2(size.x, viewportHeight));
+				const ImGuiWindowFlags flags = kFocusedPanelFlags | ImGuiWindowFlags_NoTitleBar | scene->GetWindowFlags();
+				if (ImGui::Begin(kFocusedViewportName, nullptr, flags)) scene->DrawPlayPreview(*m_context);
+				ImGui::End();
+			}
+			else if (auto* console = dynamic_cast<ConsolePanel*>(entry.panel.get()); console && m_showPlayConsole)
+			{
+				ImGui::SetNextWindowViewport(viewport->ID);
+				ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y + viewportHeight + gap));
+				ImGui::SetNextWindowSize(ImVec2(size.x, consoleHeight));
+				if (ImGui::Begin(kFocusedConsoleName, &m_showPlayConsole, kFocusedPanelFlags)) console->Draw(*m_context);
+				ImGui::End();
+				if (!m_showPlayConsole) ImGui::SetWindowFocus(kFocusedViewportName);
+			}
+		}
 	}
 
 	void EditorLayer::DrawDockedPanelCorners() const

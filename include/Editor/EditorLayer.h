@@ -78,6 +78,7 @@ namespace NeneEngine
 		void HandleShortcuts();
 		void CommitPendingEdits();
 		void DrawMainMenuBar();
+		void DrawWorkspacePanelMenu();
 		void ReloadScripts();
 		void DrawStatusBar();
 		void OpenConsole();
@@ -98,6 +99,7 @@ namespace NeneEngine
 		void BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size);
 		bool* GetSideDockVisibility(EditorDockSlot slot);
 		void DrawPanels();
+		void DrawFocusedPlayPanels();
 		void DrawDockedPanelCorners() const;
 		void ApplyInputCapture();
 		void LoadMascots();
@@ -126,6 +128,8 @@ namespace NeneEngine
 		bool m_layoutInitialized = false;
 		bool m_showLeftDock = true;
 		bool m_showRightDock = true;
+		bool m_focusPlayViewport = false;
+		bool m_showPlayConsole = false;
 		bool m_exitRequested = false;
 		SceneAction m_pendingSceneAction = SceneAction::None;
 		std::string m_saveChangesError;
