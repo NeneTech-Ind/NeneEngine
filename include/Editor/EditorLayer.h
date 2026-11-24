@@ -44,6 +44,7 @@ namespace NeneEngine
 		void Shutdown();
 
 		void Update();
+		void DrawFrame(bool handleShortcuts);
 		[[nodiscard]] bool HandleWindowCloseRequest();
 		void RequestExit() { m_exitRequested = true; }
 

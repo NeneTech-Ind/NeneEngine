@@ -217,17 +217,37 @@ namespace NeneEngine
 
 		case WM_DESTROY:
 			m_shouldClose = true;
+			m_inSizeMove = false;
 			m_hwnd = nullptr;
 			m_input.ResetState();
 			m_isTrackingMouseLeave = false;
 			return 0;
 
-		case WM_SIZE:
-			m_width = static_cast<uint32_t>(LOWORD(lParam));
-			m_height = static_cast<uint32_t>(HIWORD(lParam));
-			m_isMinimized = wParam == SIZE_MINIMIZED;
-			if (!m_isMinimized) m_resized.Broadcast(m_width, m_height);
+		case WM_ENTERSIZEMOVE:
+			m_inSizeMove = true;
+			if (m_sizeMoveHandler) m_sizeMoveHandler(SizeMoveEvent::Begin);
 			return 0;
+
+		case WM_EXITSIZEMOVE:
+			m_inSizeMove = false;
+			return 0;
+
+		case WM_SIZE:
+		{
+			const auto width = static_cast<uint32_t>(LOWORD(lParam));
+			const auto height = static_cast<uint32_t>(HIWORD(lParam));
+			const bool sizeChanged = width != m_width || height != m_height;
+			m_width = width;
+			m_height = height;
+			m_isMinimized = wParam == SIZE_MINIMIZED;
+			if (!m_isMinimized)
+			{
+				m_resized.Broadcast(width, height);
+				if (m_inSizeMove && sizeChanged && width != 0 && height != 0 && m_sizeMoveHandler)
+					m_sizeMoveHandler(SizeMoveEvent::Redraw);
+			}
+			return 0;
+		}
 
 		case WM_NCCALCSIZE:
 			if (wParam == TRUE && m_titleBarHitTest) return CalcCustomFrameClientRect(wParam, lParam);

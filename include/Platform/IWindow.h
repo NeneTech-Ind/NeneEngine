@@ -20,12 +20,19 @@ namespace NeneEngine
 		MaximizeButton
 	};
 
+	enum class SizeMoveEvent
+	{
+		Begin,
+		Redraw
+	};
+
 	class IWindow
 	{
 	  public:
 		using MessageHook =
 		    eastl::function<bool(HWND hwnd, uint32_t message, uintptr_t wParam, intptr_t lParam, intptr_t& result)>;
 		using CloseRequestHandler = eastl::function<bool()>;
+		using SizeMoveHandler = eastl::function<void(SizeMoveEvent)>;
 		using TitleBarHitTest = eastl::function<WindowHitArea(int32_t x, int32_t y)>;
 
 		virtual ~IWindow() = default;
@@ -43,6 +50,7 @@ namespace NeneEngine
 		virtual void SetTitleSuffix(const std::string& suffix) = 0;
 		virtual void SetMessageHook(MessageHook hook) = 0;
 		virtual void SetCloseRequestHandler(CloseRequestHandler handler) = 0;
+		virtual void SetSizeMoveHandler(SizeMoveHandler handler) = 0;
 		virtual void SetCustomTitleBar(TitleBarHitTest hitTest) = 0;
 		virtual void Minimize() = 0;
 		virtual void ToggleMaximize() = 0;
