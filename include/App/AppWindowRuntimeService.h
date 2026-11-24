@@ -32,11 +32,11 @@ namespace NeneEngine
 
 		[[nodiscard]] bool IsMainWindowClosed() const;
 		[[nodiscard]] bool AreAllWindowsMinimized() const;
-		void PumpWindowMessages();
+		void PumpWindowMessages(const IWindow::SizeMoveHandler& sizeMoveHandler);
 		void WaitForWindowMessages(uint32_t timeoutMs);
 		void UpdateInputManagers();
 		void UpdateWindowSystems(float deltaTime);
-		void Render();
+		void Render(bool allowVsync = true);
 		void EndFrameInputs();
 		void UpdateFrameStatsText(const std::string& statsText);
 		void ApplyRuntimeConfig(const AppConfig& config);
@@ -63,6 +63,7 @@ namespace NeneEngine
 		AppWindowContextFactory m_windowContextFactory;
 		eastl::vector<AppWindowContext> m_windows;
 		bool m_vsync = true;
+		const IWindow::SizeMoveHandler* m_sizeMoveHandler = nullptr;
 		eastl::vector<eastl::unique_ptr<ECS::ISystem>> m_appSystems;
 	};
 

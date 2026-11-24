@@ -314,7 +314,12 @@ namespace NeneEngine
 				m_nextScriptReloadCheck = now + kScriptReloadInterval;
 			}
 		}
+		DrawFrame(true);
+	}
 
+	void EditorLayer::DrawFrame(bool handleShortcuts)
+	{
+		if (m_imguiBackend == nullptr) return;
 		if (const float dpiScale = m_imguiBackend->GetDpiScale(); dpiScale != m_themeService.GetDpiScale())
 			m_themeService.SetDpiScale(dpiScale);
 
@@ -324,7 +329,7 @@ namespace NeneEngine
 		m_context->isViewportHovered = false;
 		m_context->isViewportFocused = false;
 
-		if (m_pendingSceneAction == SceneAction::None) HandleShortcuts();
+		if (handleShortcuts && m_pendingSceneAction == SceneAction::None) HandleShortcuts();
 		DrawMainMenuBar();
 		DrawStatusBar();
 		DrawDockSpace();

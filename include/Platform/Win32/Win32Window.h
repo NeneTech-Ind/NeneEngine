@@ -25,6 +25,7 @@ namespace NeneEngine
 		std::string GetTitle() const override { return m_title; }
 		void SetTitleSuffix(const std::string& suffix) override;
 		void SetMessageHook(MessageHook hook) override { m_messageHook = std::move(hook); }
+		void SetSizeMoveHandler(SizeMoveHandler handler) override { m_sizeMoveHandler = std::move(handler); }
 		void SetCloseRequestHandler(CloseRequestHandler handler) override
 		{
 			m_closeRequestHandler = std::move(handler);
@@ -59,6 +60,7 @@ namespace NeneEngine
 		uint32_t m_height = 0;
 		bool m_shouldClose = false;
 		bool m_isMinimized = false;
+		bool m_inSizeMove = false;
 		bool m_isTrackingMouseLeave = false;
 		bool m_isTrackingNonClientMouseLeave = false;
 		bool m_isMaximizeButtonHovered = false;
@@ -67,6 +69,7 @@ namespace NeneEngine
 		MulticastDelegate<uint32_t, uint32_t> m_resized;
 		MessageHook m_messageHook;
 		CloseRequestHandler m_closeRequestHandler;
+		SizeMoveHandler m_sizeMoveHandler;
 		TitleBarHitTest m_titleBarHitTest;
 	};
 } // namespace NeneEngine

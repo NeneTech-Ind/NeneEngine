@@ -14,6 +14,7 @@
 #include "Input/InputManager.h"
 
 #include <algorithm>
+#include <exception>
 #include <format>
 
 namespace NeneEngine
@@ -33,10 +34,36 @@ namespace NeneEngine
 		running = true;
 		timer.Reset();
 
+		bool drawingResizeFrame = false;
+		std::exception_ptr resizeError;
+		const IWindow::SizeMoveHandler handleSizeMove = [&](SizeMoveEvent event)
+		{
+			if (event == SizeMoveEvent::Begin)
+			{
+				timer.Stop();
+				return;
+			}
+			if (drawingResizeFrame || resizeError || !running.load() || windowRuntimeService.IsMainWindowClosed()) return;
+
+			drawingResizeFrame = true;
+			try
+			{
+				NENE_PROFILE_SCOPE("Live Resize Redraw");
+				editorLayer.DrawFrame(false);
+				windowRuntimeService.Render(false);
+			}
+			catch (...)
+			{
+				resizeError = std::current_exception();
+			}
+			drawingResizeFrame = false;
+		};
+
 		while (running.load() && !windowRuntimeService.IsMainWindowClosed())
 		{
 			NENE_PROFILE_SCOPE("Frame");
-			windowRuntimeService.PumpWindowMessages();
+			windowRuntimeService.PumpWindowMessages(handleSizeMove);
+			if (resizeError) std::rethrow_exception(resizeError);
 			if (!running.load() || windowRuntimeService.IsMainWindowClosed()) break;
 			resourceLoads.Pump();
 
