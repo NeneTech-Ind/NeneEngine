@@ -18,6 +18,7 @@ namespace NeneEngine
 		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_FOLDER; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Bottom; }
 		void Draw(EditorContext& context) override;
+		void RevealAsset(const std::string& path);
 
 	  private:
 		void DrawList(const EditorContext& context);
@@ -27,5 +28,6 @@ namespace NeneEngine
 		eastl::vector<size_t> m_matches;
 		std::string m_selectedPath;
 		std::string m_failedPreviewPath;
+		bool m_scrollToSelection = false;
 	};
 } // namespace NeneEngine

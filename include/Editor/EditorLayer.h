@@ -71,6 +71,7 @@ namespace NeneEngine
 			eastl::unique_ptr<IEditorPanel> panel;
 			bool isOpen = true;
 			eastl::string windowTitle;
+			bool focusRequested = false;
 		};
 
 		void HandleShortcuts();
@@ -78,6 +79,7 @@ namespace NeneEngine
 		void DrawMainMenuBar();
 		void ReloadScripts();
 		void DrawStatusBar();
+		void ShowAssetInBrowser(const std::string& path);
 		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
 		void RequestSceneAction(SceneAction action);
 		void RunSceneAction(SceneAction action);

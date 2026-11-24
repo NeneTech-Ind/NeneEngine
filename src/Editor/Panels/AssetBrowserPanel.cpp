@@ -63,6 +63,13 @@ namespace NeneEngine
 		}
 	} // namespace
 
+	void AssetBrowserPanel::RevealAsset(const std::string& path)
+	{
+		if (!m_filter.PassFilter(GetFileName(path).c_str())) m_filter.Clear();
+		m_selectedPath = path;
+		m_scrollToSelection = true;
+	}
+
 	void AssetBrowserPanel::Draw(EditorContext& context)
 	{
 		const EditorThemeColorsConfig& colors = *context.themeColors;
@@ -107,10 +114,15 @@ namespace NeneEngine
 		}
 
 		m_matches.clear();
+		int revealRow = -1;
 		for (size_t index = 0; index < entries.size(); ++index)
 		{
-			if (m_filter.PassFilter(GetFileName(entries[index].path).c_str())) m_matches.push_back(index);
+			if (!m_filter.PassFilter(GetFileName(entries[index].path).c_str())) continue;
+			if (m_scrollToSelection && entries[index].path == m_selectedPath)
+				revealRow = static_cast<int>(m_matches.size());
+			m_matches.push_back(index);
 		}
+		m_scrollToSelection = false;
 
 		if (m_matches.empty())
 		{
@@ -120,6 +132,7 @@ namespace NeneEngine
 
 		ImGuiListClipper clipper;
 		clipper.Begin(static_cast<int>(m_matches.size()));
+		if (revealRow >= 0) clipper.IncludeItemByIndex(revealRow);
 		while (clipper.Step())
 		{
 			for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
@@ -130,6 +143,7 @@ namespace NeneEngine
 
 				ImGui::PushID(entry.path.c_str());
 				if (ImGui::Selectable(label.c_str(), isSelected)) m_selectedPath = entry.path;
+				if (row == revealRow) ImGui::SetScrollHereY();
 				if (isSelected) DrawSelectionMarker(context.themeColors->accent);
 				if (ImGui::BeginItemTooltip())
 				{

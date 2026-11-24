@@ -2,6 +2,7 @@
 
 #include "Editor/Panels/HierarchyPanel.h"
 
+#include "Core/PathResolver.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
@@ -321,9 +322,10 @@ namespace NeneEngine
 			try
 			{
 				const auto name = draft.name.substr(first, draft.name.find_last_not_of(" \t") - first + 1);
-				context.prefabs->CreateFromEntity(name, draft.entity);
+				const auto path = context.prefabs->CreateFromEntity(name, draft.entity);
 				context.assets.Refresh();
-				context.SetStatus(EditorStatusKind::Success, "Created prefab: " + name);
+				context.SetStatus(EditorStatusKind::Success, "Created prefab: " + name,
+				                  GenericPathToUtf8("assets/prefabs" / path));
 				saved = true;
 			}
 			catch (const std::exception& exception)

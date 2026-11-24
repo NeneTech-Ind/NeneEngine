@@ -631,21 +631,33 @@ namespace NeneEngine
 			const bool hasScriptErrors = m_scriptEngine->HasScriptLoadErrors();
 			const char* reloadLabel = hasScriptErrors ? NENE_ICON_ERROR " Reload scripts###ReloadScripts"
 			                                          : NENE_ICON_REFRESH " Reload scripts###ReloadScripts";
+			constexpr const char* revealLabel = "Show in Assets";
+			const bool canRevealAsset = !status.assetToReveal.empty();
 			const float segmentSpacing = style.ItemSpacing.x * 2.0f;
 			const float rightWidth =
 			    ImGui::CalcTextSize(reloadLabel, nullptr, true).x + style.FramePadding.x * 2.0f + segmentSpacing * 2.0f +
 			    ImGui::CalcTextSize(sceneLabel.c_str()).x + ImGui::CalcTextSize(modeLabel).x;
 			const float startX = ImGui::GetCursorPosX();
-			const float rightX = (std::max)(startX, startX + ImGui::GetContentRegionAvail().x - rightWidth);
-			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x);
+			const float actionSpace = canRevealAsset ? ImGui::CalcTextSize(revealLabel).x +
+			                                               style.FramePadding.x * 2.0f + style.ItemSpacing.x
+			                                         : 0.0f;
+			const float rightX = (std::max)(startX + actionSpace, startX + ImGui::GetContentRegionAvail().x - rightWidth);
+			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x - actionSpace);
+			const float labelWidth = ImGui::CalcTextSize(label.c_str()).x;
 			const ImVec2 start = ImGui::GetCursorScreenPos();
 
 			ImGui::AlignTextToFramePadding();
 			ImGui::PushClipRect(start, ImVec2(start.x + messageWidth, start.y + ImGui::GetFrameHeight()), true);
 			ImGui::TextColored(messageColor, "%s", label.c_str());
 			ImGui::PopClipRect();
-			if (ImGui::CalcTextSize(label.c_str()).x > messageWidth)
-				ImGui::SetItemTooltip("%s", status.message.c_str());
+			if (labelWidth > messageWidth) ImGui::SetItemTooltip("%s", status.message.c_str());
+
+			if (canRevealAsset)
+			{
+				const float textSpace = messageWidth > 0.0f ? (std::min)(labelWidth, messageWidth) + style.ItemSpacing.x : 0.0f;
+				ImGui::SameLine(startX + textSpace);
+				if (ImGui::Button(revealLabel)) ShowAssetInBrowser(status.assetToReveal);
+			}
 
 			ImGui::SameLine(rightX);
 			ImGui::BeginDisabled(m_context->isSceneLoading);
@@ -666,6 +678,27 @@ namespace NeneEngine
 			ImGui::TextColored(detailColor, "%s", modeLabel);
 		}
 		ImGui::End();
+	}
+
+	void EditorLayer::ShowAssetInBrowser(const std::string& path)
+	{
+		const auto& entries = m_context->assets.Entries();
+		if (std::ranges::none_of(entries, [&path](const AssetEntry& entry) { return entry.path == path; }))
+		{
+			m_context->SetStatus(EditorStatusKind::Danger, "Asset not found: " + path);
+			return;
+		}
+
+		for (auto& entry : m_panels)
+		{
+			if (auto* browser = dynamic_cast<AssetBrowserPanel*>(entry.panel.get()))
+			{
+				browser->RevealAsset(path);
+				entry.isOpen = true;
+				entry.focusRequested = true;
+				return;
+			}
+		}
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()
@@ -980,6 +1013,12 @@ namespace NeneEngine
 		for (auto& entry : m_panels)
 		{
 			if (!entry.isOpen) continue;
+			if (entry.focusRequested)
+			{
+				ImGui::SetNextWindowCollapsed(false);
+				ImGui::SetNextWindowFocus();
+				entry.focusRequested = false;
+			}
 
 			if (ImGui::Begin(entry.windowTitle.c_str(), &entry.isOpen, entry.panel->GetWindowFlags()))
 			{
