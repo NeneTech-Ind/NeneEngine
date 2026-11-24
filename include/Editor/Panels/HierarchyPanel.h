@@ -25,6 +25,7 @@ namespace NeneEngine
 	{
 	  public:
 		[[nodiscard]] const char* GetName() const override { return "Scene Hierarchy"; }
+		[[nodiscard]] const char* GetTitle() const override { return "Scene"; }
 		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_HIERARCHY; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Left; }
 

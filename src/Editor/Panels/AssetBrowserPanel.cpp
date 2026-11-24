@@ -17,6 +17,8 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr float kListWidthRatio = 0.7f;
+		constexpr float kListHeightRatio = 0.6f;
+		constexpr float kSideBySideMinWidth = 480.0f;
 
 		const char* GetAssetIcon(AssetKind kind)
 		{
@@ -89,10 +91,13 @@ namespace NeneEngine
 			StatusText(colors, EditorStatusKind::Danger, context.assets.Error().c_str());
 		ImGui::Separator();
 
-		if (ImGui::BeginChild("##AssetList", ImVec2(ImGui::GetContentRegionAvail().x * kListWidthRatio, 0.0f)))
-			DrawList(context);
+		const ImVec2 available = ImGui::GetContentRegionAvail();
+		const bool sideBySide = available.x >= ScaledSize(kSideBySideMinWidth);
+		const ImVec2 listSize = sideBySide ? ImVec2(available.x * kListWidthRatio, 0.0f)
+		                                  : ImVec2(0.0f, (std::max)(1.0f, available.y * kListHeightRatio));
+		if (ImGui::BeginChild("##AssetList", listSize)) DrawList(context);
 		ImGui::EndChild();
-		ImGui::SameLine();
+		if (sideBySide) ImGui::SameLine();
 		if (ImGui::BeginChild("##AssetPreview")) DrawPreview(context);
 		ImGui::EndChild();
 	}

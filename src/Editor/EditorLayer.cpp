@@ -41,6 +41,8 @@ namespace NeneEngine
 		    ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
+		constexpr float kMaxSideDockRatio = 0.35f;
+		constexpr float kMinSideDockWidth = 234.0f;
 		constexpr float kBottomDockRatio = 0.25f;
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
@@ -197,7 +199,7 @@ namespace NeneEngine
 
 		for (auto& entry : m_panels)
 			entry.windowTitle =
-			    eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetName() + "###" + entry.panel->GetName();
+			    eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetTitle() + "###" + entry.panel->GetName();
 
 		NENE_LOG_INFO("Editor initialized with {} panels", m_panels.size());
 	}
@@ -392,6 +394,11 @@ namespace NeneEngine
 			DrawThemeMenu();
 			if (ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
 			{
+				for (auto& entry : m_panels)
+				{
+					entry.isOpen = entry.isOpenByDefault;
+					entry.focusRequested = false;
+				}
 				const auto dockSpaceId = ImHashStr(kDockSpaceName);
 				ImGui::DockBuilderRemoveNode(dockSpaceId);
 				BuildDefaultLayout(dockSpaceId, ComputeDockSpaceSize());
@@ -989,9 +996,12 @@ namespace NeneEngine
 		ImGui::DockBuilderSetNodeSize(dockSpaceId, size);
 
 		ImGuiID centerId = dockSpaceId;
-		const ImGuiID leftId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, kLeftDockRatio, nullptr, &centerId);
-		const ImGuiID rightId =
-		    ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Right, kRightDockRatio, nullptr, &centerId);
+		const float sideDockWidth = ScaledSize(kMinSideDockWidth);
+		const float leftRatio = std::clamp(sideDockWidth / size.x, kLeftDockRatio, kMaxSideDockRatio);
+		const ImGuiID leftId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, leftRatio, nullptr, &centerId);
+		const float remainingWidth = size.x * (1.0f - leftRatio);
+		const float rightRatio = std::clamp(sideDockWidth / remainingWidth, kRightDockRatio, kMaxSideDockRatio);
+		const ImGuiID rightId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Right, rightRatio, nullptr, &centerId);
 		const ImGuiID bottomId =
 		    ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Down, kBottomDockRatio, nullptr, &centerId);
 
@@ -1018,12 +1028,12 @@ namespace NeneEngine
 
 		ImGui::DockBuilderFinish(dockSpaceId);
 
-		const auto firstBottomPanel =
+		const auto firstLeftPanel =
 		    std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
-		                 { return entry.panel->GetDefaultDockSlot() == EditorDockSlot::Bottom; });
-		if (ImGuiDockNode* bottomNode = ImGui::DockBuilderGetNode(bottomId);
-		    bottomNode != nullptr && firstBottomPanel != m_panels.end())
-			bottomNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(firstBottomPanel->windowTitle.c_str()));
+		                 { return entry.isOpen && entry.panel->GetDefaultDockSlot() == EditorDockSlot::Left; });
+		if (ImGuiDockNode* leftNode = ImGui::DockBuilderGetNode(leftId);
+		    leftNode != nullptr && firstLeftPanel != m_panels.end())
+			leftNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(firstLeftPanel->windowTitle.c_str()));
 	}
 
 	void EditorLayer::DrawPanels()
