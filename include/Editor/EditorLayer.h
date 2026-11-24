@@ -69,7 +69,8 @@ namespace NeneEngine
 		struct PanelEntry
 		{
 			eastl::unique_ptr<IEditorPanel> panel;
-			bool isOpen = true;
+			bool isOpenByDefault = true;
+			bool isOpen = isOpenByDefault;
 			eastl::string windowTitle;
 			bool focusRequested = false;
 		};
