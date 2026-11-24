@@ -2,6 +2,7 @@
 
 #include "Editor/Panels/HierarchyPanel.h"
 
+#include "Core/PathResolver.h"
 #include "ECS/Components/CameraComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
@@ -31,7 +32,7 @@ namespace NeneEngine
 		constexpr float kMotionEpsilon = 1.0e-4f;
 		constexpr double kMotionHoldSeconds = 0.3;
 		constexpr float kMotionDotRadius = 3.5f;
-		constexpr const char* kCreatePrefabDialog = "Create Prefab";
+		constexpr const char* kCreatePrefabDialog = "Create Prefab from Entity";
 
 		bool HasChanged(const glm::vec3& current, const glm::vec3& previous)
 		{
@@ -267,7 +268,7 @@ namespace NeneEngine
 	void HierarchyPanel::DrawEntityContextMenu(EditorContext& context, ECS::Entity entity)
 	{
 		if (!ImGui::BeginPopupContextItem()) return;
-		if (ImGui::MenuItem("Create Prefab...", nullptr, false, context.CanEdit() && context.prefabs != nullptr))
+		if (ImGui::MenuItem("Create Prefab from Entity...", nullptr, false, context.CanEdit() && context.prefabs != nullptr))
 			m_prefabDraft = PrefabDraft{entity, context.sceneGeneration, {}, {}};
 		ImGui::EndPopup();
 	}
@@ -321,9 +322,10 @@ namespace NeneEngine
 			try
 			{
 				const auto name = draft.name.substr(first, draft.name.find_last_not_of(" \t") - first + 1);
-				context.prefabs->CreateFromEntity(name, draft.entity);
+				const auto path = context.prefabs->CreateFromEntity(name, draft.entity);
 				context.assets.Refresh();
-				context.SetStatus(EditorStatusKind::Success, "Created prefab: " + name);
+				context.SetStatus(EditorStatusKind::Success, "Created prefab: " + name,
+				                  GenericPathToUtf8("assets/prefabs" / path));
 				saved = true;
 			}
 			catch (const std::exception& exception)

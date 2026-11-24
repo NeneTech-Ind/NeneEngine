@@ -50,6 +50,7 @@ namespace NeneEngine
 		EditorStatusKind kind = EditorStatusKind::Muted;
 		std::string message;
 		double time = 0.0;
+		std::string assetToReveal;
 	};
 
 	struct EditorContext
@@ -77,9 +78,9 @@ namespace NeneEngine
 
 		[[nodiscard]] bool CanEdit() const { return mode == EditorMode::Edit && !isSceneLoading; }
 
-		void SetStatus(EditorStatusKind kind, std::string message)
+		void SetStatus(EditorStatusKind kind, std::string message, std::string assetToReveal = {})
 		{
-			status = {kind, std::move(message), ImGui::GetTime()};
+			status = {kind, std::move(message), ImGui::GetTime(), std::move(assetToReveal)};
 		}
 
 		[[nodiscard]] const ImGuiTexture& GetMascot(EditorMascotPose pose) const

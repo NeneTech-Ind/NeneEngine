@@ -81,6 +81,7 @@ namespace NeneEngine
 		void DrawWorkspacePanelMenu();
 		void ReloadScripts();
 		void DrawStatusBar();
+		void ShowAssetInBrowser(const std::string& path);
 		void OpenConsole();
 		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
 		void RequestSceneAction(SceneAction action);

@@ -309,7 +309,7 @@ namespace NeneEngine
 		m_prefabs.clear();
 	}
 
-	void PrefabLibrary::CreateFromEntity(const std::string& name, ECS::Entity root)
+	std::filesystem::path PrefabLibrary::CreateFromEntity(const std::string& name, ECS::Entity root)
 	{
 		const auto key = NormalizeName(name);
 		const auto relativePath = PathFromUtf8(key);
@@ -331,9 +331,11 @@ namespace NeneEngine
 		                                 {"root", hierarchy.entities.front().at("id")},
 		                                 {"entities", std::move(hierarchy.entities)}});
 		const auto contents = definition.dump(4) + "\n";
+		const auto createdPath = (relative / relativePath.filename()).lexically_normal();
 		std::filesystem::create_directories(parent);
 		WriteDefinition(parent / relativePath.filename(), contents, PrefabWriteMode::Create);
 		m_prefabs.erase(key);
+		return createdPath;
 	}
 
 	void PrefabLibrary::SaveScriptFields(const std::string& name, const ECS::ScriptComponent& script)
