@@ -39,6 +39,7 @@
 #include <misc/cpp/imgui_stdlib.h>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace NeneEngine
@@ -59,7 +60,10 @@ namespace NeneEngine
 		constexpr const char* kPrimitiveTypeNames[] = {"Line", "Triangle", "Quad", "Cube"};
 		constexpr const char* kColliderTypeNames[] = {"Box", "Sphere"};
 		constexpr float kMaterialPreviewMaxWidth = 128.0f;
+		constexpr const char* kAddComponentLabel = "Add Component";
+		constexpr const char* kGoToComponentLabel = "Go to Component";
 		constexpr const char* kAddComponentPopup = "##AddComponent";
+		constexpr const char* kGoToComponentPopup = "##GoToComponent";
 
 		template <typename Component> constexpr bool kRemovable = false;
 		template <> constexpr bool kRemovable<ECS::MeshRendererComponent> = true;
@@ -299,16 +303,36 @@ namespace NeneEngine
 		}
 	} // namespace
 
+	bool InspectorPanel::SectionNavigation::DrawHeader(const char* icon, const char* label)
+	{
+		if (listing)
+		{
+			hasSections = true;
+			const std::string itemLabel = std::string(icon) + " " + label;
+			if (ImGui::MenuItem(itemLabel.c_str())) target = label;
+			return false;
+		}
+
+		const bool reveal = target != nullptr && std::string_view(label) == target;
+		if (reveal) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+		const bool isOpen = ComponentHeader(icon, label);
+		if (reveal) ImGui::SetScrollHereY(0.0f);
+		return isOpen;
+	}
+
 	template <typename Component, typename DrawFields>
-	void InspectorPanel::DrawComponent(EditorContext& context, const char* icon, const char* label,
-	                                   DrawFields&& drawFields)
+	void InspectorPanel::DrawComponent(EditorContext& context, SectionNavigation& navigation, const char* icon,
+	                                   const char* label, DrawFields&& drawFields)
 	{
 		const ECS::Entity entity = context.selectedEntity;
 		Component* component = context.world.GetComponent<Component>(entity);
 		if (component == nullptr) return;
 
-		const bool isOpen = ComponentHeader(icon, label);
-		if constexpr (kRemovable<Component>) DrawRemoveMenu<Component>(context, label);
+		const bool isOpen = navigation.DrawHeader(icon, label);
+		if constexpr (kRemovable<Component>)
+		{
+			if (!navigation.listing) DrawRemoveMenu<Component>(context, label);
+		}
 		if (!isOpen) return;
 
 		const bool isEditMode = context.CanEdit();
@@ -373,11 +397,33 @@ namespace NeneEngine
 		return true;
 	}
 
-	void InspectorPanel::DrawAddComponent(EditorContext& context)
+	void InspectorPanel::DrawComponentToolbar(EditorContext& context, SectionNavigation& navigation)
 	{
 		ImGui::Spacing();
+		const ImGuiStyle& style = ImGui::GetStyle();
+		const float halfWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x) * 0.5f;
+		const float widestLabel =
+		    (std::max)(ImGui::CalcTextSize(kAddComponentLabel).x, ImGui::CalcTextSize(kGoToComponentLabel).x);
+		const bool sideBySide = halfWidth >= widestLabel + style.FramePadding.x * 2.0f;
+		const float buttonWidth = sideBySide ? halfWidth : -FLT_MIN;
+
+		DrawAddComponent(context, buttonWidth);
+		if (sideBySide) ImGui::SameLine();
+		if (PillButton(kGoToComponentLabel, ImVec2(buttonWidth, 0.0f))) ImGui::OpenPopup(kGoToComponentPopup);
+		if (!ImGui::BeginPopup(kGoToComponentPopup)) return;
+
+		navigation.listing = true;
+		DrawComponents(context, navigation);
+		DrawScript(context, navigation);
+		navigation.listing = false;
+		if (!navigation.hasSections) ImGui::TextDisabled("No components to show");
+		ImGui::EndPopup();
+	}
+
+	void InspectorPanel::DrawAddComponent(EditorContext& context, float width)
+	{
 		ImGui::BeginDisabled(!context.CanEdit());
-		if (PillButton("Add Component", ImVec2(-FLT_MIN, 0.0f))) ImGui::OpenPopup(kAddComponentPopup);
+		if (PillButton(kAddComponentLabel, ImVec2(width, 0.0f))) ImGui::OpenPopup(kAddComponentPopup);
 		ImGui::EndDisabled();
 		ImGui::SetItemTooltip("Right-click a component header to remove it");
 
@@ -465,20 +511,25 @@ namespace NeneEngine
 			return;
 		}
 
+		SectionNavigation navigation;
 		DrawEntityHeader(context);
+		DrawComponentToolbar(context, navigation);
 		ImGui::Separator();
-		DrawComponents(context);
-		if (!DrawScript(context)) FinishScriptFieldEdit(context);
-		DrawAddComponent(context);
+		if (ImGui::BeginChild("##InspectorComponents", ImVec2(0.0f, 0.0f), ImGuiChildFlags_NavFlattened))
+		{
+			DrawComponents(context, navigation);
+			if (!DrawScript(context, navigation)) FinishScriptFieldEdit(context);
+		}
+		ImGui::EndChild();
 
 		if (m_pendingCommand && context.CanEdit()) context.history.Execute(std::move(m_pendingCommand), context.world);
 		m_pendingCommand.reset();
 	}
 
-	bool InspectorPanel::DrawScript(EditorContext& context)
+	bool InspectorPanel::DrawScript(EditorContext& context, SectionNavigation& navigation)
 	{
 		const auto* script = context.world.GetComponent<ECS::ScriptComponent>(context.selectedEntity);
-		if (script == nullptr || !ComponentHeader(NENE_ICON_FILE_CODE, "Script")) return false;
+		if (script == nullptr || !navigation.DrawHeader(NENE_ICON_FILE_CODE, "Script")) return false;
 
 		ComponentCardScope card;
 		if (script->scriptPath.empty())
@@ -670,22 +721,22 @@ namespace NeneEngine
 		}
 	}
 
-	void InspectorPanel::DrawComponents(EditorContext& context)
+	void InspectorPanel::DrawComponents(EditorContext& context, SectionNavigation& navigation)
 	{
 		const ECS::Entity entity = context.selectedEntity;
 
-		DrawComponent<ECS::TagComponent>(context, NENE_ICON_TAG, "Tag",
+		DrawComponent<ECS::TagComponent>(context, navigation, NENE_ICON_TAG, "Tag",
 		                                 [](ECS::TagComponent& tag, FieldEdits& edits)
 		                                 {
 			                                 ImGui::InputText("Name", &tag.name);
 			                                 TrackItem(edits);
 		                                 });
 
-		DrawComponent<ECS::TransformComponent>(context, NENE_ICON_TRANSFORM, "Transform",
+		DrawComponent<ECS::TransformComponent>(context, navigation, NENE_ICON_TRANSFORM, "Transform",
 		                                       [this, entity](ECS::TransformComponent& transform, FieldEdits& edits)
 		                                       { DrawTransformFields(entity, transform, edits); });
 
-		DrawComponent<ECS::MeshRendererComponent>(context, NENE_ICON_MESH, "Mesh Renderer",
+		DrawComponent<ECS::MeshRendererComponent>(context, navigation, NENE_ICON_MESH, "Mesh Renderer",
 		                                          [](ECS::MeshRendererComponent& meshRenderer, FieldEdits& edits)
 		                                          {
 			                                          EnumCombo("Primitive", meshRenderer.primitiveType,
@@ -693,10 +744,10 @@ namespace NeneEngine
 			                                          Checkbox("Visible", meshRenderer.visible, edits);
 		                                          });
 
-		DrawMaterial(context);
+		DrawMaterial(context, navigation);
 
 		DrawComponent<ECS::ColliderComponent>(
-		    context, NENE_ICON_COLLIDER, "Collider",
+		    context, navigation, NENE_ICON_COLLIDER, "Collider",
 		    [](ECS::ColliderComponent& collider, FieldEdits& edits)
 		    {
 			    EnumCombo("Type", collider.type, kColliderTypeNames, edits);
@@ -707,7 +758,7 @@ namespace NeneEngine
 			    DragVec3("Offset", collider.offset, 0.01f, edits);
 		    });
 
-		DrawComponent<ECS::RigidbodyComponent>(context, NENE_ICON_RIGIDBODY, "Rigidbody",
+		DrawComponent<ECS::RigidbodyComponent>(context, navigation, NENE_ICON_RIGIDBODY, "Rigidbody",
 		                                       [](ECS::RigidbodyComponent& rigidbody, FieldEdits& edits)
 		                                       {
 			                                       DragFloat("Mass", rigidbody.mass, 0.01f, edits, kMinMass, 10000.0f);
@@ -718,7 +769,7 @@ namespace NeneEngine
 		                                       });
 
 		if (const auto* contactState = context.world.GetComponent<ECS::ContactStateComponent>(entity);
-		    contactState != nullptr && ComponentHeader(NENE_ICON_SNAP, "Contact State"))
+		    contactState != nullptr && navigation.DrawHeader(NENE_ICON_SNAP, "Contact State"))
 		{
 			ComponentCardScope card;
 			const std::string contactCount = std::to_string(contactState->contactCount);
@@ -726,7 +777,7 @@ namespace NeneEngine
 			DrawReadOnlyValue(context.monospaceFont, "Grounded", contactState->isGrounded ? "yes" : "no");
 		}
 
-		DrawComponent<ECS::MovementComponent>(context, NENE_ICON_MOVEMENT, "Movement",
+		DrawComponent<ECS::MovementComponent>(context, navigation, NENE_ICON_MOVEMENT, "Movement",
 		                                      [](ECS::MovementComponent& movement, FieldEdits& edits)
 		                                      {
 			                                      DragVec3("Velocity", movement.velocity, 0.05f, edits);
@@ -740,7 +791,7 @@ namespace NeneEngine
 		                                      });
 
 		DrawComponent<ECS::PlayerControllerComponent>(
-		    context, NENE_ICON_CONTROLLER, "Player Controller",
+		    context, navigation, NENE_ICON_CONTROLLER, "Player Controller",
 		    [](ECS::PlayerControllerComponent& controller, FieldEdits& edits)
 		    {
 			    DragFloat("Move Speed", controller.moveSpeed, 0.05f, edits, 0.0f, 100.0f);
@@ -748,7 +799,7 @@ namespace NeneEngine
 		    });
 
 		DrawComponent<ECS::PrimitiveControlComponent>(
-		    context, NENE_ICON_CONTROLLER, "Primitive Control",
+		    context, navigation, NENE_ICON_CONTROLLER, "Primitive Control",
 		    [](ECS::PrimitiveControlComponent& control, FieldEdits& edits)
 		    {
 			    DragFloat("Move Speed", control.moveSpeed, 0.05f, edits, 0.0f, 100.0f);
@@ -757,7 +808,7 @@ namespace NeneEngine
 		    });
 
 		DrawComponent<ECS::CameraComponent>(
-		    context, NENE_ICON_CAMERA, "Camera",
+		    context, navigation, NENE_ICON_CAMERA, "Camera",
 		    [](ECS::CameraComponent& camera, FieldEdits& edits)
 		    {
 			    DragFloat("FOV", camera.fovDegrees, 0.1f, edits, 1.0f, 179.0f);
@@ -767,7 +818,7 @@ namespace NeneEngine
 		    });
 
 		DrawComponent<ECS::CameraControllerComponent>(
-		    context, NENE_ICON_CONTROLLER, "Camera Controller",
+		    context, navigation, NENE_ICON_CONTROLLER, "Camera Controller",
 		    [](ECS::CameraControllerComponent& controller, FieldEdits& edits)
 		    {
 			    DragFloat("Move Speed", controller.moveSpeed, 0.05f, edits, 0.0f, 100.0f);
@@ -853,16 +904,16 @@ namespace NeneEngine
 		             ImVec2(width, width * texture.height / texture.width));
 	}
 
-	void InspectorPanel::DrawMaterial(EditorContext& context)
+	void InspectorPanel::DrawMaterial(EditorContext& context, SectionNavigation& navigation)
 	{
 		auto* material = context.world.GetComponent<ECS::MeshRendererComponent>(context.selectedEntity);
 		if (material == nullptr)
 		{
-			if (HasMeshChild(context.world.GetRegistry(), context.selectedEntity))
+			if (!navigation.listing && HasMeshChild(context.world.GetRegistry(), context.selectedEntity))
 				StatusText(*context.themeColors, EditorStatusKind::Muted, "Select a mesh part to edit its material");
 			return;
 		}
-		if (context.renderer == nullptr || !ComponentHeader(NENE_ICON_PALETTE, "Material")) return;
+		if (context.renderer == nullptr || !navigation.DrawHeader(NENE_ICON_PALETTE, "Material")) return;
 
 		const EditorThemeColorsConfig& colors = *context.themeColors;
 		ComponentCardScope card;
