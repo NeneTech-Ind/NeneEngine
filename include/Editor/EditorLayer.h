@@ -71,6 +71,7 @@ namespace NeneEngine
 			eastl::unique_ptr<IEditorPanel> panel;
 			bool isOpen = true;
 			eastl::string windowTitle;
+			bool focusRequested = false;
 		};
 
 		void HandleShortcuts();
@@ -78,6 +79,7 @@ namespace NeneEngine
 		void DrawMainMenuBar();
 		void ReloadScripts();
 		void DrawStatusBar();
+		void OpenConsole();
 		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
 		void RequestSceneAction(SceneAction action);
 		void RunSceneAction(SceneAction action);
@@ -104,6 +106,7 @@ namespace NeneEngine
 		IWindow* m_window = nullptr;
 		ScriptEngine* m_scriptEngine = nullptr;
 		std::chrono::steady_clock::time_point m_nextScriptReloadCheck{};
+		EditorStatus m_scriptReloadStatus;
 		TitleBarRect m_titleBar;
 		TitleBarRect m_maximizeButtonRect;
 		eastl::vector<TitleBarRect> m_titleBarInteractiveRects;

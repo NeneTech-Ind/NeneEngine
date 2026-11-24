@@ -243,6 +243,7 @@ namespace NeneEngine
 		m_context.reset();
 		m_scriptEngine = nullptr;
 		m_nextScriptReloadCheck = {};
+		m_scriptReloadStatus = {};
 		m_requestShutdown = nullptr;
 		m_onModeChanged = nullptr;
 		m_uiInput = nullptr;
@@ -579,6 +580,7 @@ namespace NeneEngine
 
 	void EditorLayer::ReloadScripts()
 	{
+		const auto generation = m_scriptEngine->GetScriptCacheGeneration();
 		if (m_context->mode == EditorMode::Play)
 		{
 			m_scriptEngine->ReloadChangedScripts();
@@ -588,14 +590,35 @@ namespace NeneEngine
 			CommitPendingEdits();
 			m_scriptEngine->ReloadAll();
 		}
+		if (m_scriptEngine->GetScriptCacheGeneration() != generation && m_scriptEngine->FindFailedScript() == nullptr)
+			m_scriptReloadStatus = {EditorStatusKind::Success, "Lua scripts reloaded", ImGui::GetTime()};
 	}
 
 	void EditorLayer::DrawStatusBar()
 	{
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
-		EditorStatus& status = m_context->status;
-		if (status.kind == EditorStatusKind::Success && ImGui::GetTime() - status.time > kStatusHoldSeconds)
-			status = {};
+		const double now = ImGui::GetTime();
+		EditorStatus& editorStatus = m_context->status;
+		if (editorStatus.kind == EditorStatusKind::Success && now - editorStatus.time > kStatusHoldSeconds)
+			editorStatus = {};
+
+		const auto* failedScript = m_scriptEngine->FindFailedScript();
+		const bool hasScriptErrors = failedScript != nullptr;
+		if (hasScriptErrors)
+		{
+			std::string message = "Lua script load failed: " + GenericPathToUtf8(*failedScript);
+			if (m_scriptReloadStatus.message != message)
+				m_scriptReloadStatus = {EditorStatusKind::Danger, std::move(message), now};
+		}
+		else if (m_scriptReloadStatus.kind == EditorStatusKind::Danger)
+			m_scriptReloadStatus = {EditorStatusKind::Success, "Lua scripts reloaded", now};
+
+		const bool scriptStatusVisible =
+		    hasScriptErrors || (m_scriptReloadStatus.kind == EditorStatusKind::Success &&
+		                        now - m_scriptReloadStatus.time <= kStatusHoldSeconds);
+		const bool editorStatusHasPriority = editorStatus.kind == EditorStatusKind::Danger ||
+		                                     (!editorStatus.message.empty() && editorStatus.time > m_scriptReloadStatus.time);
+		const EditorStatus& status = scriptStatusVisible && !editorStatusHasPriority ? m_scriptReloadStatus : editorStatus;
 
 		std::string label = status.message.empty() ? "Ready" : status.message;
 		if (status.kind == EditorStatusKind::Danger) label = std::string(NENE_ICON_ERROR) + " " + label;
@@ -628,36 +651,52 @@ namespace NeneEngine
 			const std::string sceneLabel =
 			    std::string(NENE_ICON_FILE) + " " + sceneName + (m_history.IsDirty() ? " *" : "");
 			const char* modeLabel = isPlaying ? "Play" : "Edit";
-			const bool hasScriptErrors = m_scriptEngine->HasScriptLoadErrors();
 			const char* reloadLabel = hasScriptErrors ? NENE_ICON_ERROR " Reload scripts###ReloadScripts"
 			                                          : NENE_ICON_REFRESH " Reload scripts###ReloadScripts";
+			constexpr const char* consoleLabel = "Open Console";
 			const float segmentSpacing = style.ItemSpacing.x * 2.0f;
 			const float rightWidth =
 			    ImGui::CalcTextSize(reloadLabel, nullptr, true).x + style.FramePadding.x * 2.0f + segmentSpacing * 2.0f +
 			    ImGui::CalcTextSize(sceneLabel.c_str()).x + ImGui::CalcTextSize(modeLabel).x;
 			const float startX = ImGui::GetCursorPosX();
-			const float rightX = (std::max)(startX, startX + ImGui::GetContentRegionAvail().x - rightWidth);
-			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x);
+			const float consoleSpace = hasScriptErrors ? ImGui::CalcTextSize(consoleLabel).x +
+			                                                style.FramePadding.x * 2.0f + style.ItemSpacing.x
+			                                          : 0.0f;
+			const float rightX = (std::max)(startX + consoleSpace, startX + ImGui::GetContentRegionAvail().x - rightWidth);
+			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x - consoleSpace);
+			const float labelWidth = ImGui::CalcTextSize(label.c_str()).x;
 			const ImVec2 start = ImGui::GetCursorScreenPos();
 
 			ImGui::AlignTextToFramePadding();
 			ImGui::PushClipRect(start, ImVec2(start.x + messageWidth, start.y + ImGui::GetFrameHeight()), true);
 			ImGui::TextColored(messageColor, "%s", label.c_str());
 			ImGui::PopClipRect();
-			if (ImGui::CalcTextSize(label.c_str()).x > messageWidth)
-				ImGui::SetItemTooltip("%s", status.message.c_str());
+			if (labelWidth > messageWidth) ImGui::SetItemTooltip("%s", label.c_str());
+
+			if (hasScriptErrors)
+			{
+				const float textSpace = messageWidth > 0.0f ? (std::min)(labelWidth, messageWidth) + style.ItemSpacing.x : 0.0f;
+				ImGui::SameLine(startX + textSpace);
+				if (ImGui::Button(consoleLabel)) OpenConsole();
+			}
 
 			ImGui::SameLine(rightX);
 			ImGui::BeginDisabled(m_context->isSceneLoading);
 			ImGui::PushStyleColor(ImGuiCol_Text, hasScriptErrors ? colors.danger : colors.text);
-			if (ImGui::Button(reloadLabel)) ReloadScripts();
+			const bool reloadRequested = ImGui::Button(reloadLabel);
 			ImGui::PopStyleColor();
 			ImGui::EndDisabled();
 			const char* reloadHint = isPlaying ? "Reload changed Lua scripts without leaving Play mode."
 			                                   : "Reload all tracked Lua scripts.";
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGui::SetTooltip("%s", hasScriptErrors ? "Lua script load failed. See the Console for details."
-				                                       : reloadHint);
+			if (reloadRequested)
+				ReloadScripts();
+			else if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				if (hasScriptErrors)
+					ImGui::SetTooltip("%s\nSee the Console for details.", m_scriptReloadStatus.message.c_str());
+				else
+					ImGui::SetTooltip("%s", reloadHint);
+			}
 
 			ImGui::SameLine(0.0f, segmentSpacing);
 			ImGui::TextColored(detailColor, "%s", sceneLabel.c_str());
@@ -666,6 +705,16 @@ namespace NeneEngine
 			ImGui::TextColored(detailColor, "%s", modeLabel);
 		}
 		ImGui::End();
+	}
+
+	void EditorLayer::OpenConsole()
+	{
+		const auto console = std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
+		                                  { return dynamic_cast<const ConsolePanel*>(entry.panel.get()) != nullptr; });
+		if (console == m_panels.end()) return;
+
+		console->isOpen = true;
+		console->focusRequested = true;
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()
@@ -980,6 +1029,12 @@ namespace NeneEngine
 		for (auto& entry : m_panels)
 		{
 			if (!entry.isOpen) continue;
+			if (entry.focusRequested)
+			{
+				ImGui::SetNextWindowCollapsed(false);
+				ImGui::SetNextWindowFocus();
+				entry.focusRequested = false;
+			}
 
 			if (ImGui::Begin(entry.windowTitle.c_str(), &entry.isOpen, entry.panel->GetWindowFlags()))
 			{
