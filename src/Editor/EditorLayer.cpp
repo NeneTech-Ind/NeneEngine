@@ -237,6 +237,8 @@ namespace NeneEngine
 		m_panels.clear();
 		m_scenePath.clear();
 		m_layoutInitialized = false;
+		m_showLeftDock = true;
+		m_showRightDock = true;
 		m_exitRequested = false;
 		m_pendingSceneAction = SceneAction::None;
 		m_saveChangesError.clear();
@@ -385,15 +387,40 @@ namespace NeneEngine
 
 		if (ImGui::BeginMenu("View"))
 		{
+			if (ImGui::MenuItem("Left Sidebar", nullptr, &m_showLeftDock) && !m_showLeftDock)
+			{
+				for (auto& entry : m_panels)
+				{
+					if (!entry.isOpen || entry.panel->GetDefaultDockSlot() != EditorDockSlot::Left) continue;
+					const ImGuiWindow* window = ImGui::FindWindowByName(entry.windowTitle.c_str());
+					entry.focusRequested = window && window->DockNode && window->DockNode->VisibleWindow == window;
+				}
+			}
+			if (ImGui::MenuItem("Right Sidebar", nullptr, &m_showRightDock) && !m_showRightDock) CommitPendingEdits();
+			ImGui::Separator();
 			for (auto& entry : m_panels)
 			{
-				if (ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen) && entry.isOpen)
-					entry.focusRequested = true;
+				const auto slot = entry.panel->GetDefaultDockSlot();
+				bool* sideVisible = GetSideDockVisibility(slot);
+				const bool visible = entry.isOpen && (sideVisible == nullptr || *sideVisible);
+				if (!ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, visible)) continue;
+
+				entry.isOpen = !visible;
+				if (!entry.isOpen) continue;
+				if (sideVisible != nullptr && !*sideVisible)
+				{
+					*sideVisible = true;
+					for (auto& peer : m_panels)
+						if (peer.panel->GetDefaultDockSlot() == slot) peer.focusRequested = false;
+				}
+				entry.focusRequested = true;
 			}
 			ImGui::Separator();
 			DrawThemeMenu();
 			if (ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
 			{
+				m_showLeftDock = true;
+				m_showRightDock = true;
 				for (auto& entry : m_panels)
 				{
 					entry.isOpen = entry.isOpenByDefault;
@@ -1036,17 +1063,27 @@ namespace NeneEngine
 			leftNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(firstLeftPanel->windowTitle.c_str()));
 	}
 
+	bool* EditorLayer::GetSideDockVisibility(EditorDockSlot slot)
+	{
+		if (slot == EditorDockSlot::Left) return &m_showLeftDock;
+		if (slot == EditorDockSlot::Right) return &m_showRightDock;
+		return nullptr;
+	}
+
 	void EditorLayer::DrawPanels()
 	{
 		for (auto& entry : m_panels) entry.panel->Update(*m_context);
 
+		const char* requestedFocus = nullptr;
 		for (auto& entry : m_panels)
 		{
-			if (!entry.isOpen) continue;
+			const bool* sideVisible = GetSideDockVisibility(entry.panel->GetDefaultDockSlot());
+			if (!entry.isOpen || (sideVisible != nullptr && !*sideVisible)) continue;
 			if (entry.focusRequested)
 			{
 				ImGui::SetNextWindowCollapsed(false);
 				ImGui::SetNextWindowFocus();
+				requestedFocus = entry.windowTitle.c_str();
 				entry.focusRequested = false;
 			}
 
@@ -1057,6 +1094,9 @@ namespace NeneEngine
 			}
 			ImGui::End();
 		}
+
+		// A later tab can take focus as it reappears. Apply the explicit request after all panels are submitted.
+		if (requestedFocus != nullptr) ImGui::SetWindowFocus(requestedFocus);
 	}
 
 	void EditorLayer::DrawDockedPanelCorners() const
