@@ -17,6 +17,7 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr float kListWidthRatio = 0.7f;
+		constexpr float kPathTooltipWidth = 420.0f;
 
 		const char* GetAssetIcon(AssetKind kind)
 		{
@@ -55,10 +56,12 @@ namespace NeneEngine
 			return path.substr(path.find_last_of("/\\") + 1);
 		}
 
-		void DrawPath(const EditorContext& context, const std::string& path)
+		void DrawPath(const EditorContext& context, const std::string& path, float wrapWidth = 0.0f)
 		{
 			if (context.monospaceFont != nullptr) ImGui::PushFont(context.monospaceFont, 0.0f);
-			ImGui::TextWrapped("%s", path.c_str());
+			ImGui::PushTextWrapPos(wrapWidth > 0.0f ? ImGui::GetCursorPosX() + wrapWidth : 0.0f);
+			ImGui::TextUnformatted(path.c_str());
+			ImGui::PopTextWrapPos();
 			if (context.monospaceFont != nullptr) ImGui::PopFont();
 		}
 	} // namespace
@@ -133,7 +136,11 @@ namespace NeneEngine
 				if (isSelected) DrawSelectionMarker(context.themeColors->accent);
 				if (ImGui::BeginItemTooltip())
 				{
-					DrawPath(context, entry.path);
+					const ImGuiStyle& style = ImGui::GetStyle();
+					const float availableWidth = ImGui::GetWindowViewport()->WorkSize.x -
+					                             2.0f * (style.WindowPadding.x + style.DisplaySafeAreaPadding.x);
+					const float wrapWidth = (std::max)(1.0f, (std::min)(ScaledSize(kPathTooltipWidth), availableWidth));
+					DrawPath(context, entry.path, wrapWidth);
 					ImGui::EndTooltip();
 				}
 				if (context.CanEdit() && ImGui::BeginDragDropSource())
