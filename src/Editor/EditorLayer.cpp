@@ -191,8 +191,8 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>(scriptEngine)});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
-		m_panels.push_back({eastl::make_unique<ConsolePanel>(scriptEngine)});
-		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
+		m_panels.push_back({eastl::make_unique<ConsolePanel>(scriptEngine), false});
+		m_panels.push_back({eastl::make_unique<StatisticsPanel>(), false});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
 
 		for (auto& entry : m_panels)
@@ -383,7 +383,11 @@ namespace NeneEngine
 
 		if (ImGui::BeginMenu("View"))
 		{
-			for (auto& entry : m_panels) ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen);
+			for (auto& entry : m_panels)
+			{
+				if (ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen) && entry.isOpen)
+					entry.focusRequested = true;
+			}
 			ImGui::Separator();
 			DrawThemeMenu();
 			if (ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
