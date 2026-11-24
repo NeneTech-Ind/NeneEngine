@@ -53,7 +53,6 @@ namespace NeneEngine
 		GizmoOperation m_operation = GizmoOperation::Translate;
 		GizmoSpace m_space = GizmoSpace::World;
 		bool m_useSnap = false;
-		bool m_isToolbarHovered = false;
 
 		bool m_wasUsingGizmo = false;
 		ECS::Entity m_dragEntity = ECS::NullEntity;
