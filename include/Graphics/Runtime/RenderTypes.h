@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Graphics/Runtime/LocalAabb.h"
+
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
@@ -90,12 +92,6 @@ namespace NeneEngine
 	{
 		eastl::vector<Vertex> vertices;
 		eastl::vector<uint32_t> indices;
-	};
-
-	struct LocalAabb
-	{
-		glm::vec3 min{0.0f};
-		glm::vec3 max{0.0f};
 	};
 
 	struct GPUMesh

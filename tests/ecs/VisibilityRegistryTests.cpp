@@ -1,6 +1,7 @@
 // VisibilityRegistryTests.cpp
 
 #include "ECS/Components/CameraComponent.h"
+#include "ECS/Components/TransformComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/VisibilityRegistry.h"
 #include "ECS/World.h"
@@ -170,6 +171,64 @@ namespace
 		checkBounds({{-0.2f, -0.2f, -10.2f}, {0.2f, 0.2f, -10.01f}}, false, "Fully beyond the far plane must be culled");
 	}
 
+	void TestWorldBoundsFromGeometry()
+	{
+		using NeneEngine::LocalAabb;
+		World world;
+		const Entity entity = world.CreateEntity();
+		auto& registry = world.GetVisibilityRegistry();
+		const LocalAabb original{{0.0f, 0.0f, -1.0f}, {2.0f, 1.0f, 1.0f}};
+
+		TransformComponent parent;
+		parent.position.z = -5.0f;
+		parent.scale = {-2.0f, 3.0f, 0.5f};
+		TransformComponent child;
+		child.position.x = 1.0f;
+		child.rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		const glm::mat4 childLocal = child.GetModelMatrix();
+		const auto childWorld = [&]() { return parent.GetModelMatrix() * childLocal; };
+
+		Check(!registry.UpdateGeometryBounds(entity, original, childWorld()),
+		      "Updating geometry must require a registered entity");
+		Check(registry.Register(entity), "Child entity must register");
+		Check(registry.UpdateGeometryBounds(entity, original, childWorld()), "Child bounds must update");
+		const auto* bounds = registry.FindBounds(entity);
+		const glm::vec3 tolerance(0.0001f);
+		Check(bounds && *bounds &&
+		          glm::all(glm::lessThan(glm::abs((*bounds)->min - glm::vec3(-2.0f, 0.0f, -5.5f)), tolerance)) &&
+		          glm::all(glm::lessThan(glm::abs((*bounds)->max - glm::vec3(0.0f, 6.0f, -4.5f)), tolerance)),
+		      "World bounds must include child rotation and parent negative, nonuniform scale");
+
+		const auto camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		eastl::vector<Entity> visible;
+		parent.position.z = -10.5f;
+		Check(registry.UpdateGeometryBounds(entity, original, childWorld()), "Parent motion must update child bounds");
+		registry.QueryVisible(camera, visible);
+		CheckVisible(visible, {entity}, "A transformed child touching the far plane must be visible");
+
+		parent.position.z = -10.6f;
+		const glm::mat4 outsideWorld = childWorld();
+		Check(registry.UpdateGeometryBounds(entity, original, outsideWorld), "Child bounds must follow its parent");
+		registry.QueryVisible(camera, visible);
+		CheckVisible(visible, {}, "A transformed child fully beyond the far plane must be culled");
+
+		Check(registry.UpdateGeometryBounds(entity, std::nullopt, outsideWorld), "Loading geometry must clear old bounds");
+		Check(HasUnknownBounds(registry, entity), "Loading geometry must store unknown bounds");
+		registry.QueryVisible(camera, visible);
+		CheckVisible(visible, {entity}, "Loading geometry must remain a visibility candidate");
+
+		const LocalAabb replacement{{0.0f, 0.0f, 1.0f}, {2.0f, 1.0f, 2.0f}};
+		Check(registry.UpdateGeometryBounds(entity, replacement, outsideWorld),
+		      "Ready geometry must update bounds without a transform change");
+		registry.QueryVisible(camera, visible);
+		CheckVisible(visible, {entity}, "Replacement geometry intersecting the far plane must be visible");
+
+		glm::mat4 invalidWorld = outsideWorld;
+		invalidWorld[3].x = std::numeric_limits<float>::infinity();
+		Check(registry.UpdateGeometryBounds(entity, replacement, invalidWorld) && HasUnknownBounds(registry, entity),
+		      "Non-finite world positions must produce unknown bounds");
+	}
+
 	void TestFarPlanePrecision()
 	{
 		const Entity entity = entt::entt_traits<Entity>::construct(1, 0);
@@ -294,6 +353,7 @@ int main()
 	TestAsyncMeshGeometry();
 	TestCameraQueries();
 	TestFrustumBoundaries();
+	TestWorldBoundsFromGeometry();
 	TestFarPlanePrecision();
 	TestWorldVisibility();
 }

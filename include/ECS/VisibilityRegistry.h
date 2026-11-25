@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ECS/Entity.h"
+#include "Graphics/Runtime/LocalAabb.h"
 
 #include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
@@ -40,6 +41,8 @@ namespace NeneEngine::ECS
 	  public:
 		[[nodiscard]] bool Register(Entity entity, std::optional<WorldAabb> bounds = std::nullopt);
 		[[nodiscard]] bool UpdateBounds(Entity entity, std::optional<WorldAabb> bounds);
+		[[nodiscard]] bool UpdateGeometryBounds(Entity entity, const std::optional<LocalAabb>& localBounds,
+		                                        const glm::mat4& worldMatrix);
 		[[nodiscard]] bool Remove(Entity entity);
 		void Clear();
 
