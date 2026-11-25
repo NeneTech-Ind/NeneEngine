@@ -5,6 +5,7 @@
 #include "EventBus.h"
 #include "Entity.h"
 #include "Systems/ISystem.h"
+#include "VisibilityRegistry.h"
 
 #include <EASTL/deque.h>
 #include <EASTL/unique_ptr.h>
@@ -77,6 +78,8 @@ namespace NeneEngine::ECS
 
 		entt::registry& GetRegistry() { return m_registry; }
 		const entt::registry& GetRegistry() const { return m_registry; }
+		[[nodiscard]] VisibilityRegistry& GetVisibilityRegistry() { return m_visibilityRegistry; }
+		[[nodiscard]] const VisibilityRegistry& GetVisibilityRegistry() const { return m_visibilityRegistry; }
 		[[nodiscard]] std::weak_ptr<const WorldLifetime> GetLifetime() const { return m_lifetime; }
 
 	  private:
@@ -85,6 +88,7 @@ namespace NeneEngine::ECS
 
 		EventBus m_eventBus;
 		entt::registry m_registry;
+		VisibilityRegistry m_visibilityRegistry;
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
 		eastl::deque<Entity> m_pendingDestruction;
 		std::shared_ptr<WorldLifetime> m_lifetime;

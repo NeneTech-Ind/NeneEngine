@@ -24,6 +24,7 @@ namespace NeneEngine::ECS
 			    ++m_lifetime->sceneGeneration;
 			    m_pendingDestruction.clear();
 			    m_playStopRequested = false;
+			    m_visibilityRegistry.Clear();
 			    for (auto& system : m_systems) system->OnSceneRestored(*this);
 		    });
 	}
