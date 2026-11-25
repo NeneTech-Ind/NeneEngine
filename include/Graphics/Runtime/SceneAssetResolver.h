@@ -15,7 +15,7 @@ namespace NeneEngine
 	struct ModelAsset
 	{
 		ResourceLoadState state = ResourceLoadState::Loading;
-		eastl::shared_ptr<const CachedResource<eastl::vector<MeshPart>>> parts;
+		eastl::shared_ptr<const CachedResource<ImportedModel>> resource;
 		std::string error;
 	};
 

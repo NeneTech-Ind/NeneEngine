@@ -112,14 +112,14 @@ namespace NeneEngine
 			if (path.empty()) throw std::runtime_error("Model mesh was not found: " + model.meshPath.string());
 			const auto config =
 			    LoadModelInstanceConfig(ResolveOptionalAssetPath(manifestPath, model.instanceConfigPath));
-			const auto resource = ResourceManager::GetInstance().Load<eastl::vector<MeshPart>>(path.generic_string());
+			const auto resource = ResourceManager::GetInstance().Load<ImportedModel>(path.generic_string());
 			if (!resource) throw std::runtime_error("Could not read model: " + path.string());
 
 			PreparedModel prepared;
 			prepared.name = model.entityName;
 			prepared.hasRoot = model.splitByMeshParts;
 			prepared.rootTransform.position = config.position;
-			const auto& parts = resource->GetData();
+			const auto& parts = resource->GetData().parts;
 			const size_t count = model.splitByMeshParts ? parts.size() : 1;
 			for (size_t index = 0; index < count; ++index)
 			{

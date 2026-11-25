@@ -13,8 +13,8 @@ namespace NeneEngine
 	void RegisterGraphicsResourceLoaders(ResourceManager& resourceManager)
 	{
 		resourceManager.RegisterLoader<Mesh>([](const std::string& path) { return LoadMeshFromFile(path); });
-		resourceManager.RegisterLoader<eastl::vector<MeshPart>>([](const std::string& path)
-		                                                        { return LoadMeshPartsFromFile(path); });
+		resourceManager.RegisterLoader<ImportedModel>([](const std::string& path)
+		                                              { return LoadMeshPartsFromFile(path); });
 		resourceManager.RegisterLoader<TextureResource>([](const std::string& path)
 		                                                { return LoadTextureResourceFromFile(path); });
 		resourceManager.RegisterLoader<ShaderProgramResource>([](const std::string& path)

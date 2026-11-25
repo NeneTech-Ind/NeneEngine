@@ -4,6 +4,7 @@
 #include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/VisibilityRegistry.h"
 #include "ECS/World.h"
+#include "Graphics/Loaders/MeshLoader.h"
 #include "Graphics/Runtime/GeometryBounds.h"
 
 #include <algorithm>
@@ -50,6 +51,27 @@ namespace
 		      "Bounds must use per-axis extrema and preserve zero extent");
 		mesh.vertices.back().position.x = std::numeric_limits<float>::quiet_NaN();
 		Check(!ComputeLocalBounds(mesh), "Non-finite positions must have unknown bounds");
+	}
+
+	void TestImportedModelBounds()
+	{
+		using namespace NeneEngine;
+		const auto model = LoadMeshPartsFromFile(NENE_TEST_FIXTURE_DIR "/translated-mesh-parts.gltf");
+		Check(model.parts.size() == 2, "Translated model fixture must retain two parts");
+		for (int index = 0; index < 2; ++index)
+		{
+			const auto bounds = model.GetLocalBounds(index);
+			const auto fromVertices = ComputeLocalBounds(model.parts[index].data);
+			Check(bounds && fromVertices && bounds->min == fromVertices->min && bounds->max == fromVertices->max,
+			      "Selected part bounds must match its imported vertices");
+			const glm::vec3 offset = bounds->min.x < 20.0f ? glm::vec3(10, 2, 3) : glm::vec3(25, 5, 8);
+			Check(bounds->min == offset + glm::vec3(1, 1, 1) && bounds->max == offset + glm::vec3(3, 4, 1),
+			      "Part bounds must include the baked node translation exactly once");
+		}
+		const auto merged = model.GetLocalBounds(-1);
+		Check(merged && merged->min == glm::vec3(11, 3, 4) && merged->max == glm::vec3(28, 9, 9),
+		      "Whole-model bounds must enclose both parts");
+		Check(!model.GetLocalBounds(2), "An invalid part index must have unknown bounds");
 	}
 
 	bool HasBounds(const VisibilityRegistry& registry, Entity entity, const WorldAabb& expected)
@@ -266,6 +288,7 @@ int main()
 	Check(registry.Register(replacement, bounds), "Registry must accept new entries after Clear");
 
 	TestLocalGeometryBounds();
+	TestImportedModelBounds();
 	TestCameraQueries();
 	TestFrustumBoundaries();
 	TestFarPlanePrecision();

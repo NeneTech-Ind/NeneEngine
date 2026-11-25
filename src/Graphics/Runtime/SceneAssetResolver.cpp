@@ -130,11 +130,11 @@ namespace NeneEngine
 		        resolved,
 		        [asset, resolved]() -> ResourceLoadQueue::Completion
 		        {
-			        const auto resource = ResourceManager::GetInstance().Load<eastl::vector<MeshPart>>(resolved);
+			        const auto resource = ResourceManager::GetInstance().Load<ImportedModel>(resolved);
 			        if (!resource) throw std::runtime_error("Could not read model: " + resolved);
 			        return [asset, resource]()
 			        {
-				        asset->parts = resource;
+				        asset->resource = resource;
 				        asset->state = ResourceLoadState::Ready;
 			        };
 		        },
@@ -178,17 +178,18 @@ namespace NeneEngine
 		        resolved,
 		        [model, part, entry, &renderer]() -> ResourceLoadQueue::Completion
 		        {
+			        const auto& parts = model->resource->GetData().parts;
 			        eastl::shared_ptr<IMeshUploadData> prepared;
 			        if (part >= 0)
 			        {
-				        if (static_cast<size_t>(part) >= model->parts->GetData().size())
+				        if (static_cast<size_t>(part) >= parts.size())
 					        throw std::runtime_error("Model part does not exist");
-				        prepared = renderer.PrepareMesh(model->parts->GetData()[part].data);
+				        prepared = renderer.PrepareMesh(parts[part].data);
 			        }
 			        else
 			        {
 				        MeshData merged;
-				        for (const auto& mesh : model->parts->GetData())
+				        for (const auto& mesh : parts)
 				        {
 					        const auto base = static_cast<uint32_t>(merged.vertices.size());
 					        merged.vertices.insert(merged.vertices.end(), mesh.data.vertices.begin(),

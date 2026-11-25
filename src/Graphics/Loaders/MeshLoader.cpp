@@ -3,6 +3,7 @@
 #include "Graphics/Loaders/MeshLoader.h"
 
 #include "Core/Profiler.h"
+#include "Graphics/Runtime/GeometryBounds.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -112,7 +113,14 @@ namespace NeneEngine
 		return meshData;
 	}
 
-	eastl::vector<MeshPart> LoadMeshPartsFromFile(const std::string& path)
+	std::optional<LocalAabb> ImportedModel::GetLocalBounds(int part) const
+	{
+		if (part < 0) return localBounds;
+		if (static_cast<size_t>(part) >= parts.size()) return std::nullopt;
+		return parts[part].localBounds;
+	}
+
+	ImportedModel LoadMeshPartsFromFile(const std::string& path)
 	{
 		NENE_PROFILE_SCOPE("Mesh Parts Load");
 		NENE_PROFILE_ZONE_TEXT(path.data(), path.size());
@@ -128,8 +136,8 @@ namespace NeneEngine
 
 		if (scene->mNumMeshes == 0) throw std::runtime_error("Assimp loaded scene without meshes: " + path);
 
-		eastl::vector<MeshPart> meshParts;
-		meshParts.reserve(scene->mNumMeshes);
+		ImportedModel model;
+		model.parts.reserve(scene->mNumMeshes);
 
 		for (unsigned meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex)
 		{
@@ -141,13 +149,24 @@ namespace NeneEngine
 			meshPart.diffuseTexturePath = ReadDiffuseTexturePath(*scene, *mesh, modelPath);
 			AppendAssimpMesh(*mesh, meshPart.data);
 
-			if (!meshPart.data.vertices.empty() && !meshPart.data.indices.empty())
-				meshParts.push_back(std::move(meshPart));
+			if (meshPart.data.vertices.empty() || meshPart.data.indices.empty()) continue;
+			meshPart.localBounds = ComputeLocalBounds(meshPart.data);
+			model.parts.push_back(std::move(meshPart));
 		}
 
-		if (meshParts.empty()) throw std::runtime_error("Mesh parts are empty after loading: " + path);
-
-		return meshParts;
+		if (model.parts.empty()) throw std::runtime_error("Mesh parts are empty after loading: " + path);
+		model.localBounds = model.parts.front().localBounds;
+		for (const MeshPart& part : model.parts)
+		{
+			if (!part.localBounds)
+			{
+				model.localBounds.reset();
+				break;
+			}
+			model.localBounds->min = glm::min(model.localBounds->min, part.localBounds->min);
+			model.localBounds->max = glm::max(model.localBounds->max, part.localBounds->max);
+		}
+		return model;
 	}
 
 	Mesh LoadMeshFromFile(const std::string& path)
