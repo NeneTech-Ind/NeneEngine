@@ -187,13 +187,22 @@ endif()
 target_compile_features(NeneEngine PRIVATE cxx_std_20)
 
 add_executable(NeneVisibilityTests EXCLUDE_FROM_ALL
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tests/ecs/AsyncMeshGeometryTests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/ecs/VisibilityRegistryTests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/EASTLAllocator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/JobSystem.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/LogHistorySink.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/NeneLogger.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/PathResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/ResourceLoadQueue.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/ResourceManager.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/VisibilityRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/World.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Backend/IRenderAdapter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Loaders/MeshLoader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Runtime/GeometryBounds.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Runtime/SceneAssetResolver.cpp"
 )
 target_include_directories(NeneVisibilityTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_compile_definitions(NeneVisibilityTests PRIVATE NENE_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../tests/fixtures")
-target_link_libraries(NeneVisibilityTests PRIVATE EASTL EnTT::EnTT glm::glm assimp::assimp)
+target_link_libraries(NeneVisibilityTests PRIVATE EASTL EnTT::EnTT glm::glm assimp::assimp enkiTS::enkiTS spdlog::spdlog)

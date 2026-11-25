@@ -13,6 +13,8 @@
 #include <iostream>
 #include <limits>
 
+void TestAsyncMeshGeometry();
+
 namespace
 {
 	using namespace NeneEngine::ECS;
@@ -289,6 +291,7 @@ int main()
 
 	TestLocalGeometryBounds();
 	TestImportedModelBounds();
+	TestAsyncMeshGeometry();
 	TestCameraQueries();
 	TestFrustumBoundaries();
 	TestFarPlanePrecision();

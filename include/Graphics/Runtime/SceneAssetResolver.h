@@ -26,6 +26,9 @@ namespace NeneEngine
 		MeshRenderRuntimeBinding Resolve(const std::string& meshPath, int meshPart, const std::string& texturePath,
 		                                 const std::string& shaderPath, PrimitiveType primitive,
 		                                 IRenderAdapter& renderer);
+		[[nodiscard]] MeshGeometryBinding ResolveGeometry(const std::string& meshPath, int meshPart,
+		                                                  PrimitiveType primitive, IRenderAdapter& renderer,
+		                                                  bool useMeshPrimitive = false);
 		eastl::shared_ptr<const ModelAsset> Model(const std::string& path);
 		GPUTexture Texture(const std::string& path, IRenderAdapter& renderer);
 		GPUShaderProgram Shader(const std::string& path, IRenderAdapter& renderer,
@@ -36,6 +39,7 @@ namespace NeneEngine
 		void RetryFailed();
 
 	  private:
+		MeshGeometryBinding ResolveMesh(const std::string& path, int part, IRenderAdapter& renderer);
 		struct Impl;
 		eastl::shared_ptr<Impl> m_impl;
 	};
