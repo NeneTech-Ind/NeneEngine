@@ -41,7 +41,8 @@ namespace
 		camera.nearPlane = 1.0f;
 		camera.farPlane = 10.0f;
 		camera.aspectRatio = aspectRatio;
-		return {camera.GetProjectionMatrix() * camera.GetViewMatrix(worldPosition)};
+		return {camera.GetProjectionMatrix() * camera.GetViewMatrix(worldPosition), worldPosition, camera.forward,
+		        camera.farPlane};
 	}
 
 	void CheckVisible(const eastl::vector<Entity>& actual, std::initializer_list<Entity> expected, const char* message)
@@ -112,6 +113,40 @@ namespace
 		checkBounds({{-0.2f, -0.2f, -0.99f}, {0.2f, 0.2f, -0.8f}}, false, "Fully before the near plane must be culled");
 		checkBounds({{-0.2f, -0.2f, -10.2f}, {0.2f, 0.2f, -10.0f}}, true, "Far plane contact must be visible");
 		checkBounds({{-0.2f, -0.2f, -10.2f}, {0.2f, 0.2f, -10.01f}}, false, "Fully beyond the far plane must be culled");
+	}
+
+	void TestFarPlanePrecision()
+	{
+		const Entity entity = entt::entt_traits<Entity>::construct(1, 0);
+		VisibilityRegistry registry;
+		Check(registry.Register(entity), "Far plane test entity must register");
+		eastl::vector<Entity> visible;
+
+		const auto checkCamera = [&](const glm::vec3& position, const glm::vec3& forward)
+		{
+			CameraComponent camera;
+			camera.forward = forward;
+			camera.nearPlane = 0.1f;
+			camera.farPlane = 336.0f;
+			const VisibilityCamera snapshot{camera.GetProjectionMatrix() * camera.GetViewMatrix(position), position,
+			                                camera.forward, camera.farPlane};
+			const auto checkDepth = [&](float closestDepth, bool expected, const char* message)
+			{
+				const glm::vec3 center = position + forward * (closestDepth + 0.05f);
+				const glm::vec3 halfExtent{0.05f};
+				Check(registry.UpdateBounds(entity, WorldAabb{center - halfExtent, center + halfExtent}),
+				      "Far plane test entity must update");
+				registry.QueryVisible(snapshot, visible);
+				Check(expected ? visible.size() == 1 && visible.front() == entity : visible.empty(), message);
+			};
+
+			checkDepth(335.99f, true, "AABB intersecting the far plane of a stress-scene camera must be visible");
+			checkDepth(336.0f, true, "AABB touching the far plane of a stress-scene camera must be visible");
+			checkDepth(336.1f, false, "AABB fully beyond the far plane of a stress-scene camera must be culled");
+		};
+
+		checkCamera({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f});
+		checkCamera({100.0f, 5.0f, 20.0f}, {1.0f, 0.0f, 0.0f});
 	}
 
 	class SceneRestoreProbe final : public ISystem
@@ -201,5 +236,6 @@ int main()
 
 	TestCameraQueries();
 	TestFrustumBoundaries();
+	TestFarPlanePrecision();
 	TestWorldVisibility();
 }

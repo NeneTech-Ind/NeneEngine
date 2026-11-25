@@ -10,7 +10,7 @@ namespace NeneEngine::ECS
 	namespace
 	{
 		constexpr float kFrustumBoundaryTolerance = 0.0001f;
-		using FrustumPlanes = std::array<glm::vec4, 6>;
+		using FrustumPlanes = std::array<glm::vec4, 5>;
 
 		FrustumPlanes ExtractFrustumPlanes(const glm::mat4& viewProjection)
 		{
@@ -21,22 +21,30 @@ namespace NeneEngine::ECS
 #else
 			const glm::vec4 nearPlane = w + rows[2];
 #endif
-			FrustumPlanes planes{w + rows[0], w - rows[0], w + rows[1], w - rows[1], nearPlane, w - rows[2]};
+			FrustumPlanes planes{w + rows[0], w - rows[0], w + rows[1], w - rows[1], nearPlane};
 			for (glm::vec4& plane : planes) plane /= glm::length(glm::vec3(plane));
 			return planes;
 		}
 
-		bool IntersectsFrustum(const WorldAabb& bounds, const FrustumPlanes& planes)
+		glm::vec3 FurthestCorner(const WorldAabb& bounds, const glm::vec3& direction)
+		{
+			return {direction.x >= 0.0f ? bounds.max.x : bounds.min.x,
+			        direction.y >= 0.0f ? bounds.max.y : bounds.min.y,
+			        direction.z >= 0.0f ? bounds.max.z : bounds.min.z};
+		}
+
+		bool IntersectsFrustum(const WorldAabb& bounds, const FrustumPlanes& planes, const VisibilityCamera& camera)
 		{
 			for (const glm::vec4& plane : planes)
 			{
-				const glm::vec3 furthestCorner{plane.x >= 0.0f ? bounds.max.x : bounds.min.x,
-				                               plane.y >= 0.0f ? bounds.max.y : bounds.min.y,
-				                               plane.z >= 0.0f ? bounds.max.z : bounds.min.z};
-				const float distance = glm::dot(glm::vec3(plane), furthestCorner) + plane.w;
+				const glm::vec3 normal{plane};
+				const float distance = glm::dot(normal, FurthestCorner(bounds, normal)) + plane.w;
 				if (distance < -kFrustumBoundaryTolerance) return false;
 			}
-			return true;
+
+			const glm::vec3 closestCorner = FurthestCorner(bounds, -camera.forward);
+			const float closestDepth = glm::dot(camera.forward, closestCorner - camera.worldPosition);
+			return closestDepth - camera.farPlane <= kFrustumBoundaryTolerance;
 		}
 	} // namespace
 
@@ -70,7 +78,7 @@ namespace NeneEngine::ECS
 		const FrustumPlanes planes = ExtractFrustumPlanes(camera.viewProjection);
 		for (const auto& [entity, bounds] : m_boundsByEntity)
 		{
-			if (!bounds || IntersectsFrustum(*bounds, planes)) visibleEntities.push_back(entity);
+			if (!bounds || IntersectsFrustum(*bounds, planes, camera)) visibleEntities.push_back(entity);
 		}
 	}
 

@@ -23,7 +23,16 @@ namespace NeneEngine::ECS
 
 	struct VisibilityCamera
 	{
-		glm::mat4 viewProjection{1.0f};
+		VisibilityCamera(const glm::mat4& viewProjection, const glm::vec3& worldPosition, const glm::vec3& forward,
+		                 float farPlane)
+		    : viewProjection(viewProjection), worldPosition(worldPosition), forward(forward), farPlane(farPlane)
+		{
+		}
+
+		glm::mat4 viewProjection;
+		glm::vec3 worldPosition;
+		glm::vec3 forward;
+		float farPlane;
 	};
 
 	class VisibilityRegistry
