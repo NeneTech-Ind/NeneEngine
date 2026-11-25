@@ -1,7 +1,9 @@
 // VisibilityRegistryTests.cpp
 
 #include "ECS/Components/CameraComponent.h"
+#include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/VisibilityRegistry.h"
+#include "ECS/World.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -111,6 +113,55 @@ namespace
 		checkBounds({{-0.2f, -0.2f, -10.2f}, {0.2f, 0.2f, -10.0f}}, true, "Far plane contact must be visible");
 		checkBounds({{-0.2f, -0.2f, -10.2f}, {0.2f, 0.2f, -10.01f}}, false, "Fully beyond the far plane must be culled");
 	}
+
+	class SceneRestoreProbe final : public ISystem
+	{
+	  public:
+		void Update(World&, float) override {}
+
+		void OnSceneRestored(World& world) override
+		{
+			Check(world.GetVisibilityRegistry().Size() == 0, "World must clear visibility before notifying systems");
+			called = true;
+		}
+
+		bool called = false;
+	};
+
+	void TestWorldVisibility()
+	{
+		World world;
+		World otherWorld;
+		const Entity entity = world.CreateEntity();
+		const Entity otherEntity = otherWorld.CreateEntity();
+		const WorldAabb leftBounds{{-0.5f, -0.5f, -5.5f}, {0.5f, 0.5f, -4.5f}};
+		const WorldAabb rightBounds{{19.5f, -0.5f, -5.5f}, {20.5f, 0.5f, -4.5f}};
+		const VisibilityCamera leftCamera = MakeCamera({0.0f, 0.0f, 0.0f});
+		const VisibilityCamera rightCamera = MakeCamera({20.0f, 0.0f, 0.0f});
+		Check(world.GetVisibilityRegistry().Register(entity, leftBounds), "World must accept a visibility entry");
+		Check(otherWorld.GetVisibilityRegistry().Register(otherEntity, rightBounds),
+		      "Another world must accept its own visibility entry");
+
+		const World& scene = world;
+		eastl::vector<Entity> leftVisible;
+		eastl::vector<Entity> rightVisible;
+		scene.GetVisibilityRegistry().QueryVisible(leftCamera, leftVisible);
+		scene.GetVisibilityRegistry().QueryVisible(rightCamera, rightVisible);
+		CheckVisible(leftVisible, {entity}, "Left camera must see the world entry");
+		CheckVisible(rightVisible, {}, "Right camera must cull the same world entry");
+		otherWorld.GetVisibilityRegistry().QueryVisible(rightCamera, rightVisible);
+		CheckVisible(rightVisible, {otherEntity}, "Right camera must see the other world's entry");
+
+		auto probe = eastl::make_unique<SceneRestoreProbe>();
+		const SceneRestoreProbe& observer = *probe;
+		world.AddSystem(std::move(probe));
+		world.GetEventBus().Publish(SceneRestoredEvent{});
+		Check(observer.called, "Scene restore must notify systems");
+		scene.GetVisibilityRegistry().QueryVisible(leftCamera, leftVisible);
+		CheckVisible(leftVisible, {}, "Restored world must discard the previous scene's entry");
+		otherWorld.GetVisibilityRegistry().QueryVisible(rightCamera, rightVisible);
+		CheckVisible(rightVisible, {otherEntity}, "Restoring one world must preserve another world's entries");
+	}
 } // namespace
 
 int main()
@@ -150,4 +201,5 @@ int main()
 
 	TestCameraQueries();
 	TestFrustumBoundaries();
+	TestWorldVisibility();
 }
