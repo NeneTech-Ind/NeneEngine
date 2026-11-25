@@ -6,6 +6,7 @@
 #include "Core/ResourceManager.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Graphics/Loaders/MeshLoader.h"
+#include "Graphics/Runtime/GeometryBounds.h"
 
 #include <EASTL/unordered_map.h>
 #include <cmath>
@@ -79,7 +80,9 @@ namespace NeneEngine
 				}
 			}
 
-			return renderer.UploadMesh(quad);
+			GPUMesh mesh = renderer.UploadMesh(quad);
+			if (mesh.IsValid()) mesh.localBounds = ComputeLocalBounds(quad);
+			return mesh;
 		}
 
 		template <typename T> struct AssetEntry

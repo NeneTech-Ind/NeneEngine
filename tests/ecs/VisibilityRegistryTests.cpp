@@ -4,11 +4,13 @@
 #include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/VisibilityRegistry.h"
 #include "ECS/World.h"
+#include "Graphics/Runtime/GeometryBounds.h"
 
 #include <algorithm>
 #include <cstdlib>
 #include <initializer_list>
 #include <iostream>
+#include <limits>
 
 namespace
 {
@@ -19,6 +21,35 @@ namespace
 		if (condition) return;
 		std::cerr << message << '\n';
 		std::exit(EXIT_FAILURE);
+	}
+
+	void TestLocalGeometryBounds()
+	{
+		using namespace NeneEngine;
+		const auto checkPrimitive = [](PrimitiveType primitive, const glm::vec3& extent)
+		{
+			const auto bounds = GetPrimitiveLocalBounds(primitive);
+			Check(bounds && bounds->min == -extent && bounds->max == extent, "Primitive bounds must match its geometry");
+		};
+		checkPrimitive(PrimitiveType::Line, {0.5f, 0.0f, 0.0f});
+		checkPrimitive(PrimitiveType::DebugLine, {0.5f, 0.0f, 0.0f});
+		checkPrimitive(PrimitiveType::Triangle, {0.5f, 0.5f, 0.0f});
+		checkPrimitive(PrimitiveType::Quad, {0.5f, 0.5f, 0.0f});
+		checkPrimitive(PrimitiveType::Cube, glm::vec3(0.4f));
+		Check(!GetPrimitiveLocalBounds(static_cast<PrimitiveType>(255)), "Unknown primitive must have unknown bounds");
+
+		MeshData mesh;
+		Check(!ComputeLocalBounds(mesh), "Empty mesh must have unknown bounds");
+		mesh.vertices.push_back(Vertex{{2.0f, 4.0f, 1.0f}});
+		const auto point = ComputeLocalBounds(mesh);
+		Check(point && point->min == mesh.vertices.front().position && point->max == point->min,
+		      "A single position must produce a valid point bound");
+		mesh.vertices.push_back(Vertex{{3.0f, 2.0f, 1.0f}});
+		const auto plane = ComputeLocalBounds(mesh);
+		Check(plane && plane->min == glm::vec3(2.0f, 2.0f, 1.0f) && plane->max == glm::vec3(3.0f, 4.0f, 1.0f),
+		      "Bounds must use per-axis extrema and preserve zero extent");
+		mesh.vertices.back().position.x = std::numeric_limits<float>::quiet_NaN();
+		Check(!ComputeLocalBounds(mesh), "Non-finite positions must have unknown bounds");
 	}
 
 	bool HasBounds(const VisibilityRegistry& registry, Entity entity, const WorldAabb& expected)
@@ -234,6 +265,7 @@ int main()
 	Check(registry.Size() == 0 && registry.FindBounds(replacement) == nullptr, "Clear must erase all entries");
 	Check(registry.Register(replacement, bounds), "Registry must accept new entries after Clear");
 
+	TestLocalGeometryBounds();
 	TestCameraQueries();
 	TestFrustumBoundaries();
 	TestFarPlanePrecision();

@@ -92,6 +92,12 @@ namespace NeneEngine
 		eastl::vector<uint32_t> indices;
 	};
 
+	struct LocalAabb
+	{
+		glm::vec3 min{0.0f};
+		glm::vec3 max{0.0f};
+	};
+
 	struct GPUMesh
 	{
 		MeshId meshId{};
@@ -99,6 +105,7 @@ namespace NeneEngine
 		GPUBufferId indexBufferId{};
 		uint32_t vertexCount = 0;
 		uint32_t indexCount = 0;
+		std::optional<LocalAabb> localBounds{};
 
 		constexpr bool IsValid() const noexcept { return meshId.IsValid(); }
 	};

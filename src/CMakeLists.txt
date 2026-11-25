@@ -191,6 +191,7 @@ add_executable(NeneVisibilityTests EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/EASTLAllocator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/VisibilityRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/World.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Runtime/GeometryBounds.cpp"
 )
 target_include_directories(NeneVisibilityTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_link_libraries(NeneVisibilityTests PRIVATE EASTL EnTT::EnTT glm::glm)
