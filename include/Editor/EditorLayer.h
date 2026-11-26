@@ -11,10 +11,12 @@
 #include "Platform/IWindow.h"
 
 #include <EASTL/functional.h>
+#include <EASTL/optional.h>
 #include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
 #include <chrono>
+#include <cstdint>
 #include <string>
 
 namespace NeneEngine
@@ -96,6 +98,7 @@ namespace NeneEngine
 		void DrawWindowButtons();
 		void AddTitleBarInteractiveRect(const ImVec2& min, const ImVec2& max);
 		[[nodiscard]] WindowHitArea HitTestTitleBar(int32_t x, int32_t y) const;
+		void TogglePlayMode();
 		void SetMode(EditorMode mode);
 		void DrawDockSpace();
 		void BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size);
@@ -112,6 +115,7 @@ namespace NeneEngine
 		IWindow* m_window = nullptr;
 		ScriptEngine* m_scriptEngine = nullptr;
 		std::chrono::steady_clock::time_point m_nextScriptReloadCheck{};
+		eastl::optional<std::uint64_t> m_manualScriptReloadGeneration;
 		EditorStatus m_scriptReloadStatus;
 		TitleBarRect m_titleBar;
 		TitleBarRect m_maximizeButtonRect;
@@ -133,6 +137,7 @@ namespace NeneEngine
 		bool m_focusPlayViewport = false;
 		bool m_showPlayConsole = false;
 		bool m_exitRequested = false;
+		bool m_playStartPending = false;
 		SceneAction m_pendingSceneAction = SceneAction::None;
 		std::string m_saveChangesError;
 	};
