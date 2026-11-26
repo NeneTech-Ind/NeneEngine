@@ -52,6 +52,7 @@ namespace NeneEngine
 		constexpr float kFocusedConsoleHeightRatio = 0.35f;
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
+		constexpr const char* kCancelPlayLabel = NENE_ICON_STOP " Cancel Play###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
 		constexpr float kWindowButtonAspect = 1.4f;
 		constexpr float kWindowButtonGlyphScale = 0.3f;
@@ -255,7 +256,9 @@ namespace NeneEngine
 		m_context.reset();
 		m_scriptEngine = nullptr;
 		m_nextScriptReloadCheck = {};
+		m_manualScriptReloadGeneration.reset();
 		m_scriptReloadStatus = {};
+		m_playStartPending = false;
 		m_requestShutdown = nullptr;
 		m_onModeChanged = nullptr;
 		m_uiInput = nullptr;
@@ -318,12 +321,18 @@ namespace NeneEngine
 			}
 		}
 
-		if (m_context->CanEdit())
+		if (m_playStartPending && !m_scriptEngine->IsReloadPending())
+		{
+			m_playStartPending = false;
+			if (m_context->CanEdit() && m_pendingSceneAction == SceneAction::None) SetMode(EditorMode::Play);
+		}
+
+		if (m_context->CanEdit() && !m_playStartPending && !m_manualScriptReloadGeneration)
 		{
 			const auto now = std::chrono::steady_clock::now();
 			if (now >= m_nextScriptReloadCheck)
 			{
-				m_scriptEngine->ReloadChangedScripts();
+				m_scriptEngine->PollScriptChanges();
 				m_nextScriptReloadCheck = now + kScriptReloadInterval;
 			}
 		}
@@ -536,6 +545,7 @@ namespace NeneEngine
 
 	void EditorLayer::RequestSceneAction(SceneAction action)
 	{
+		m_playStartPending = false;
 		if (m_context == nullptr || m_pendingSceneAction != SceneAction::None) return;
 		if (action == SceneAction::Load && m_resourceLoads == nullptr) return;
 		CommitPendingEdits();
@@ -653,18 +663,13 @@ namespace NeneEngine
 
 	void EditorLayer::ReloadScripts()
 	{
-		const auto generation = m_scriptEngine->GetScriptCacheGeneration();
-		if (m_context->mode == EditorMode::Play)
-		{
+		const bool isPlaying = m_context->mode == EditorMode::Play;
+		if (!isPlaying) CommitPendingEdits();
+		m_manualScriptReloadGeneration = m_scriptEngine->GetScriptCacheGeneration();
+		if (isPlaying)
 			m_scriptEngine->ReloadChangedScripts();
-		}
 		else
-		{
-			CommitPendingEdits();
 			m_scriptEngine->ReloadAll();
-		}
-		if (m_scriptEngine->GetScriptCacheGeneration() != generation && m_scriptEngine->FindFailedScript() == nullptr)
-			m_scriptReloadStatus = {EditorStatusKind::Success, "Lua scripts reloaded", ImGui::GetTime()};
 	}
 
 	void EditorLayer::DrawStatusBar()
@@ -677,6 +682,12 @@ namespace NeneEngine
 
 		const auto* failedScript = m_scriptEngine->FindFailedScript();
 		const bool hasScriptErrors = failedScript != nullptr;
+		if (m_manualScriptReloadGeneration && !m_scriptEngine->IsReloadPending())
+		{
+			if (!hasScriptErrors && m_scriptEngine->GetScriptCacheGeneration() != *m_manualScriptReloadGeneration)
+				m_scriptReloadStatus = {EditorStatusKind::Success, "Lua scripts reloaded", now};
+			m_manualScriptReloadGeneration.reset();
+		}
 		if (hasScriptErrors)
 		{
 			std::string message = "Lua script load failed: " + GenericPathToUtf8(*failedScript);
@@ -850,8 +861,9 @@ namespace NeneEngine
 	{
 		const bool isPlaying = m_context->mode == EditorMode::Play;
 		const ImGuiStyle& style = ImGui::GetStyle();
-		const float buttonWidth = (std::max)(ImGui::CalcTextSize(kPlayLabel, nullptr, true).x,
-		                                     ImGui::CalcTextSize(kStopLabel, nullptr, true).x) +
+		const float buttonWidth = (std::max)({ImGui::CalcTextSize(kPlayLabel, nullptr, true).x,
+		                                      ImGui::CalcTextSize(kStopLabel, nullptr, true).x,
+		                                      ImGui::CalcTextSize(kCancelPlayLabel, nullptr, true).x}) +
 		                          style.FramePadding.x * 2.0f + ImGui::GetFrameHeight();
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth) * 0.5f);
 
@@ -864,12 +876,14 @@ namespace NeneEngine
 			ImGui::PushStyleColor(ImGuiCol_Text, colors.background);
 		}
 
-		if (PillButton(isPlaying ? kStopLabel : kPlayLabel, ImVec2(buttonWidth, 0.0f)))
-			SetMode(isPlaying ? EditorMode::Edit : EditorMode::Play);
+		const char* label = isPlaying ? kStopLabel : m_playStartPending ? kCancelPlayLabel : kPlayLabel;
+		if (PillButton(label, ImVec2(buttonWidth, 0.0f))) TogglePlayMode();
 		if (isPlaying) ImGui::PopStyleColor(4);
 
 		AddTitleBarInteractiveRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
-		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)"
+		                                : m_playStartPending ? "Cancel Play while scripts are being prepared (Ctrl+P)"
+		                                                     : "Start the game (Ctrl+P)");
 
 		if (m_context->mode != EditorMode::Play) return;
 
@@ -999,15 +1013,32 @@ namespace NeneEngine
 		return WindowHitArea::Caption;
 	}
 
+	void EditorLayer::TogglePlayMode()
+	{
+		if (m_context->mode == EditorMode::Play || m_playStartPending)
+		{
+			SetMode(EditorMode::Edit);
+		}
+		else if (m_context->CanEdit())
+		{
+			CommitPendingEdits();
+			m_scriptEngine->ReloadChangedScripts();
+			if (m_scriptEngine->IsReloadPending())
+				m_playStartPending = true;
+			else
+				SetMode(EditorMode::Play);
+		}
+	}
+
 	void EditorLayer::SetMode(EditorMode mode)
 	{
+		m_playStartPending = false;
 		if (m_context->mode == mode) return;
 		CommitPendingEdits();
 
 		ECS::World& world = m_context->world;
 		if (mode == EditorMode::Play)
 		{
-			m_scriptEngine->ReloadChangedScripts();
 			m_sceneSnapshot.Capture(world, m_context->windowCameras);
 			world.NotifyPlayStarted();
 		}
@@ -1034,7 +1065,7 @@ namespace NeneEngine
 	void EditorLayer::HandleShortcuts()
 	{
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, ImGuiInputFlags_RouteGlobal))
-			SetMode(m_context->mode == EditorMode::Play ? EditorMode::Edit : EditorMode::Play);
+			TogglePlayMode();
 
 		if (!m_context->CanEdit()) return;
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_R, ImGuiInputFlags_RouteGlobal))

@@ -13,6 +13,7 @@ namespace NeneEngine
 
 	class IInputHandler;
 	class PrefabLibrary;
+	class ResourceLoadQueue;
 
 	namespace ECS
 	{
@@ -26,8 +27,11 @@ namespace NeneEngine
 		ScriptEngine();
 		~ScriptEngine();
 
+		ScriptEngine(const ScriptEngine&) = delete;
+		ScriptEngine& operator=(const ScriptEngine&) = delete;
+
 		// The input handler must stay alive until Shutdown()
-		void Initialize(const IInputHandler& input, ECS::World& world, PrefabLibrary& prefabs);
+		void Initialize(const IInputHandler& input, ECS::World& world, PrefabLibrary& prefabs, ResourceLoadQueue& loads);
 		void Shutdown();
 
 		void ExecuteConsoleCommand(std::string_view command, const ECS::ScriptComponent* selectedScript);
@@ -36,13 +40,14 @@ namespace NeneEngine
 		// Reloads update the cached class and schema in place
 		[[nodiscard]] const sol::table* LoadScript(const std::filesystem::path& path);
 
-		// Call on the main thread in Edit mode
+		// Queue reloads on the main thread
 		void ReloadScript(const std::filesystem::path& path);
 		void ReloadAll();
-		// Also safe between world updates in Play mode. Behaviours pick up new revisions on the next update.
 		void ReloadChangedScripts();
+		void PollScriptChanges();
+		[[nodiscard]] bool IsReloadPending() const;
 
-		// Returns a tracked path with a load error, including failed reloads that kept the last working version.
+		// Returns a tracked path with a load error, including failed reloads that kept the last working version
 		[[nodiscard]] const std::filesystem::path* FindFailedScript() const;
 
 		// Zero means no successful load. Failed reloads keep the last working revision.
@@ -56,7 +61,7 @@ namespace NeneEngine
 
 	  private:
 		struct Impl;
-		std::unique_ptr<Impl> m_impl;
+		std::shared_ptr<Impl> m_impl;
 	};
 
 } // namespace NeneEngine
