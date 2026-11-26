@@ -6,6 +6,7 @@
 #include "Core/ResourceManager.h"
 #include "Graphics/Backend/IRenderAdapter.h"
 #include "Graphics/Loaders/MeshLoader.h"
+#include "Graphics/Runtime/GeometryBounds.h"
 
 #include <EASTL/unordered_map.h>
 #include <cmath>
@@ -79,7 +80,9 @@ namespace NeneEngine
 				}
 			}
 
-			return renderer.UploadMesh(quad);
+			GPUMesh mesh = renderer.UploadMesh(quad);
+			if (mesh.IsValid()) mesh.localBounds = ComputeLocalBounds(quad);
+			return mesh;
 		}
 
 		template <typename T> struct AssetEntry
@@ -127,11 +130,11 @@ namespace NeneEngine
 		        resolved,
 		        [asset, resolved]() -> ResourceLoadQueue::Completion
 		        {
-			        const auto resource = ResourceManager::GetInstance().Load<eastl::vector<MeshPart>>(resolved);
+			        const auto resource = ResourceManager::GetInstance().Load<ImportedModel>(resolved);
 			        if (!resource) throw std::runtime_error("Could not read model: " + resolved);
 			        return [asset, resource]()
 			        {
-				        asset->parts = resource;
+				        asset->resource = resource;
 				        asset->state = ResourceLoadState::Ready;
 			        };
 		        },
@@ -140,17 +143,24 @@ namespace NeneEngine
 		return asset;
 	}
 
-	GPUMesh SceneAssetResolver::Mesh(const std::string& path, int part, IRenderAdapter& renderer)
+	MeshGeometryBinding SceneAssetResolver::ResolveMesh(const std::string& path, int part, IRenderAdapter& renderer)
 	{
-		if (path.empty()) return {};
+		const MeshGeometryBinding failed{GPUMesh{}, ResourceLoadState::Failed};
+		const auto loading = [&]()
+		{
+			auto placeholder = ResolveMesh("@cube", -1, renderer).mesh;
+			placeholder.localBounds.reset();
+			return MeshGeometryBinding{placeholder, ResourceLoadState::Loading};
+		};
 		const bool builtin = path == "@quad" || path == "@triangle" || path == "@cube";
 		const auto resolved = builtin ? path : AssetPath(path);
 		const auto key = CacheKey(resolved, renderer) + ":" + std::to_string(part);
 		if (const auto it = m_impl->meshes.find(key); it != m_impl->meshes.end())
 		{
-			if (it->second->state == ResourceLoadState::Ready) return it->second->data;
-			if (it->second->state == ResourceLoadState::Failed) return {};
-			return Mesh("@cube", -1, renderer);
+			const auto& entry = *it->second;
+			if (entry.state == ResourceLoadState::Ready) return {entry.data, entry.state};
+			if (entry.state == ResourceLoadState::Failed) return failed;
+			return loading();
 		}
 		if (builtin)
 		{
@@ -158,11 +168,11 @@ namespace NeneEngine
 			entry->data = CreateBuiltinMesh(path, renderer);
 			entry->state = entry->data.IsValid() ? ResourceLoadState::Ready : ResourceLoadState::Failed;
 			m_impl->meshes.emplace(key, entry);
-			return entry->data;
+			return {entry->data, entry->state};
 		}
 		const auto model = Model(resolved);
-		if (model->state == ResourceLoadState::Failed) return {};
-		if (model->state != ResourceLoadState::Ready) return Mesh("@cube", -1, renderer);
+		if (model->state == ResourceLoadState::Failed) return failed;
+		if (model->state != ResourceLoadState::Ready) return loading();
 		auto entry = eastl::make_shared<AssetEntry<GPUMesh>>();
 		m_impl->meshes.emplace(key, entry);
 		const auto fail = [entry](const std::string& error)
@@ -175,17 +185,19 @@ namespace NeneEngine
 		        resolved,
 		        [model, part, entry, &renderer]() -> ResourceLoadQueue::Completion
 		        {
+			        const auto& imported = model->resource->GetData();
+			        const auto& parts = imported.parts;
 			        eastl::shared_ptr<IMeshUploadData> prepared;
 			        if (part >= 0)
 			        {
-				        if (static_cast<size_t>(part) >= model->parts->GetData().size())
+				        if (static_cast<size_t>(part) >= parts.size())
 					        throw std::runtime_error("Model part does not exist");
-				        prepared = renderer.PrepareMesh(model->parts->GetData()[part].data);
+				        prepared = renderer.PrepareMesh(parts[part].data);
 			        }
 			        else
 			        {
 				        MeshData merged;
-				        for (const auto& mesh : model->parts->GetData())
+				        for (const auto& mesh : parts)
 				        {
 					        const auto base = static_cast<uint32_t>(merged.vertices.size());
 					        merged.vertices.insert(merged.vertices.end(), mesh.data.vertices.begin(),
@@ -194,16 +206,27 @@ namespace NeneEngine
 				        }
 				        prepared = renderer.PrepareMesh(merged);
 			        }
-			        return [entry, prepared, &renderer]()
+			        const auto bounds = imported.GetLocalBounds(part);
+			        return [entry, prepared, bounds, &renderer]()
 			        {
-				        entry->data = renderer.UploadMesh(*prepared);
-				        RequireValid(entry->data);
+				        GPUMesh mesh = renderer.UploadMesh(*prepared);
+				        RequireValid(mesh);
+				        mesh.localBounds = bounds;
+				        entry->data = mesh;
 				        entry->state = ResourceLoadState::Ready;
 			        };
 		        },
 		        fail))
+		{
 			fail("Resource loader is stopping");
-		return Mesh("@cube", -1, renderer);
+			return failed;
+		}
+		return loading();
+	}
+
+	GPUMesh SceneAssetResolver::Mesh(const std::string& path, int part, IRenderAdapter& renderer)
+	{
+		return path.empty() ? GPUMesh{} : ResolveMesh(path, part, renderer).mesh;
 	}
 
 	GPUTexture SceneAssetResolver::Texture(const std::string& path, IRenderAdapter& renderer)
@@ -304,30 +327,40 @@ namespace NeneEngine
 		eastl::erase_if(m_impl->shaders, failed);
 	}
 
-	MeshRenderRuntimeBinding SceneAssetResolver::Resolve(const std::string& sourcePath, int meshPart,
-	                                                     const std::string& texturePath, const std::string& shaderPath,
-	                                                     PrimitiveType primitive, IRenderAdapter& renderer)
+	MeshGeometryBinding SceneAssetResolver::ResolveGeometry(const std::string& meshPath, int meshPart,
+	                                                         PrimitiveType primitive, IRenderAdapter& renderer,
+	                                                         bool useMeshPrimitive)
 	{
-		MeshRenderRuntimeBinding result;
-		std::string meshPath = sourcePath;
-		if (meshPath.empty() && (!texturePath.empty() || !shaderPath.empty()))
+		if (!meshPath.empty()) return ResolveMesh(meshPath, meshPart, renderer);
+		if (useMeshPrimitive)
 		{
 			switch (primitive)
 			{
 			case PrimitiveType::Cube:
-				meshPath = "@cube";
-				break;
+				return ResolveMesh("@cube", meshPart, renderer);
 			case PrimitiveType::Quad:
-				meshPath = "@quad";
-				break;
+				return ResolveMesh("@quad", meshPart, renderer);
 			case PrimitiveType::Triangle:
-				meshPath = "@triangle";
-				break;
+				return ResolveMesh("@triangle", meshPart, renderer);
 			default:
 				break;
 			}
 		}
-		result.meshId = Mesh(meshPath, meshPart, renderer).meshId;
+		MeshGeometryBinding geometry;
+		geometry.mesh.localBounds = GetPrimitiveLocalBounds(primitive);
+		return geometry;
+	}
+
+	MeshRenderRuntimeBinding SceneAssetResolver::Resolve(const std::string& sourcePath, int meshPart,
+	                                                     const std::string& texturePath, const std::string& shaderPath,
+	                                                     PrimitiveType primitive, IRenderAdapter& renderer)
+	{
+		const auto geometry = ResolveGeometry(sourcePath, meshPart, primitive, renderer,
+		                                      !texturePath.empty() || !shaderPath.empty());
+		MeshRenderRuntimeBinding result;
+		result.meshId = geometry.mesh.meshId;
+		result.meshState = geometry.state;
+		result.localBounds = geometry.mesh.localBounds;
 		result.textureId = Texture(texturePath, renderer).textureId;
 		result.shaderId = Shader(shaderPath, renderer).shaderId;
 		return result;

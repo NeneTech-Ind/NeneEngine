@@ -131,7 +131,7 @@ namespace NeneEngine
 		    [&context, generation, root, created, path]() -> ResourceLoadQueue::Completion
 		    {
 			    const auto resolved = ResolveAssetPath(path);
-			    const auto resource = ResourceManager::GetInstance().Load<eastl::vector<MeshPart>>(
+			    const auto resource = ResourceManager::GetInstance().Load<ImportedModel>(
 			        resolved.lexically_normal().generic_string());
 			    if (!resource) throw std::runtime_error("Could not load model: " + path);
 			    const auto config = LoadModelInstanceConfig(resolved.parent_path() / "model.instance.json");
@@ -144,7 +144,7 @@ namespace NeneEngine
 					    auto rootEntry = created->front();
 					    rootEntry.hasMesh = false;
 					    eastl::vector<CreatedEntity> entries{rootEntry};
-					    const auto& parts = resource->GetData();
+					    const auto& parts = resource->GetData().parts;
 					    const bool exists = context.world.GetRegistry().valid(root);
 					    if (!exists) CreateAssetCommand(created).Execute(context.world);
 					    if (!context.world.GetRegistry().valid(root)) return;

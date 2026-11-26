@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Graphics/Runtime/LocalAabb.h"
+
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
@@ -99,6 +101,7 @@ namespace NeneEngine
 		GPUBufferId indexBufferId{};
 		uint32_t vertexCount = 0;
 		uint32_t indexCount = 0;
+		std::optional<LocalAabb> localBounds{};
 
 		constexpr bool IsValid() const noexcept { return meshId.IsValid(); }
 	};

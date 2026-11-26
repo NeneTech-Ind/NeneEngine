@@ -3,7 +3,9 @@
 #include "ECS/VisibilityRegistry.h"
 
 #include <array>
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <limits>
 
 namespace NeneEngine::ECS
 {
@@ -11,6 +13,23 @@ namespace NeneEngine::ECS
 	{
 		constexpr float kFrustumBoundaryTolerance = 0.0001f;
 		using FrustumPlanes = std::array<glm::vec4, 5>;
+
+		std::optional<WorldAabb> TransformBounds(const LocalAabb& local, const glm::mat4& worldMatrix)
+		{
+			constexpr float infinity = std::numeric_limits<float>::infinity();
+			WorldAabb world{glm::vec3(infinity), glm::vec3(-infinity)};
+			for (unsigned cornerIndex = 0; cornerIndex < 8; ++cornerIndex)
+			{
+				const glm::vec4 corner{(cornerIndex & 1) ? local.max.x : local.min.x,
+				                       (cornerIndex & 2) ? local.max.y : local.min.y,
+				                       (cornerIndex & 4) ? local.max.z : local.min.z, 1.0f};
+				const glm::vec3 position{worldMatrix * corner};
+				if (glm::any(glm::isnan(position)) || glm::any(glm::isinf(position))) return std::nullopt;
+				world.min = glm::min(world.min, position);
+				world.max = glm::max(world.max, position);
+			}
+			return world;
+		}
 
 		FrustumPlanes ExtractFrustumPlanes(const glm::mat4& viewProjection)
 		{
@@ -60,6 +79,12 @@ namespace NeneEngine::ECS
 		if (entry == m_boundsByEntity.end()) return false;
 		entry->second = bounds;
 		return true;
+	}
+
+	bool VisibilityRegistry::UpdateGeometryBounds(Entity entity, const std::optional<LocalAabb>& localBounds,
+	                                              const glm::mat4& worldMatrix)
+	{
+		return UpdateBounds(entity, localBounds ? TransformBounds(*localBounds, worldMatrix) : std::nullopt);
 	}
 
 	bool VisibilityRegistry::Remove(Entity entity)
