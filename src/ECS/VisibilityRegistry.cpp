@@ -2,7 +2,10 @@
 
 #include "ECS/VisibilityRegistry.h"
 
+#include "Core/JobSystem.h"
+
 #include <array>
+#include <cstdint>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <limits>
@@ -12,7 +15,14 @@ namespace NeneEngine::ECS
 	namespace
 	{
 		constexpr float kFrustumBoundaryTolerance = 0.0001f;
+		constexpr uint32_t kMinVisibilityJobRange = 256;
 		using FrustumPlanes = std::array<glm::vec4, 5>;
+
+		struct VisibilityCandidate
+		{
+			Entity entity;
+			std::optional<WorldAabb> bounds;
+		};
 
 		std::optional<WorldAabb> TransformBounds(const LocalAabb& local, const glm::mat4& worldMatrix)
 		{
@@ -65,6 +75,11 @@ namespace NeneEngine::ECS
 			const float closestDepth = glm::dot(camera.forward, closestCorner - camera.worldPosition);
 			return closestDepth - camera.farPlane <= kFrustumBoundaryTolerance;
 		}
+
+		bool IsVisible(const std::optional<WorldAabb>& bounds, const FrustumPlanes& planes, const VisibilityCamera& camera)
+		{
+			return !bounds || IntersectsFrustum(*bounds, planes, camera);
+		}
 	} // namespace
 
 	bool VisibilityRegistry::Register(Entity entity, std::optional<WorldAabb> bounds)
@@ -103,7 +118,43 @@ namespace NeneEngine::ECS
 		const FrustumPlanes planes = ExtractFrustumPlanes(camera.viewProjection);
 		for (const auto& [entity, bounds] : m_boundsByEntity)
 		{
-			if (!bounds || IntersectsFrustum(*bounds, planes, camera)) visibleEntities.push_back(entity);
+			if (IsVisible(bounds, planes, camera)) visibleEntities.push_back(entity);
+		}
+	}
+
+	void VisibilityRegistry::QueryVisible(const VisibilityCamera& camera, eastl::vector<Entity>& visibleEntities,
+	                                      JobSystem& jobs) const
+	{
+		if (m_boundsByEntity.size() <= kMinVisibilityJobRange || jobs.GetComputeWorkerCount() == 0)
+		{
+			QueryVisible(camera, visibleEntities);
+			return;
+		}
+
+		eastl::vector<VisibilityCandidate> candidates;
+		candidates.reserve(m_boundsByEntity.size());
+		for (const auto& [entity, bounds] : m_boundsByEntity) candidates.push_back({entity, bounds});
+
+		const FrustumPlanes planes = ExtractFrustumPlanes(camera.viewProjection);
+		eastl::vector<uint8_t> visible(candidates.size());
+		const auto checkRange = [&](uint32_t begin, uint32_t end)
+		{
+			for (uint32_t index = begin; index < end; ++index)
+				visible[index] = IsVisible(candidates[index].bounds, planes, camera);
+		};
+		const JobHandle job = jobs.ParallelFor("Visibility Cull", static_cast<uint32_t>(candidates.size()),
+		                                      kMinVisibilityJobRange, checkRange);
+		if (job.IsValid()) jobs.Wait(job);
+		if (!job.IsValid() || job.HasFailed())
+		{
+			QueryVisible(camera, visibleEntities);
+			return;
+		}
+
+		visibleEntities.clear();
+		for (std::size_t index = 0; index < candidates.size(); ++index)
+		{
+			if (visible[index]) visibleEntities.push_back(candidates[index].entity);
 		}
 	}
 
