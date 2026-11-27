@@ -148,6 +148,15 @@ namespace NeneEngine::ECS
 		const glm::mat4 projectionMatrix = activeCamera->GetProjectionMatrix();
 		const glm::mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
+		const VisibilityCamera visibilityCamera{viewProjectionMatrix, cameraPosition, cameraForward, activeCamera->farPlane};
+		{
+			NENE_PROFILE_SCOPE("Visibility Query");
+			const auto& visibility = world.GetVisibilityRegistry();
+			if (m_useJobs)
+				visibility.QueryVisible(visibilityCamera, m_visibleEntities, *m_jobs);
+			else
+				visibility.QueryVisible(visibilityCamera, m_visibleEntities);
+		}
 		CollectDrawRecords(world);
 		BuildRenderItems(viewMatrix, projectionMatrix, viewProjectionMatrix);
 		SubmitRenderItems();
@@ -288,13 +297,16 @@ namespace NeneEngine::ECS
 		m_drawRecords.clear();
 		eastl::unordered_map<RenderAssetKey, MeshRenderRuntimeBinding, RenderAssetKeyHash> bindings;
 
-		auto view = world.GetRegistry().view<const TransformComponent, const MeshRendererComponent>();
-		for (auto entity : view)
+		const auto& registry = world.GetRegistry();
+		for (const Entity entity : m_visibleEntities)
 		{
-			const auto& meshRenderer = view.get<MeshRendererComponent>(entity);
-			if (!meshRenderer.visible) continue;
+			const uint32_t transformIndex = FindTransformIndex(entity);
+			if (transformIndex == kNoIndex) continue;
+			const auto* renderer = registry.try_get<MeshRendererComponent>(entity);
+			if (renderer == nullptr || !renderer->visible) continue;
+			const auto& meshRenderer = *renderer;
 
-			DrawRecord record{entity, FindTransformIndex(entity), meshRenderer.primitiveType, meshRenderer.tint};
+			DrawRecord record{entity, transformIndex, meshRenderer.primitiveType, meshRenderer.tint};
 			if (!meshRenderer.meshPath.empty() || !meshRenderer.texturePath.empty() || !meshRenderer.shaderPath.empty())
 			{
 				const RenderAssetKey key{meshRenderer.meshPath, meshRenderer.texturePath, meshRenderer.shaderPath,

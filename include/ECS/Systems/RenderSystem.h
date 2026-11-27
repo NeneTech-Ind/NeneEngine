@@ -77,6 +77,7 @@ namespace NeneEngine::ECS
 		eastl::vector<uint32_t> m_levelCursors;
 		eastl::vector<uint32_t> m_levelOrder;
 		eastl::vector<glm::mat4> m_worldMatrices;
+		eastl::vector<Entity> m_visibleEntities;
 		eastl::vector<DrawRecord> m_drawRecords;
 		eastl::vector<RenderItem> m_items;
 		eastl::vector<const ColliderComponent*> m_colliders;

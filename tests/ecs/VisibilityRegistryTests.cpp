@@ -169,6 +169,49 @@ namespace
 		CheckVisible(rightVisible, {left, pending}, "Removed entities must disappear from queries");
 	}
 
+	void TestParallelVisibilityQueries()
+	{
+		const VisibilityCamera camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		const VisibilityCamera otherCamera = MakeCamera({20.0f, 0.0f, 0.0f});
+		const std::optional<WorldAabb> bounds[] = {
+		    WorldAabb{{-0.5f, -0.5f, -5.5f}, {0.5f, 0.5f, -4.5f}},
+		    WorldAabb{{19.5f, -0.5f, -5.5f}, {20.5f, 0.5f, -4.5f}},
+		    WorldAabb{{-0.5f, -0.5f, -11.0f}, {0.5f, 0.5f, -10.0f}},
+		    std::nullopt,
+		};
+		VisibilityRegistry registry;
+		for (uint32_t index = 0; index < 1025; ++index)
+		{
+			const Entity entity = entt::entt_traits<Entity>::construct(index, index % 7);
+			Check(registry.Register(entity, bounds[index % 4]), "Parallel query candidate must register");
+		}
+
+		eastl::vector<Entity> expected;
+		eastl::vector<Entity> otherExpected;
+		registry.QueryVisible(camera, expected);
+		registry.QueryVisible(otherCamera, otherExpected);
+		Check(expected.size() == 769 && otherExpected.size() == 512, "Camera fixtures must have different visible sets");
+
+		NeneEngine::JobSystem jobs;
+		eastl::vector<Entity> actual{NullEntity};
+		registry.QueryVisible(camera, actual, jobs);
+		Check(actual == expected, "An inactive pool must fall back to the serial result");
+
+		jobs.Initialize();
+		registry.QueryVisible(camera, actual, jobs);
+		Check(actual == expected, "Jobs must preserve the serial entity IDs and order");
+		registry.QueryVisible(otherCamera, actual, jobs);
+		Check(actual == otherExpected, "Jobs must replace the result for a different camera");
+
+		registry.Clear();
+		registry.QueryVisible(camera, actual, jobs);
+		Check(actual.empty(), "An empty parallel query must clear the previous result");
+		const Entity single = entt::entt_traits<Entity>::construct(1, 1);
+		Check(registry.Register(single), "A small query candidate must register");
+		registry.QueryVisible(camera, actual, jobs);
+		CheckVisible(actual, {single}, "A small query must preserve entities with unknown bounds");
+	}
+
 	void TestFrustumBoundaries()
 	{
 		const Entity entity = entt::entt_traits<Entity>::construct(1, 0);
@@ -819,6 +862,7 @@ int main()
 	TestAsyncMeshGeometry();
 	TestAsyncVisibilityBounds();
 	TestCameraQueries();
+	TestParallelVisibilityQueries();
 	TestFrustumBoundaries();
 	TestWorldBoundsFromGeometry();
 	TestFarPlanePrecision();

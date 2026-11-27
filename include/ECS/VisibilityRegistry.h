@@ -13,6 +13,11 @@
 #include <glm/vec3.hpp>
 #include <optional>
 
+namespace NeneEngine
+{
+	class JobSystem;
+}
+
 namespace NeneEngine::ECS
 {
 
@@ -47,6 +52,7 @@ namespace NeneEngine::ECS
 		void Clear();
 
 		void QueryVisible(const VisibilityCamera& camera, eastl::vector<Entity>& visibleEntities) const;
+		void QueryVisible(const VisibilityCamera& camera, eastl::vector<Entity>& visibleEntities, JobSystem& jobs) const;
 
 		[[nodiscard]] const std::optional<WorldAabb>* FindBounds(Entity entity) const;
 		[[nodiscard]] std::size_t Size() const { return m_boundsByEntity.size(); }

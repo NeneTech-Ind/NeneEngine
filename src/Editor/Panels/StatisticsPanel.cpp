@@ -59,7 +59,7 @@ namespace NeneEngine
 
 			ImGui::SeparatorText("Render preparation");
 			ImGui::Checkbox("Use job system", &settings.useJobSystem);
-			ImGui::SetItemTooltip("Compute world and render matrices in parallel on the job system workers");
+			ImGui::SetItemTooltip("Run visibility checks and compute world and render matrices on the job system workers");
 
 			const auto* stats = registryContext.find<ECS::RenderStats>();
 			if (stats == nullptr) return;
