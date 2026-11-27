@@ -27,9 +27,9 @@ namespace NeneEngine
 	  private:
 		void Apply(ECS::World& world, const Component& value) const
 		{
-			if (!world.GetRegistry().valid(m_entity)) return;
-
-			if (Component* component = world.GetComponent<Component>(m_entity)) *component = value;
+			auto& registry = world.GetRegistry();
+			if (registry.valid(m_entity) && registry.all_of<Component>(m_entity))
+				registry.patch<Component>(m_entity, [&value](Component& component) { component = value; });
 		}
 
 		std::string m_name;

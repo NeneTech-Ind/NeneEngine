@@ -6,6 +6,8 @@
 #include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/VisibilityRegistry.h"
 #include "ECS/World.h"
+#include "Editor/Commands/ComponentPresenceCommand.h"
+#include "Editor/EditorHistory.h"
 #include "Editor/EditorSceneSnapshot.h"
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Graphics/Runtime/GeometryBounds.h"
@@ -476,6 +478,74 @@ namespace
 		Check(visibility.FindBounds(leaf) == nullptr, "Destroying a subtree must remove descendant entries");
 	}
 
+	void TestVisibilityAfterEditorHistoryChanges()
+	{
+		using namespace NeneEngine;
+		World world;
+		EditorHistory history;
+		auto& registry = world.GetRegistry();
+		const auto& visibility = world.GetVisibilityRegistry();
+		const auto camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		eastl::vector<Entity> visible;
+		const Entity parent = world.CreateEntity();
+		const Entity child = world.CreateEntity();
+		auto& transform = world.AddComponent<TransformComponent>(parent);
+		transform.position.z = -5.0f;
+		world.AddComponent<TransformComponent>(child);
+		world.AddComponent<HierarchyComponent>(child, HierarchyComponent{parent});
+		auto& mesh = world.AddComponent<MeshRendererComponent>(child);
+		world.SyncVisibility();
+
+		const auto beforeMove = transform;
+		registry.patch<TransformComponent>(parent, [](auto& edited) { edited.position.x = 20.0f; });
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {}, "A live transform edit must update visibility before it is recorded in history");
+		history.RecordComponentChange("Gizmo Transform", parent, beforeMove, transform);
+		Check(history.Undo(world), "Undo must restore the transform");
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {child}, "Undoing a parent transform must restore child visibility");
+		Check(history.Redo(world), "Redo must restore the transform edit");
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {}, "Redoing a parent transform must update child visibility");
+		Check(history.Undo(world), "Undo must bring the child back into view");
+
+		const auto beforeHide = mesh;
+		mesh.visible = false;
+		registry.patch<MeshRendererComponent>(child);
+		history.RecordComponentChange("Edit Mesh Renderer", child, beforeHide, mesh);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(child) == nullptr, "An inspector visibility edit must remove the entry");
+		Check(history.Undo(world), "Undo must show the mesh");
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {child}, "Undoing the visibility edit must restore the entry");
+		Check(history.Redo(world), "Redo must hide the mesh");
+		world.SyncVisibility();
+		Check(visibility.FindBounds(child) == nullptr, "Redoing the visibility edit must remove the entry");
+		Check(history.Undo(world), "Undo must show the mesh before removing its component");
+
+		using MeshPresence = ComponentPresenceCommand<MeshRendererComponent>;
+		history.Execute(eastl::make_unique<MeshPresence>("Remove Mesh Renderer", child, MeshPresence::Action::Remove,
+		                                                MeshRendererComponent{}),
+		                world);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(child) == nullptr, "Removing the renderer must remove the entry");
+		Check(history.Undo(world), "Undo must restore the renderer");
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {child}, "Undoing component removal must restore the entry");
+
+		auto& restoredMesh = registry.get<MeshRendererComponent>(child);
+		restoredMesh.primitiveType = PrimitiveType::Cube;
+		registry.patch<MeshRendererComponent>(child);
+		world.SyncVisibility();
+		Check(HasBounds(visibility, child, {{-0.4f, -0.4f, -5.4f}, {0.4f, 0.4f, -4.6f}}),
+		      "Changing the primitive in the inspector must update its geometry bounds");
+	}
+
 	void TestVisibilityAfterPlayStop()
 	{
 		World world;
@@ -555,5 +625,6 @@ int main()
 	TestVisibilityComponentChanges();
 	TestVisibilityAfterRegistrySwap();
 	TestVisibilityHierarchyChanges();
+	TestVisibilityAfterEditorHistoryChanges();
 	TestVisibilityAfterPlayStop();
 }

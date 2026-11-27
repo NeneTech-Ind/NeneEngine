@@ -198,6 +198,7 @@ add_executable(NeneVisibilityTests EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/ResourceManager.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/VisibilityRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/World.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Editor/EditorHistory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Editor/EditorSceneSnapshot.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Backend/IRenderAdapter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Loaders/MeshLoader.cpp"

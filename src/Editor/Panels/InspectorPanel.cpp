@@ -326,6 +326,18 @@ namespace NeneEngine
 
 		if (!isEditMode) return;
 
+		if constexpr (std::is_same_v<Component, ECS::TransformComponent>)
+		{
+			if (before.position != component->position || before.rotation != component->rotation ||
+			    before.scale != component->scale)
+				context.world.GetRegistry().patch<Component>(entity);
+		}
+		if constexpr (std::is_same_v<Component, ECS::MeshRendererComponent>)
+		{
+			if (before.visible != component->visible || before.primitiveType != component->primitiveType)
+				context.world.GetRegistry().patch<Component>(entity);
+		}
+
 		const std::string commandName = std::string("Edit ") + label;
 		if (edits.changedInstantly) context.history.RecordComponentChange(commandName, entity, before, *component);
 
@@ -724,6 +736,10 @@ namespace NeneEngine
 		(texture ? material.texturePath : material.shaderPath) = path;
 		if (texture && !path.empty() && material.shaderPath.empty())
 			material.shaderPath = kTexturedMeshShaderPath;
+		const bool usedMeshPrimitive = !before.texturePath.empty() || !before.shaderPath.empty();
+		const bool usesMeshPrimitive = !material.texturePath.empty() || !material.shaderPath.empty();
+		if (material.meshPath.empty() && usedMeshPrimitive != usesMeshPrimitive)
+			context.world.GetRegistry().patch<ECS::MeshRendererComponent>(context.selectedEntity);
 		context.history.RecordComponentChange("Edit Material", context.selectedEntity, before, material);
 		m_materialError.clear();
 	}
