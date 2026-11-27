@@ -74,7 +74,8 @@ namespace NeneEngine
 			if (!std::isfinite(value)) throw std::runtime_error("Script fields must contain finite floats");
 		}
 
-		ECS::ScriptFieldValue ReadScriptField(const nlohmann::json& field)
+		ECS::ScriptFieldValue ReadScriptField(const nlohmann::json& field,
+		                                     const EntityDeserializationMap& entitiesById)
 		{
 			const auto type = field.at("type").get<std::string>();
 			const auto& value = field.at("value");
@@ -100,10 +101,23 @@ namespace NeneEngine
 			if (type == "vec3")
 				return glm::vec3{ReadScriptFloat(value.at("x")), ReadScriptFloat(value.at("y")),
 				                 ReadScriptFloat(value.at("z"))};
+			if (type == "entity")
+			{
+				if (value.is_null()) return ScriptEntityReference{};
+				if (!value.is_number_integer() || (!value.is_number_unsigned() && value.get<int64_t>() < 0) ||
+				    value.get<uint64_t>() > (std::numeric_limits<uint32_t>::max)())
+					throw std::runtime_error("Expected a scene-local entity id");
+				const auto id = value.get<uint32_t>();
+				const auto target = entitiesById.find(id);
+				if (target == entitiesById.end())
+					throw std::runtime_error("Unknown scene-local entity id: " + std::to_string(id));
+				return ScriptEntityReference{target->second};
+			}
 			throw std::runtime_error("Unknown script field type: " + type);
 		}
 
-		void DeserializeScript(const nlohmann::json& value, ECS::World& world, ECS::Entity entity)
+		void DeserializeScript(const nlohmann::json& value, ECS::World& world, ECS::Entity entity,
+		                       const EntityDeserializationMap& entitiesById)
 		{
 			ECS::ScriptComponent script;
 			script.scriptPath = value.at("scriptPath").get<std::string>();
@@ -115,7 +129,7 @@ namespace NeneEngine
 				{
 					try
 					{
-						script.fields.emplace(name, ReadScriptField(field));
+						script.fields.emplace(name, ReadScriptField(field, entitiesById));
 					}
 					catch (const std::exception& exception)
 					{
@@ -427,13 +441,15 @@ namespace NeneEngine
 
 	}
 
-	nlohmann::json SerializeScriptComponent(const ECS::ScriptComponent& script)
+	nlohmann::json SerializeScriptComponent(const ECS::ScriptComponent& script, const EntitySerializationMap* entityIds)
 	{
 		nlohmann::json fields = nlohmann::json::object();
 		for (const auto& [name, value] : script.fields)
 		{
+			// Updating prefab defaults has no mapping from the live world to the prefab's local IDs.
+			if (entityIds == nullptr && std::holds_alternative<ScriptEntityReference>(value)) continue;
 			fields[name] = std::visit(
-			    [](const auto& field) -> nlohmann::json
+			    [entityIds](const auto& field) -> nlohmann::json
 			    {
 				    using T = std::decay_t<decltype(field)>;
 				    if constexpr (std::is_same_v<T, bool>)
@@ -447,6 +463,13 @@ namespace NeneEngine
 				    }
 				    else if constexpr (std::is_same_v<T, std::string>)
 					    return {{"type", "string"}, {"value", field}};
+				    else if constexpr (std::is_same_v<T, ScriptEntityReference>)
+				    {
+					    const auto target = entityIds->find(field.target);
+					    nlohmann::json id = target == entityIds->end() ? nlohmann::json(nullptr)
+					                                                  : nlohmann::json(target->second);
+					    return {{"type", "entity"}, {"value", std::move(id)}};
+				    }
 				    else
 				    {
 					    ValidateScriptFloat(field.x);
@@ -507,7 +530,7 @@ namespace NeneEngine
 			entityJson["components"]["PlayerControllerComponent"] = SerializePlayerController(*playerController);
 
 		const auto* script = world.GetRegistry().try_get<ECS::ScriptComponent>(entity);
-		if (script != nullptr) entityJson["components"]["ScriptComponent"] = SerializeScriptComponent(*script);
+		if (script != nullptr) entityJson["components"]["ScriptComponent"] = SerializeScriptComponent(*script, &entityIds);
 		return entityJson;
 	}
 
@@ -567,7 +590,8 @@ namespace NeneEngine
 			DeserializeCollider(components.at("ColliderComponent"), world, entity);
 		if (components.contains("PlayerControllerComponent"))
 			DeserializePlayerController(components.at("PlayerControllerComponent"), world, entity);
-		if (components.contains("ScriptComponent")) DeserializeScript(components.at("ScriptComponent"), world, entity);
+		if (components.contains("ScriptComponent"))
+			DeserializeScript(components.at("ScriptComponent"), world, entity, entitiesById);
 	}
 
 }

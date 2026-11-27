@@ -93,6 +93,19 @@ namespace NeneEngine
 			               ECS::PlayerControllerComponent, ECS::PrimitiveControlComponent, ECS::RigidbodyComponent,
 			               ECS::ColliderComponent, ECS::ScriptComponent>(source, target, from, to, replace);
 		}
+
+		void RemapScriptEntityReferences(ECS::ScriptComponent& script,
+		                                 const eastl::unordered_map<ECS::Entity, ECS::Entity>& remap)
+		{
+			for (auto& entry : script.fields)
+			{
+				if (auto* reference = std::get_if<ScriptEntityReference>(&entry.second))
+				{
+					const auto target = remap.find(reference->target);
+					reference->target = target != remap.end() ? target->second : ECS::NullEntity;
+				}
+			}
+		}
 	} // namespace
 
 	void SceneSerializer::Deserialize(const nlohmann::json& sceneJson, ECS::World& world, bool preserveCameras)
@@ -161,6 +174,11 @@ namespace NeneEngine
 			for (auto& child : copy.children) child = remap.at(child);
 			target.emplace<ECS::HierarchyComponent>(remap.at(entity), std::move(copy));
 		}
+		for (const auto [entity, script] : target.view<ECS::ScriptComponent>().each())
+		{
+			(void)entity;
+			RemapScriptEntityReferences(script, remap);
+		}
 		return prepared;
 	}
 
@@ -169,8 +187,18 @@ namespace NeneEngine
 		NENE_PROFILE_SCOPE("Scene Apply");
 		auto& source = world.GetRegistry();
 		auto& target = scene.world->GetRegistry();
+		eastl::unordered_map<ECS::Entity, ECS::Entity> preservedCameras;
 		for (const auto camera : scene.cameras)
-			if (source.valid(camera)) CopyEntity(source, target, camera, camera, false);
+			if (source.valid(camera)) preservedCameras.emplace(camera, camera);
+		for (const auto camera : scene.cameras)
+		{
+			if (!preservedCameras.contains(camera)) continue;
+			const bool hadScript = target.all_of<ECS::ScriptComponent>(camera);
+			CopyEntity(source, target, camera, camera, false);
+			if (!hadScript)
+				if (auto* script = target.try_get<ECS::ScriptComponent>(camera))
+					RemapScriptEntityReferences(*script, preservedCameras);
+		}
 		if (const auto* settings = source.ctx().find<ECS::DebugDrawSettings>())
 			target.ctx().emplace<ECS::DebugDrawSettings>(*settings);
 		if (const auto* settings = source.ctx().find<ECS::RenderSettings>())

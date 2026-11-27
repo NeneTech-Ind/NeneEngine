@@ -115,6 +115,7 @@ namespace NeneEngine
 		ScriptEngine& m_scriptEngine;
 		eastl::vector<std::string> m_scriptChoices;
 		eastl::optional<ScriptFieldEdit> m_scriptFieldEdit;
+		ImGuiTextFilter m_scriptEntityFilter;
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 
 		ECS::Entity m_eulerEntity = ECS::NullEntity;

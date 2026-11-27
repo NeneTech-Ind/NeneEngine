@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ECS/Entity.h"
+
 #include <EASTL/vector.h>
 #include <glm/vec3.hpp>
 #include <algorithm>
@@ -11,7 +13,14 @@
 namespace NeneEngine
 {
 
-	using ScriptFieldValue = std::variant<bool, int, float, std::string, glm::vec3>;
+	struct ScriptEntityReference
+	{
+		ECS::Entity target = ECS::NullEntity;
+
+		bool operator==(const ScriptEntityReference&) const = default;
+	};
+
+	using ScriptFieldValue = std::variant<bool, int, float, std::string, glm::vec3, ScriptEntityReference>;
 
 	struct ScriptFieldDefinition
 	{

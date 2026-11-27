@@ -49,10 +49,8 @@ namespace NeneEngine::ECS
 		eastl::unique_ptr<LuaBehaviour> CreateBehaviour(Entity entity, const ScriptComponent& component,
 		                                               const sol::table& scriptClass, const ScriptFieldSchema& fieldSchema)
 		{
-			sol::state_view lua{scriptClass.lua_state()};
-			auto entityApi = sol::make_object(lua, ScriptEntity(world, entity));
-			return eastl::make_unique<LuaBehaviour>(scriptClass, component.scriptPath, fieldSchema, component.fields,
-			                                       entityApi);
+			return eastl::make_unique<LuaBehaviour>(world, entity, scriptClass, component.scriptPath, fieldSchema,
+			                                       component.fields);
 		}
 
 		void ReloadBehaviourIfChanged(Entity entity, const ScriptComponent& component, RuntimeBehaviour& runtime)

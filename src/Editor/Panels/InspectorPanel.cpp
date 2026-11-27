@@ -207,7 +207,51 @@ namespace NeneEngine
 			});
 		}
 
-		bool DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits)
+		const char* GetEntityName(const entt::registry& registry, ECS::Entity entity)
+		{
+			const auto* tag = registry.try_get<ECS::TagComponent>(entity);
+			return tag != nullptr && !tag->name.empty() ? tag->name.c_str() : "Entity";
+		}
+
+		std::string GetEntityLabel(const entt::registry& registry, ECS::Entity entity)
+		{
+			const std::string name = GetEntityName(registry, entity);
+			return name + " (" + std::to_string(entt::to_integral(entity)) + ")";
+		}
+
+		bool DrawScriptEntityReference(const char* label, ScriptEntityReference& value, const entt::registry& registry,
+		                               ImGuiTextFilter& filter)
+		{
+			std::string preview = value.target == ECS::NullEntity ? "None" : "Missing entity";
+			if (registry.valid(value.target)) preview = GetEntityLabel(registry, value.target);
+			if (!ImGui::BeginCombo(label, preview.c_str(), ImGuiComboFlags_HeightLarge)) return false;
+
+			if (ImGui::IsWindowAppearing())
+			{
+				filter.Clear();
+				ImGui::SetKeyboardFocusHere();
+			}
+			filter.Draw("Filter");
+
+			auto selected = value.target;
+			if (ImGui::Selectable("None", selected == ECS::NullEntity)) selected = ECS::NullEntity;
+			for (const auto entity : registry.view<entt::entity>())
+			{
+				const auto entityLabel = GetEntityLabel(registry, entity);
+				if (!filter.PassFilter(entityLabel.c_str())) continue;
+				ImGui::PushID(static_cast<int>(entt::to_integral(entity)));
+				if (ImGui::Selectable(entityLabel.c_str(), entity == selected)) selected = entity;
+				ImGui::PopID();
+			}
+			ImGui::EndCombo();
+
+			if (selected == value.target) return false;
+			value.target = selected;
+			return true;
+		}
+
+		bool DrawScriptField(const ScriptFieldDefinition& field, ScriptFieldValue& value, FieldEdits& edits,
+		                     const entt::registry& registry, ImGuiTextFilter& entityFilter)
 		{
 			const char* label = field.name.c_str();
 			if (!field.options.empty())
@@ -246,6 +290,8 @@ namespace NeneEngine
 					                          [&](const char* id) { return ImGui::InputText(id, &current); });
 				    else if constexpr (std::is_same_v<Value, glm::vec3>)
 					    return DragVec3(label, current, kPositionDragSpeed, edits);
+				    else if constexpr (std::is_same_v<Value, ScriptEntityReference>)
+					    return DrawScriptEntityReference(label, current, registry, entityFilter);
 			    },
 			    value);
 		}
@@ -288,18 +334,6 @@ namespace NeneEngine
 			return hierarchy != nullptr &&
 			       std::any_of(hierarchy->children.begin(), hierarchy->children.end(), [&registry](ECS::Entity child)
 			                   { return registry.valid(child) && registry.all_of<ECS::MeshRendererComponent>(child); });
-		}
-
-		const char* GetEntityName(const entt::registry& registry, ECS::Entity entity)
-		{
-			const auto* tag = registry.try_get<ECS::TagComponent>(entity);
-			return tag != nullptr && !tag->name.empty() ? tag->name.c_str() : "Entity";
-		}
-
-		std::string GetEntityLabel(const entt::registry& registry, ECS::Entity entity)
-		{
-			const std::string name = GetEntityName(registry, entity);
-			return name + " (" + std::to_string(entt::to_integral(entity)) + ")";
 		}
 	} // namespace
 
@@ -583,7 +617,8 @@ namespace NeneEngine
 			edits.colors = context.themeColors;
 			ImGui::PushID(field.name.c_str());
 			if (invalid) ImGui::PushStyleColor(ImGuiCol_FrameBg, context.themeColors ? context.themeColors->danger : ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
-			const bool changed = DrawScriptField(field, value, edits) && canEdit;
+			const bool changed = DrawScriptField(field, value, edits, context.world.GetRegistry(), m_scriptEntityFilter) &&
+			                     canEdit;
 			if (invalid) ImGui::PopStyleColor();
 			if (invalid) ImGui::TextColored(context.themeColors ? context.themeColors->danger : ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "Invalid value");
 			ImGui::PopID();

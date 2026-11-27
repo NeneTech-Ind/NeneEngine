@@ -12,12 +12,16 @@
 
 namespace NeneEngine
 {
+	namespace ECS
+	{
+		class World;
+	}
 
 	class LuaBehaviour final : public ScriptBehaviour
 	{
 	  public:
-		LuaBehaviour(const sol::table& scriptClass, std::string_view scriptPath, const ScriptFieldSchema& fieldSchema,
-		             const std::map<std::string, ScriptFieldValue>& fields, const sol::object& entityApi);
+		LuaBehaviour(ECS::World& world, ECS::Entity entity, const sol::table& scriptClass, std::string_view scriptPath,
+		             const ScriptFieldSchema& fieldSchema, const std::map<std::string, ScriptFieldValue>& fields);
 		~LuaBehaviour() override;
 
 		LuaBehaviour(const LuaBehaviour&) = delete;
