@@ -83,9 +83,12 @@ namespace NeneEngine
 
 	void ScriptEntity::SetPosition(const glm::vec3& position) const
 	{
-		auto& transform = RequireTransform(GetWorld(), m_entity);
+		auto& world = GetWorld();
+		auto& transform = RequireTransform(world, m_entity);
 		ValidateVector(position);
+		const bool changed = transform.position != position;
 		transform.position = position;
+		if (changed) world.GetRegistry().patch<ECS::TransformComponent>(m_entity);
 	}
 
 	glm::vec3 ScriptEntity::GetRotation() const
@@ -95,9 +98,13 @@ namespace NeneEngine
 
 	void ScriptEntity::SetRotation(const glm::vec3& degrees) const
 	{
-		auto& transform = RequireTransform(GetWorld(), m_entity);
+		auto& world = GetWorld();
+		auto& transform = RequireTransform(world, m_entity);
 		ValidateVector(degrees);
-		transform.rotation = glm::quat(glm::radians(degrees));
+		const glm::quat rotation(glm::radians(degrees));
+		const bool changed = transform.rotation != rotation;
+		transform.rotation = rotation;
+		if (changed) world.GetRegistry().patch<ECS::TransformComponent>(m_entity);
 	}
 
 	glm::vec3 ScriptEntity::GetVelocity() const

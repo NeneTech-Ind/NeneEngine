@@ -204,7 +204,16 @@ add_executable(NeneVisibilityTests EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Loaders/MeshLoader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Runtime/GeometryBounds.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Runtime/SceneAssetResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scene/EntitySerializer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scene/Prefab/PrefabLibrary.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripting/Bindings/EntityBindings.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripting/Bindings/ScriptEntity.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripting/Bindings/VectorBindings.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripting/Bindings/WorldBindings.cpp"
 )
 target_include_directories(NeneVisibilityTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_compile_definitions(NeneVisibilityTests PRIVATE NENE_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../tests/fixtures")
-target_link_libraries(NeneVisibilityTests PRIVATE EASTL EnTT::EnTT glm::glm assimp::assimp enkiTS::enkiTS spdlog::spdlog)
+target_link_libraries(NeneVisibilityTests PRIVATE
+    EASTL EnTT::EnTT glm::glm assimp::assimp enkiTS::enkiTS spdlog::spdlog
+    nlohmann_json::nlohmann_json unofficial::lua::lua sol2::sol2
+)

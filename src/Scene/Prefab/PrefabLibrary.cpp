@@ -360,9 +360,11 @@ namespace NeneEngine
 			}
 			for (const auto& entity : entities) DeserializeEntity(entity, m_world, targets);
 			const auto root = targets.at(ReadId(definition->at("root")));
-			auto* transform = m_world.GetComponent<ECS::TransformComponent>(root);
-			if (!transform) transform = &m_world.AddComponent<ECS::TransformComponent>(root);
-			transform->position = position;
+			if (m_world.HasComponent<ECS::TransformComponent>(root))
+				m_world.GetRegistry().patch<ECS::TransformComponent>(
+				    root, [&position](ECS::TransformComponent& transform) { transform.position = position; });
+			else
+				m_world.AddComponent<ECS::TransformComponent>(root, ECS::TransformComponent{position});
 			return root;
 		}
 		catch (...)

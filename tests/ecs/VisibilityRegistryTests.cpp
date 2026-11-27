@@ -11,12 +11,20 @@
 #include "Editor/EditorSceneSnapshot.h"
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Graphics/Runtime/GeometryBounds.h"
+#include "Scene/Prefab/PrefabLibrary.h"
+#include "Scripting/Bindings/EntityBindings.h"
+#include "Scripting/Bindings/ScriptEntity.h"
+#include "Scripting/Bindings/VectorBindings.h"
+#include "Scripting/Bindings/WorldBindings.h"
+#include "Scripting/ScriptExecutionContext.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <initializer_list>
 #include <iostream>
 #include <limits>
+#include <sol/sol.hpp>
 
 void TestAsyncMeshGeometry();
 
@@ -546,6 +554,69 @@ namespace
 		      "Changing the primitive in the inspector must update its geometry bounds");
 	}
 
+	void TestLuaVisibilityChanges()
+	{
+		using namespace NeneEngine;
+		World world;
+		PrefabLibrary prefabs(world, NENE_TEST_FIXTURE_DIR);
+		ScriptExecutionContext execution;
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		auto nene = lua.create_named_table("nene");
+		BindVectorApi(nene);
+		BindEntityApi(nene, execution);
+		BindWorldApi(nene, world, prefabs, execution);
+
+		const auto camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		const auto& visibility = world.GetVisibilityRegistry();
+		eastl::vector<Entity> visible;
+		const Entity initial = world.CreateEntity();
+		world.AddComponent<TransformComponent>(initial).position.z = -5.0f;
+		world.AddComponent<MeshRendererComponent>(initial);
+		world.SyncVisibility();
+		EditorSceneSnapshot snapshot;
+		snapshot.Capture(world, {});
+
+		lua.script(R"(
+			root = assert(nene.world.spawn("visibility-hierarchy", nene.vec3(0, 0, -5)))
+			child = assert(nene.world.find("Lua Visibility Child"))
+		)");
+		const Entity child = lua.get<ScriptEntity>("child").GetId();
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {initial, child}, "Lua spawn must apply the requested position to prefab bounds");
+
+		lua.script("root:set_position(nene.vec3(20, 0, -5))");
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {initial}, "Moving a prefab root from Lua must cull its child");
+		lua.script("root:set_position(nene.vec3(0, 0, -5))");
+		world.SyncVisibility();
+
+		lua.script("root:set_rotation(nene.vec3(0, 90, 0))");
+		world.SyncVisibility();
+		const auto* bounds = visibility.FindBounds(child);
+		Check(bounds && *bounds, "A rotated prefab child must have bounds");
+		const glm::vec3 center = ((*bounds)->min + (*bounds)->max) * 0.5f;
+		Check(std::abs(center.x) < 0.0001f && std::abs(center.z + 7.0f) < 0.0001f,
+		      "Rotating a prefab root from Lua must update its child's world bounds");
+
+		lua.script("nene.world.destroy(root)");
+		world.SyncVisibility();
+		Check(visibility.FindBounds(child) != nullptr, "A deferred Lua destroy must keep live entities visible");
+		world.Update(0.0f);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(child) == nullptr, "Flushing a Lua destroy must remove prefab descendants");
+
+		lua.script(R"(assert(nene.world.spawn("visibility-hierarchy", nene.vec3(0, 0, -5))))");
+		world.SyncVisibility();
+		Check(visibility.Size() == 2, "The play scene must contain the original and newly spawned meshes");
+		snapshot.Restore(world);
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {initial}, "Stopping play must restore the pre-Lua visible set");
+	}
+
 	void TestVisibilityAfterPlayStop()
 	{
 		World world;
@@ -626,5 +697,6 @@ int main()
 	TestVisibilityAfterRegistrySwap();
 	TestVisibilityHierarchyChanges();
 	TestVisibilityAfterEditorHistoryChanges();
+	TestLuaVisibilityChanges();
 	TestVisibilityAfterPlayStop();
 }
