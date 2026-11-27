@@ -22,7 +22,8 @@ namespace NeneEngine::ECS
 
 	void CameraControllerSystem::Update(World& world, float deltaTime)
 	{
-		auto view = world.GetRegistry().view<TransformComponent, const CameraComponent, CameraControllerComponent>();
+		auto& registry = world.GetRegistry();
+		auto view = registry.view<TransformComponent, const CameraComponent, CameraControllerComponent>();
 
 		for (auto entity : view)
 		{
@@ -32,6 +33,8 @@ namespace NeneEngine::ECS
 			if (m_controlledCamera == NullEntity && !camera.isPrimary) continue;
 
 			auto& transform = view.get<TransformComponent>(entity);
+			const glm::vec3 previousPosition = transform.position;
+			const glm::quat previousRotation = transform.rotation;
 			auto& controller = view.get<CameraControllerComponent>(entity);
 
 			const bool isFlying =
@@ -75,6 +78,8 @@ namespace NeneEngine::ECS
 				mutableCamera->forward = glm::normalize(transform.rotation * kLocalForward);
 				mutableCamera->up = glm::normalize(transform.rotation * kLocalUp);
 			}
+			if (transform.position != previousPosition || transform.rotation != previousRotation)
+				registry.patch<TransformComponent>(entity);
 
 			return;
 		}

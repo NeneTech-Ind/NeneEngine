@@ -22,10 +22,12 @@ namespace NeneEngine::ECS
 
 	void PrimitiveControlSystem::Update(World& world, float deltaTime)
 	{
-		auto view = world.GetRegistry().view<TransformComponent, PrimitiveControlComponent>();
+		auto& registry = world.GetRegistry();
+		auto view = registry.view<TransformComponent, PrimitiveControlComponent>();
 		for (auto entity : view)
 		{
 			auto& transform = view.get<TransformComponent>(entity);
+			const TransformComponent previous = transform;
 			auto& control = view.get<PrimitiveControlComponent>(entity);
 
 			glm::vec2 moveAxis{0.0f, 0.0f};
@@ -57,6 +59,9 @@ namespace NeneEngine::ECS
 			const glm::quat targetRotation = glm::angleAxis(control.targetRotationRadians, glm::vec3{0.0f, 0.0f, 1.0f});
 			const float rotationAlpha = std::clamp(control.rotationSmoothing * deltaTime, 0.0f, 1.0f);
 			transform.rotation = glm::normalize(glm::slerp(transform.rotation, targetRotation, rotationAlpha));
+			if (transform.position != previous.position || transform.rotation != previous.rotation ||
+			    transform.scale != previous.scale)
+				registry.patch<TransformComponent>(entity);
 		}
 	}
 

@@ -191,12 +191,15 @@ add_executable(NeneVisibilityTests EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/ecs/VisibilityRegistryTests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/EASTLAllocator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/JobSystem.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/JoltJobSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/LogHistorySink.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/NeneLogger.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/PathResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/ResourceLoadQueue.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/ResourceManager.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/VisibilityRegistry.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ECS/Systems/MovementSystem.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ECS/Systems/PhysicsSystem.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ECS/World.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Editor/EditorHistory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Editor/EditorSceneSnapshot.cpp"
@@ -205,6 +208,7 @@ add_executable(NeneVisibilityTests EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Runtime/GeometryBounds.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Runtime/SceneAssetResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scene/EntitySerializer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scene/SceneConfig.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scene/Prefab/PrefabLibrary.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scripting/Bindings/EntityBindings.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scripting/Bindings/ScriptEntity.cpp"
@@ -215,5 +219,5 @@ target_include_directories(NeneVisibilityTests PRIVATE "${CMAKE_CURRENT_SOURCE_D
 target_compile_definitions(NeneVisibilityTests PRIVATE NENE_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../tests/fixtures")
 target_link_libraries(NeneVisibilityTests PRIVATE
     EASTL EnTT::EnTT glm::glm assimp::assimp enkiTS::enkiTS spdlog::spdlog
-    nlohmann_json::nlohmann_json unofficial::lua::lua sol2::sol2
+    Jolt::Jolt nlohmann_json::nlohmann_json unofficial::lua::lua sol2::sol2
 )

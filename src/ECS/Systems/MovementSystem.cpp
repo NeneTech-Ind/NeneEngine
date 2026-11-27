@@ -54,13 +54,18 @@ namespace NeneEngine::ECS
 
 		m_entities.clear();
 		for (auto [entity, transform, movement] : view.each())
-			m_entities.push_back({&transform, &movement});
+			m_entities.push_back({entity, &transform, &movement});
 
 		const auto count = static_cast<uint32_t>(m_entities.size());
 		const auto function = [this, deltaTime](uint32_t begin, uint32_t end)
 		{
 			for (uint32_t index = begin; index < end; ++index)
-				UpdateEntity(*m_entities[index].transform, *m_entities[index].movement, deltaTime);
+			{
+				auto& entry = m_entities[index];
+				const glm::vec3 previousPosition = entry.transform->position;
+				UpdateEntity(*entry.transform, *entry.movement, deltaTime);
+				entry.positionChanged = entry.transform->position != previousPosition;
+			}
 		};
 
 		bool usedJobs = false;
@@ -74,6 +79,9 @@ namespace NeneEngine::ECS
 			}
 		}
 		if (!usedJobs) function(0, count);
+
+		for (const auto& entry : m_entities)
+			if (entry.positionChanged) registry.patch<TransformComponent>(entry.entity);
 
 		const float elapsedMs =
 		    std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - startTime).count();

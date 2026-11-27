@@ -1,9 +1,17 @@
 // VisibilityRegistryTests.cpp
 
+#include "Core/JobSystem.h"
 #include "ECS/Components/CameraComponent.h"
+#include "ECS/Components/ColliderComponent.h"
 #include "ECS/Components/HierarchyComponent.h"
+#include "ECS/Components/MovementComponent.h"
+#include "ECS/Components/RigidbodyComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
+#include "ECS/MovementSettings.h"
+#include "ECS/PhysicsSettings.h"
+#include "ECS/Systems/MovementSystem.h"
+#include "ECS/Systems/PhysicsSystem.h"
 #include "ECS/VisibilityRegistry.h"
 #include "ECS/World.h"
 #include "Editor/Commands/ComponentPresenceCommand.h"
@@ -12,6 +20,7 @@
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Graphics/Runtime/GeometryBounds.h"
 #include "Scene/Prefab/PrefabLibrary.h"
+#include "Scene/SceneConfig.h"
 #include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/ScriptEntity.h"
 #include "Scripting/Bindings/VectorBindings.h"
@@ -25,6 +34,7 @@
 #include <iostream>
 #include <limits>
 #include <sol/sol.hpp>
+#include <thread>
 
 void TestAsyncMeshGeometry();
 
@@ -617,6 +627,124 @@ namespace
 		CheckVisible(visible, {initial}, "Stopping play must restore the pre-Lua visible set");
 	}
 
+	struct TransformUpdateProbe
+	{
+		void OnUpdate()
+		{
+			Check(std::this_thread::get_id() == mainThread, "Transform update signals must run on the main thread");
+			++count;
+		}
+
+		std::thread::id mainThread = std::this_thread::get_id();
+		size_t count = 0;
+	};
+
+	void TestMovementVisibilityChanges()
+	{
+		NeneEngine::JobSystem jobs;
+		jobs.Initialize();
+		const auto run = [&jobs](bool useJobs)
+		{
+			World world;
+			auto& registry = world.GetRegistry();
+			registry.ctx().emplace<MovementSettings>(MovementSettings{useJobs});
+			world.AddSystem(eastl::make_unique<MovementSystem>(jobs));
+			eastl::vector<Entity> expected;
+			for (int index = 0; index < 300; ++index)
+			{
+				const Entity entity = world.CreateEntity();
+				world.AddComponent<TransformComponent>(entity).position.z = -5.0f;
+				auto& movement = world.AddComponent<MovementComponent>(entity);
+				world.AddComponent<MeshRendererComponent>(entity);
+				if (index % 2 == 0) movement.velocity.x = 20.0f;
+				else expected.push_back(entity);
+			}
+			world.SyncVisibility();
+
+			TransformUpdateProbe updates;
+			const entt::scoped_connection observer =
+			    registry.on_update<TransformComponent>().connect<&TransformUpdateProbe::OnUpdate>(updates);
+			world.Update(1.0f);
+			world.SyncVisibility();
+			eastl::vector<Entity> visible;
+			world.GetVisibilityRegistry().QueryVisible(MakeCamera({0.0f, 0.0f, 0.0f}), visible);
+			Check(updates.count == expected.size(), "Movement must signal only changed transforms");
+			Check(std::is_permutation(visible.begin(), visible.end(), expected.begin(), expected.end()),
+			      "Movement must cull entities that moved beyond the camera frustum");
+			return visible;
+		};
+		const auto serial = run(false);
+		const auto parallel = run(true);
+		Check(std::is_permutation(serial.begin(), serial.end(), parallel.begin(), parallel.end()),
+		      "Serial and parallel movement must yield the same visible set");
+	}
+
+	void TestPhysicsVisibilityChanges()
+	{
+		NeneEngine::JobSystem jobs;
+		World world;
+		auto& registry = world.GetRegistry();
+		registry.ctx().emplace<PhysicsSettings>(PhysicsSettings{false});
+		world.AddSystem(eastl::make_unique<PhysicsSystem>(jobs));
+		const Entity body = world.CreateEntity();
+		world.AddComponent<TransformComponent>(body).position.z = -5.0f;
+		world.AddComponent<ColliderComponent>(body);
+		auto& rigidbody = world.AddComponent<RigidbodyComponent>(body);
+		rigidbody.useGravity = false;
+		rigidbody.velocity.x = 40.0f;
+		const Entity child = world.CreateEntity();
+		world.AddComponent<TransformComponent>(child);
+		world.AddComponent<HierarchyComponent>(child, HierarchyComponent{body});
+		world.AddComponent<MeshRendererComponent>(child);
+		world.SyncVisibility();
+
+		const auto camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		const auto& visibility = world.GetVisibilityRegistry();
+		eastl::vector<Entity> visible;
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {child}, "The dynamic body must start inside the frustum");
+		TransformUpdateProbe updates;
+		const entt::scoped_connection observer =
+		    registry.on_update<TransformComponent>().connect<&TransformUpdateProbe::OnUpdate>(updates);
+		for (int step = 0; step < 24; ++step)
+		{
+			world.Update(1.0f / 60.0f);
+			world.SyncVisibility();
+		}
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {}, "Physics motion must cull the child of a moving body");
+		Check(updates.count > 0, "A moving dynamic body must signal transform changes");
+
+		rigidbody.velocity = glm::vec3(0.0f);
+		updates.count = 0;
+		world.Update(1.0f / 60.0f);
+		world.SyncVisibility();
+		Check(updates.count == 0, "Changing velocity on a body that stays in place must not signal a transform change");
+	}
+
+	void TestSceneConfigVisibilityChanges()
+	{
+		using namespace NeneEngine;
+		World world;
+		const Entity entity = world.CreateEntity("configured");
+		world.AddComponent<TransformComponent>(entity).position.z = -5.0f;
+		world.AddComponent<MeshRendererComponent>(entity);
+		world.SyncVisibility();
+		const auto& visibility = world.GetVisibilityRegistry();
+
+		SceneConfig config;
+		config.entityTransformOverrides.push_back({"configured", glm::vec3{20.0f, 0.0f, -5.0f}});
+		ApplySceneConfig(world, config);
+		world.SyncVisibility();
+		eastl::vector<Entity> visible;
+		visibility.QueryVisible(MakeCamera({0.0f, 0.0f, 0.0f}), visible);
+		CheckVisible(visible, {}, "A scene config transform override must update visibility");
+		config.entityVisibilityOverrides.push_back({"configured", false});
+		ApplySceneConfig(world, config);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(entity) == nullptr, "A scene config hide override must remove the entry");
+	}
+
 	void TestVisibilityAfterPlayStop()
 	{
 		World world;
@@ -698,5 +826,8 @@ int main()
 	TestVisibilityHierarchyChanges();
 	TestVisibilityAfterEditorHistoryChanges();
 	TestLuaVisibilityChanges();
+	TestMovementVisibilityChanges();
+	TestPhysicsVisibilityChanges();
+	TestSceneConfigVisibilityChanges();
 	TestVisibilityAfterPlayStop();
 }

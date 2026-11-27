@@ -126,7 +126,8 @@ namespace NeneEngine
 
 	void ApplySceneConfig(ECS::World& world, const SceneConfig& config)
 	{
-		auto renderView = world.GetRegistry().view<ECS::TagComponent, ECS::MeshRendererComponent>();
+		auto& registry = world.GetRegistry();
+		auto renderView = registry.view<ECS::TagComponent, ECS::MeshRendererComponent>();
 		for (const auto& overrideConfig : config.entityVisibilityOverrides)
 		{
 			size_t matchedCount = 0;
@@ -136,7 +137,11 @@ namespace NeneEngine
 				if (tag.name != overrideConfig.tag) continue;
 
 				auto& meshRenderer = renderView.get<ECS::MeshRendererComponent>(entity);
-				meshRenderer.visible = overrideConfig.visible;
+				if (meshRenderer.visible != overrideConfig.visible)
+				{
+					meshRenderer.visible = overrideConfig.visible;
+					registry.patch<ECS::MeshRendererComponent>(entity);
+				}
 				++matchedCount;
 			}
 
@@ -151,7 +156,7 @@ namespace NeneEngine
 			              overrideConfig.visible, matchedCount);
 		}
 
-		auto transformView = world.GetRegistry().view<ECS::TagComponent, ECS::TransformComponent>();
+		auto transformView = registry.view<ECS::TagComponent, ECS::TransformComponent>();
 		for (const auto& overrideConfig : config.entityTransformOverrides)
 		{
 			size_t matchedCount = 0;
@@ -161,10 +166,14 @@ namespace NeneEngine
 				if (tag.name != overrideConfig.tag) continue;
 
 				auto& transform = transformView.get<ECS::TransformComponent>(entity);
+				const ECS::TransformComponent previous = transform;
 				if (overrideConfig.position.has_value()) transform.position = *overrideConfig.position;
 				if (overrideConfig.rotationDegrees.has_value())
 					transform.rotation = glm::quat(glm::radians(*overrideConfig.rotationDegrees));
 				if (overrideConfig.scale.has_value()) transform.scale = *overrideConfig.scale;
+				if (transform.position != previous.position || transform.rotation != previous.rotation ||
+				    transform.scale != previous.scale)
+					registry.patch<ECS::TransformComponent>(entity);
 				++matchedCount;
 			}
 
