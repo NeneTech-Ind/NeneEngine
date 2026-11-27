@@ -13,8 +13,11 @@
 #include <EASTL/functional.h>
 #include <EASTL/optional.h>
 #include <EASTL/unique_ptr.h>
+#include <EASTL/vector.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+#include <cstdint>
 #include <string>
 
 namespace NeneEngine
@@ -34,6 +37,10 @@ namespace NeneEngine
 		[[nodiscard]] const char* GetName() const override { return "Inspector"; }
 		[[nodiscard]] const char* GetIcon() const override { return NENE_ICON_INSPECTOR; }
 		[[nodiscard]] EditorDockSlot GetDefaultDockSlot() const override { return EditorDockSlot::Right; }
+		[[nodiscard]] ImGuiWindowFlags GetWindowFlags() const override
+		{
+			return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+		}
 
 		void Draw(EditorContext& context) override;
 		void CommitPendingEdits(EditorContext& context) override { FinishScriptFieldEdit(context); }
@@ -60,32 +67,45 @@ namespace NeneEngine
 	  private:
 		using PendingEditCommit = eastl::function<void(EditorContext&)>;
 
+		struct SectionNavigation
+		{
+			bool listing = false;
+			bool hasSections = false;
+			const char* target = nullptr;
+
+			bool DrawHeader(const char* icon, const char* label);
+		};
+
 		struct ScriptFieldEdit
 		{
 			ECS::Entity entity;
 			std::string path;
+			std::uint64_t scriptRevision;
 			std::string field;
 			ScriptFieldValue before;
 			ScriptFieldValue value;
 		};
 
 		template <typename Component, typename DrawFields>
-		void DrawComponent(EditorContext& context, const char* icon, const char* label, DrawFields&& drawFields);
+		void DrawComponent(EditorContext& context, SectionNavigation& navigation, const char* icon, const char* label,
+		                   DrawFields&& drawFields);
 
 		template <typename Component> void DrawRemoveMenu(EditorContext& context, const char* label);
 		template <typename Component> bool DrawAddItem(EditorContext& context, const char* icon, const char* label);
 
 		void DrawEntityHeader(EditorContext& context);
-		void DrawComponents(EditorContext& context);
-		void DrawAddComponent(EditorContext& context);
+		void DrawComponentToolbar(EditorContext& context, SectionNavigation& navigation);
+		void DrawComponents(EditorContext& context, SectionNavigation& navigation);
+		void DrawAddComponent(EditorContext& context, float width);
+		bool DrawAddScript(EditorContext& context);
 		void DrawTransformFields(ECS::Entity entity, ECS::TransformComponent& transform, FieldEdits& edits);
-		void DrawMaterial(EditorContext& context);
+		void DrawMaterial(EditorContext& context, SectionNavigation& navigation);
 		void DrawMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, bool texture);
 		void DrawMaterialPreview(EditorContext& context, const ECS::MeshRendererComponent& material);
 		void SetMaterialAsset(EditorContext& context, ECS::MeshRendererComponent& material, const std::string& path,
 		                      bool texture);
 
-		bool DrawScript(EditorContext& context);
+		bool DrawScript(EditorContext& context, SectionNavigation& navigation);
 		void DrawSaveToPrefab(EditorContext& context, const ScriptFieldSchema& schema);
 		void FinishScriptFieldEdit(EditorContext& context);
 
@@ -93,6 +113,7 @@ namespace NeneEngine
 		const char* m_pendingEditLabel = nullptr;
 
 		ScriptEngine& m_scriptEngine;
+		eastl::vector<std::string> m_scriptChoices;
 		eastl::optional<ScriptFieldEdit> m_scriptFieldEdit;
 		eastl::unique_ptr<IEditorCommand> m_pendingCommand;
 

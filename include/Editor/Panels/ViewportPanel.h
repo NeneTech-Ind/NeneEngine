@@ -38,6 +38,7 @@ namespace NeneEngine
 		}
 
 		void Draw(EditorContext& context) override;
+		void DrawPlayPreview(EditorContext& context);
 		void OnSceneLoaded() override
 		{
 			m_wasUsingGizmo = false;
@@ -45,6 +46,7 @@ namespace NeneEngine
 		}
 
 	  private:
+		void DrawViewport(EditorContext& context, bool showToolbar);
 		void HandleShortcuts(const EditorContext& context);
 		void DrawToolbar(const EditorContext& context);
 		void DrawGizmo(EditorContext& context);
@@ -53,7 +55,6 @@ namespace NeneEngine
 		GizmoOperation m_operation = GizmoOperation::Translate;
 		GizmoSpace m_space = GizmoSpace::World;
 		bool m_useSnap = false;
-		bool m_isToolbarHovered = false;
 
 		bool m_wasUsingGizmo = false;
 		ECS::Entity m_dragEntity = ECS::NullEntity;

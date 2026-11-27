@@ -17,6 +17,9 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr float kListWidthRatio = 0.7f;
+		constexpr float kListHeightRatio = 0.6f;
+		constexpr float kSideBySideMinWidth = 480.0f;
+		constexpr float kPathTooltipWidth = 420.0f;
 
 		const char* GetAssetIcon(AssetKind kind)
 		{
@@ -55,13 +58,22 @@ namespace NeneEngine
 			return path.substr(path.find_last_of("/\\") + 1);
 		}
 
-		void DrawPath(const EditorContext& context, const std::string& path)
+		void DrawPath(const EditorContext& context, const std::string& path, float wrapWidth = 0.0f)
 		{
 			if (context.monospaceFont != nullptr) ImGui::PushFont(context.monospaceFont, 0.0f);
-			ImGui::TextWrapped("%s", path.c_str());
+			ImGui::PushTextWrapPos(wrapWidth > 0.0f ? ImGui::GetCursorPosX() + wrapWidth : 0.0f);
+			ImGui::TextUnformatted(path.c_str());
+			ImGui::PopTextWrapPos();
 			if (context.monospaceFont != nullptr) ImGui::PopFont();
 		}
 	} // namespace
+
+	void AssetBrowserPanel::RevealAsset(const std::string& path)
+	{
+		if (!m_filter.PassFilter(GetFileName(path).c_str())) m_filter.Clear();
+		m_selectedPath = path;
+		m_scrollToSelection = true;
+	}
 
 	void AssetBrowserPanel::Draw(EditorContext& context)
 	{
@@ -89,10 +101,13 @@ namespace NeneEngine
 			StatusText(colors, EditorStatusKind::Danger, context.assets.Error().c_str());
 		ImGui::Separator();
 
-		if (ImGui::BeginChild("##AssetList", ImVec2(ImGui::GetContentRegionAvail().x * kListWidthRatio, 0.0f)))
-			DrawList(context);
+		const ImVec2 available = ImGui::GetContentRegionAvail();
+		const bool sideBySide = available.x >= ScaledSize(kSideBySideMinWidth);
+		const ImVec2 listSize = sideBySide ? ImVec2(available.x * kListWidthRatio, 0.0f)
+		                                  : ImVec2(0.0f, (std::max)(1.0f, available.y * kListHeightRatio));
+		if (ImGui::BeginChild("##AssetList", listSize)) DrawList(context);
 		ImGui::EndChild();
-		ImGui::SameLine();
+		if (sideBySide) ImGui::SameLine();
 		if (ImGui::BeginChild("##AssetPreview")) DrawPreview(context);
 		ImGui::EndChild();
 	}
@@ -107,10 +122,15 @@ namespace NeneEngine
 		}
 
 		m_matches.clear();
+		int revealRow = -1;
 		for (size_t index = 0; index < entries.size(); ++index)
 		{
-			if (m_filter.PassFilter(GetFileName(entries[index].path).c_str())) m_matches.push_back(index);
+			if (!m_filter.PassFilter(GetFileName(entries[index].path).c_str())) continue;
+			if (m_scrollToSelection && entries[index].path == m_selectedPath)
+				revealRow = static_cast<int>(m_matches.size());
+			m_matches.push_back(index);
 		}
+		m_scrollToSelection = false;
 
 		if (m_matches.empty())
 		{
@@ -120,6 +140,7 @@ namespace NeneEngine
 
 		ImGuiListClipper clipper;
 		clipper.Begin(static_cast<int>(m_matches.size()));
+		if (revealRow >= 0) clipper.IncludeItemByIndex(revealRow);
 		while (clipper.Step())
 		{
 			for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
@@ -130,10 +151,15 @@ namespace NeneEngine
 
 				ImGui::PushID(entry.path.c_str());
 				if (ImGui::Selectable(label.c_str(), isSelected)) m_selectedPath = entry.path;
+				if (row == revealRow) ImGui::SetScrollHereY();
 				if (isSelected) DrawSelectionMarker(context.themeColors->accent);
 				if (ImGui::BeginItemTooltip())
 				{
-					DrawPath(context, entry.path);
+					const ImGuiStyle& style = ImGui::GetStyle();
+					const float availableWidth = ImGui::GetWindowViewport()->WorkSize.x -
+					                             2.0f * (style.WindowPadding.x + style.DisplaySafeAreaPadding.x);
+					const float wrapWidth = (std::max)(1.0f, (std::min)(ScaledSize(kPathTooltipWidth), availableWidth));
+					DrawPath(context, entry.path, wrapWidth);
 					ImGui::EndTooltip();
 				}
 				if (context.CanEdit() && ImGui::BeginDragDropSource())

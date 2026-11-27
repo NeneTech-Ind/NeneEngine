@@ -11,10 +11,12 @@
 #include "Platform/IWindow.h"
 
 #include <EASTL/functional.h>
+#include <EASTL/optional.h>
 #include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
 #include <chrono>
+#include <cstdint>
 #include <string>
 
 namespace NeneEngine
@@ -44,6 +46,7 @@ namespace NeneEngine
 		void Shutdown();
 
 		void Update();
+		void DrawFrame(bool handleShortcuts);
 		[[nodiscard]] bool HandleWindowCloseRequest();
 		void RequestExit() { m_exitRequested = true; }
 
@@ -69,15 +72,20 @@ namespace NeneEngine
 		struct PanelEntry
 		{
 			eastl::unique_ptr<IEditorPanel> panel;
-			bool isOpen = true;
+			bool isOpenByDefault = true;
+			bool isOpen = isOpenByDefault;
 			eastl::string windowTitle;
+			bool focusRequested = false;
 		};
 
 		void HandleShortcuts();
 		void CommitPendingEdits();
 		void DrawMainMenuBar();
+		void DrawWorkspacePanelMenu();
 		void ReloadScripts();
 		void DrawStatusBar();
+		void ShowAssetInBrowser(const std::string& path);
+		void OpenConsole();
 		bool SaveScene(bool saveAs, std::string* errorMessage = nullptr);
 		void RequestSceneAction(SceneAction action);
 		void RunSceneAction(SceneAction action);
@@ -90,10 +98,13 @@ namespace NeneEngine
 		void DrawWindowButtons();
 		void AddTitleBarInteractiveRect(const ImVec2& min, const ImVec2& max);
 		[[nodiscard]] WindowHitArea HitTestTitleBar(int32_t x, int32_t y) const;
+		void TogglePlayMode();
 		void SetMode(EditorMode mode);
 		void DrawDockSpace();
 		void BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size);
+		bool* GetSideDockVisibility(EditorDockSlot slot);
 		void DrawPanels();
+		void DrawFocusedPlayPanels();
 		void DrawDockedPanelCorners() const;
 		void ApplyInputCapture();
 		void LoadMascots();
@@ -104,6 +115,8 @@ namespace NeneEngine
 		IWindow* m_window = nullptr;
 		ScriptEngine* m_scriptEngine = nullptr;
 		std::chrono::steady_clock::time_point m_nextScriptReloadCheck{};
+		eastl::optional<std::uint64_t> m_manualScriptReloadGeneration;
+		EditorStatus m_scriptReloadStatus;
 		TitleBarRect m_titleBar;
 		TitleBarRect m_maximizeButtonRect;
 		eastl::vector<TitleBarRect> m_titleBarInteractiveRects;
@@ -119,7 +132,12 @@ namespace NeneEngine
 		ResourceLoadQueue* m_resourceLoads = nullptr;
 		uint64_t m_sceneLoadGeneration = 0;
 		bool m_layoutInitialized = false;
+		bool m_showLeftDock = true;
+		bool m_showRightDock = true;
+		bool m_focusPlayViewport = false;
+		bool m_showPlayConsole = false;
 		bool m_exitRequested = false;
+		bool m_playStartPending = false;
 		SceneAction m_pendingSceneAction = SceneAction::None;
 		std::string m_saveChangesError;
 	};

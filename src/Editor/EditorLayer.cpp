@@ -35,15 +35,24 @@ namespace NeneEngine
 	{
 		constexpr const char* kDockSpaceName = "EditorMainDockSpace";
 		constexpr const char* kDockHostName = "##EditorDockHost";
+		constexpr const char* kFocusedViewportName = "##FocusedPlayViewport";
+		constexpr const char* kFocusedConsoleName = NENE_ICON_FILE_CODE " Console###FocusedPlayConsole";
+		constexpr ImGuiWindowFlags kFocusedPanelFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+		                                                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking |
+		                                                ImGuiWindowFlags_NoSavedSettings;
 		constexpr ImGuiWindowFlags kDockHostFlags =
 		    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
 		    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
 		    ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
 		constexpr float kLeftDockRatio = 0.2f;
 		constexpr float kRightDockRatio = 0.25f;
+		constexpr float kMaxSideDockRatio = 0.35f;
+		constexpr float kMinSideDockWidth = 234.0f;
 		constexpr float kBottomDockRatio = 0.25f;
+		constexpr float kFocusedConsoleHeightRatio = 0.35f;
 		constexpr const char* kPlayLabel = NENE_ICON_PLAY " Play###PlayStop";
 		constexpr const char* kStopLabel = NENE_ICON_STOP " Stop###PlayStop";
+		constexpr const char* kCancelPlayLabel = NENE_ICON_STOP " Cancel Play###PlayStop";
 		constexpr float kStopButtonHoveredTint = 0.25f;
 		constexpr float kWindowButtonAspect = 1.4f;
 		constexpr float kWindowButtonGlyphScale = 0.3f;
@@ -191,13 +200,13 @@ namespace NeneEngine
 		m_panels.push_back({eastl::make_unique<HierarchyPanel>()});
 		m_panels.push_back({eastl::make_unique<InspectorPanel>(scriptEngine)});
 		m_panels.push_back({eastl::make_unique<AssetBrowserPanel>()});
-		m_panels.push_back({eastl::make_unique<ConsolePanel>(scriptEngine)});
-		m_panels.push_back({eastl::make_unique<StatisticsPanel>()});
+		m_panels.push_back({eastl::make_unique<ConsolePanel>(scriptEngine), false});
+		m_panels.push_back({eastl::make_unique<StatisticsPanel>(), false});
 		m_panels.push_back({eastl::make_unique<ViewportPanel>()});
 
 		for (auto& entry : m_panels)
 			entry.windowTitle =
-			    eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetName() + "###" + entry.panel->GetName();
+			    eastl::string(entry.panel->GetIcon()) + " " + entry.panel->GetTitle() + "###" + entry.panel->GetName();
 
 		NENE_LOG_INFO("Editor initialized with {} panels", m_panels.size());
 	}
@@ -235,6 +244,10 @@ namespace NeneEngine
 		m_panels.clear();
 		m_scenePath.clear();
 		m_layoutInitialized = false;
+		m_showLeftDock = true;
+		m_showRightDock = true;
+		m_focusPlayViewport = false;
+		m_showPlayConsole = false;
 		m_exitRequested = false;
 		m_pendingSceneAction = SceneAction::None;
 		m_saveChangesError.clear();
@@ -243,6 +256,9 @@ namespace NeneEngine
 		m_context.reset();
 		m_scriptEngine = nullptr;
 		m_nextScriptReloadCheck = {};
+		m_manualScriptReloadGeneration.reset();
+		m_scriptReloadStatus = {};
+		m_playStartPending = false;
 		m_requestShutdown = nullptr;
 		m_onModeChanged = nullptr;
 		m_uiInput = nullptr;
@@ -305,16 +321,27 @@ namespace NeneEngine
 			}
 		}
 
-		if (m_context->CanEdit())
+		if (m_playStartPending && !m_scriptEngine->IsReloadPending())
+		{
+			m_playStartPending = false;
+			if (m_context->CanEdit() && m_pendingSceneAction == SceneAction::None) SetMode(EditorMode::Play);
+		}
+
+		if (m_context->CanEdit() && !m_playStartPending && !m_manualScriptReloadGeneration)
 		{
 			const auto now = std::chrono::steady_clock::now();
 			if (now >= m_nextScriptReloadCheck)
 			{
-				m_scriptEngine->ReloadChangedScripts();
+				m_scriptEngine->PollScriptChanges();
 				m_nextScriptReloadCheck = now + kScriptReloadInterval;
 			}
 		}
+		DrawFrame(true);
+	}
 
+	void EditorLayer::DrawFrame(bool handleShortcuts)
+	{
+		if (m_imguiBackend == nullptr) return;
 		if (const float dpiScale = m_imguiBackend->GetDpiScale(); dpiScale != m_themeService.GetDpiScale())
 			m_themeService.SetDpiScale(dpiScale);
 
@@ -324,7 +351,7 @@ namespace NeneEngine
 		m_context->isViewportHovered = false;
 		m_context->isViewportFocused = false;
 
-		if (m_pendingSceneAction == SceneAction::None) HandleShortcuts();
+		if (handleShortcuts && m_pendingSceneAction == SceneAction::None) HandleShortcuts();
 		DrawMainMenuBar();
 		DrawStatusBar();
 		DrawDockSpace();
@@ -382,11 +409,35 @@ namespace NeneEngine
 
 		if (ImGui::BeginMenu("View"))
 		{
-			for (auto& entry : m_panels) ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, &entry.isOpen);
+			if (m_context->mode == EditorMode::Play)
+			{
+				ImGui::MenuItem("Focus Viewport", nullptr, &m_focusPlayViewport);
+				ImGui::Separator();
+			}
+			if (m_focusPlayViewport)
+			{
+				if (ImGui::MenuItem(NENE_ICON_FILE_CODE " Console", nullptr, m_showPlayConsole))
+				{
+					if (m_showPlayConsole)
+					{
+						m_showPlayConsole = false;
+						ImGui::SetWindowFocus(kFocusedViewportName);
+					}
+					else OpenConsole();
+				}
+			}
+			else DrawWorkspacePanelMenu();
 			ImGui::Separator();
 			DrawThemeMenu();
-			if (ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
+			if (!m_focusPlayViewport && ImGui::MenuItem(NENE_ICON_LAYOUT " Reset Layout"))
 			{
+				m_showLeftDock = true;
+				m_showRightDock = true;
+				for (auto& entry : m_panels)
+				{
+					entry.isOpen = entry.isOpenByDefault;
+					entry.focusRequested = false;
+				}
 				const auto dockSpaceId = ImHashStr(kDockSpaceName);
 				ImGui::DockBuilderRemoveNode(dockSpaceId);
 				BuildDefaultLayout(dockSpaceId, ComputeDockSpaceSize());
@@ -405,6 +456,38 @@ namespace NeneEngine
 		DrawPlayControls();
 		DrawWindowButtons();
 		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::DrawWorkspacePanelMenu()
+	{
+		if (ImGui::MenuItem("Left Sidebar", nullptr, &m_showLeftDock) && !m_showLeftDock)
+		{
+			for (auto& entry : m_panels)
+			{
+				if (!entry.isOpen || entry.panel->GetDefaultDockSlot() != EditorDockSlot::Left) continue;
+				const ImGuiWindow* window = ImGui::FindWindowByName(entry.windowTitle.c_str());
+				entry.focusRequested = window && window->DockNode && window->DockNode->VisibleWindow == window;
+			}
+		}
+		if (ImGui::MenuItem("Right Sidebar", nullptr, &m_showRightDock) && !m_showRightDock) CommitPendingEdits();
+		ImGui::Separator();
+		for (auto& entry : m_panels)
+		{
+			const auto slot = entry.panel->GetDefaultDockSlot();
+			bool* sideVisible = GetSideDockVisibility(slot);
+			const bool visible = entry.isOpen && (sideVisible == nullptr || *sideVisible);
+			if (!ImGui::MenuItem(entry.windowTitle.c_str(), nullptr, visible)) continue;
+
+			entry.isOpen = !visible;
+			if (!entry.isOpen) continue;
+			if (sideVisible != nullptr && !*sideVisible)
+			{
+				*sideVisible = true;
+				for (auto& peer : m_panels)
+					if (peer.panel->GetDefaultDockSlot() == slot) peer.focusRequested = false;
+			}
+			entry.focusRequested = true;
+		}
 	}
 
 	void EditorLayer::DrawThemeMenu()
@@ -462,6 +545,7 @@ namespace NeneEngine
 
 	void EditorLayer::RequestSceneAction(SceneAction action)
 	{
+		m_playStartPending = false;
 		if (m_context == nullptr || m_pendingSceneAction != SceneAction::None) return;
 		if (action == SceneAction::Load && m_resourceLoads == nullptr) return;
 		CommitPendingEdits();
@@ -579,23 +663,46 @@ namespace NeneEngine
 
 	void EditorLayer::ReloadScripts()
 	{
-		if (m_context->mode == EditorMode::Play)
-		{
+		const bool isPlaying = m_context->mode == EditorMode::Play;
+		if (!isPlaying) CommitPendingEdits();
+		m_manualScriptReloadGeneration = m_scriptEngine->GetScriptCacheGeneration();
+		if (isPlaying)
 			m_scriptEngine->ReloadChangedScripts();
-		}
 		else
-		{
-			CommitPendingEdits();
 			m_scriptEngine->ReloadAll();
-		}
 	}
 
 	void EditorLayer::DrawStatusBar()
 	{
 		const EditorThemeColorsConfig& colors = m_themeService.GetColors();
-		EditorStatus& status = m_context->status;
-		if (status.kind == EditorStatusKind::Success && ImGui::GetTime() - status.time > kStatusHoldSeconds)
-			status = {};
+		const double now = ImGui::GetTime();
+		EditorStatus& editorStatus = m_context->status;
+		if (editorStatus.kind == EditorStatusKind::Success && now - editorStatus.time > kStatusHoldSeconds)
+			editorStatus = {};
+
+		const auto* failedScript = m_scriptEngine->FindFailedScript();
+		const bool hasScriptErrors = failedScript != nullptr;
+		if (m_manualScriptReloadGeneration && !m_scriptEngine->IsReloadPending())
+		{
+			if (!hasScriptErrors && m_scriptEngine->GetScriptCacheGeneration() != *m_manualScriptReloadGeneration)
+				m_scriptReloadStatus = {EditorStatusKind::Success, "Lua scripts reloaded", now};
+			m_manualScriptReloadGeneration.reset();
+		}
+		if (hasScriptErrors)
+		{
+			std::string message = "Lua script load failed: " + GenericPathToUtf8(*failedScript);
+			if (m_scriptReloadStatus.message != message)
+				m_scriptReloadStatus = {EditorStatusKind::Danger, std::move(message), now};
+		}
+		else if (m_scriptReloadStatus.kind == EditorStatusKind::Danger)
+			m_scriptReloadStatus = {EditorStatusKind::Success, "Lua scripts reloaded", now};
+
+		const bool scriptStatusVisible =
+		    hasScriptErrors || (m_scriptReloadStatus.kind == EditorStatusKind::Success &&
+		                        now - m_scriptReloadStatus.time <= kStatusHoldSeconds);
+		const bool editorStatusHasPriority = editorStatus.kind == EditorStatusKind::Danger ||
+		                                     (!editorStatus.message.empty() && editorStatus.time > m_scriptReloadStatus.time);
+		const EditorStatus& status = scriptStatusVisible && !editorStatusHasPriority ? m_scriptReloadStatus : editorStatus;
 
 		std::string label = status.message.empty() ? "Ready" : status.message;
 		if (status.kind == EditorStatusKind::Danger) label = std::string(NENE_ICON_ERROR) + " " + label;
@@ -628,36 +735,62 @@ namespace NeneEngine
 			const std::string sceneLabel =
 			    std::string(NENE_ICON_FILE) + " " + sceneName + (m_history.IsDirty() ? " *" : "");
 			const char* modeLabel = isPlaying ? "Play" : "Edit";
-			const bool hasScriptErrors = m_scriptEngine->HasScriptLoadErrors();
 			const char* reloadLabel = hasScriptErrors ? NENE_ICON_ERROR " Reload scripts###ReloadScripts"
 			                                          : NENE_ICON_REFRESH " Reload scripts###ReloadScripts";
+			constexpr const char* consoleLabel = "Open Console";
+			constexpr const char* revealLabel = "Show in Assets";
+			const bool canRevealAsset = !status.assetToReveal.empty();
 			const float segmentSpacing = style.ItemSpacing.x * 2.0f;
 			const float rightWidth =
 			    ImGui::CalcTextSize(reloadLabel, nullptr, true).x + style.FramePadding.x * 2.0f + segmentSpacing * 2.0f +
 			    ImGui::CalcTextSize(sceneLabel.c_str()).x + ImGui::CalcTextSize(modeLabel).x;
 			const float startX = ImGui::GetCursorPosX();
-			const float rightX = (std::max)(startX, startX + ImGui::GetContentRegionAvail().x - rightWidth);
-			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x);
+			const float buttonPadding = style.FramePadding.x * 2.0f + style.ItemSpacing.x;
+			const float consoleSpace = hasScriptErrors ? ImGui::CalcTextSize(consoleLabel).x + buttonPadding : 0.0f;
+			const float revealSpace = canRevealAsset ? ImGui::CalcTextSize(revealLabel).x + buttonPadding : 0.0f;
+			const float actionSpace = consoleSpace + revealSpace;
+			const float rightX = (std::max)(startX + actionSpace, startX + ImGui::GetContentRegionAvail().x - rightWidth);
+			const float messageWidth = (std::max)(0.0f, rightX - startX - style.ItemSpacing.x - actionSpace);
+			const float labelWidth = ImGui::CalcTextSize(label.c_str()).x;
 			const ImVec2 start = ImGui::GetCursorScreenPos();
 
 			ImGui::AlignTextToFramePadding();
 			ImGui::PushClipRect(start, ImVec2(start.x + messageWidth, start.y + ImGui::GetFrameHeight()), true);
 			ImGui::TextColored(messageColor, "%s", label.c_str());
 			ImGui::PopClipRect();
-			if (ImGui::CalcTextSize(label.c_str()).x > messageWidth)
-				ImGui::SetItemTooltip("%s", status.message.c_str());
+			if (labelWidth > messageWidth) ImGui::SetItemTooltip("%s", label.c_str());
+
+			const float textSpace =
+			    messageWidth > 0.0f ? (std::min)(labelWidth, messageWidth) + style.ItemSpacing.x : 0.0f;
+			const float actionX = startX + textSpace;
+			if (hasScriptErrors)
+			{
+				ImGui::SameLine(actionX);
+				if (ImGui::Button(consoleLabel)) OpenConsole();
+			}
+			if (canRevealAsset)
+			{
+				ImGui::SameLine(actionX + consoleSpace);
+				if (ImGui::Button(revealLabel)) ShowAssetInBrowser(status.assetToReveal);
+			}
 
 			ImGui::SameLine(rightX);
 			ImGui::BeginDisabled(m_context->isSceneLoading);
 			ImGui::PushStyleColor(ImGuiCol_Text, hasScriptErrors ? colors.danger : colors.text);
-			if (ImGui::Button(reloadLabel)) ReloadScripts();
+			const bool reloadRequested = ImGui::Button(reloadLabel);
 			ImGui::PopStyleColor();
 			ImGui::EndDisabled();
 			const char* reloadHint = isPlaying ? "Reload changed Lua scripts without leaving Play mode."
 			                                   : "Reload all tracked Lua scripts.";
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGui::SetTooltip("%s", hasScriptErrors ? "Lua script load failed. See the Console for details."
-				                                       : reloadHint);
+			if (reloadRequested)
+				ReloadScripts();
+			else if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				if (hasScriptErrors)
+					ImGui::SetTooltip("%s\nSee the Console for details.", m_scriptReloadStatus.message.c_str());
+				else
+					ImGui::SetTooltip("%s", reloadHint);
+			}
 
 			ImGui::SameLine(0.0f, segmentSpacing);
 			ImGui::TextColored(detailColor, "%s", sceneLabel.c_str());
@@ -666,6 +799,45 @@ namespace NeneEngine
 			ImGui::TextColored(detailColor, "%s", modeLabel);
 		}
 		ImGui::End();
+	}
+
+	void EditorLayer::OpenConsole()
+	{
+		if (m_focusPlayViewport)
+		{
+			m_showPlayConsole = true;
+			ImGui::SetWindowFocus(kFocusedConsoleName);
+			return;
+		}
+
+		const auto console = std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
+		                                  { return dynamic_cast<const ConsolePanel*>(entry.panel.get()) != nullptr; });
+		if (console == m_panels.end()) return;
+
+		console->isOpen = true;
+		console->focusRequested = true;
+	}
+
+	void EditorLayer::ShowAssetInBrowser(const std::string& path)
+	{
+		const auto& entries = m_context->assets.Entries();
+		if (std::ranges::none_of(entries, [&path](const AssetEntry& entry) { return entry.path == path; }))
+		{
+			m_context->SetStatus(EditorStatusKind::Danger, "Asset not found: " + path);
+			return;
+		}
+
+		for (auto& entry : m_panels)
+		{
+			if (auto* browser = dynamic_cast<AssetBrowserPanel*>(entry.panel.get()))
+			{
+				browser->RevealAsset(path);
+				entry.isOpen = true;
+				m_showLeftDock = true;
+				entry.focusRequested = true;
+				return;
+			}
+		}
 	}
 
 	void EditorLayer::DrawHistoryMenuItems()
@@ -689,8 +861,9 @@ namespace NeneEngine
 	{
 		const bool isPlaying = m_context->mode == EditorMode::Play;
 		const ImGuiStyle& style = ImGui::GetStyle();
-		const float buttonWidth = (std::max)(ImGui::CalcTextSize(kPlayLabel, nullptr, true).x,
-		                                     ImGui::CalcTextSize(kStopLabel, nullptr, true).x) +
+		const float buttonWidth = (std::max)({ImGui::CalcTextSize(kPlayLabel, nullptr, true).x,
+		                                      ImGui::CalcTextSize(kStopLabel, nullptr, true).x,
+		                                      ImGui::CalcTextSize(kCancelPlayLabel, nullptr, true).x}) +
 		                          style.FramePadding.x * 2.0f + ImGui::GetFrameHeight();
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth) * 0.5f);
 
@@ -703,12 +876,28 @@ namespace NeneEngine
 			ImGui::PushStyleColor(ImGuiCol_Text, colors.background);
 		}
 
-		if (PillButton(isPlaying ? kStopLabel : kPlayLabel, ImVec2(buttonWidth, 0.0f)))
-			SetMode(isPlaying ? EditorMode::Edit : EditorMode::Play);
+		const char* label = isPlaying ? kStopLabel : m_playStartPending ? kCancelPlayLabel : kPlayLabel;
+		if (PillButton(label, ImVec2(buttonWidth, 0.0f))) TogglePlayMode();
 		if (isPlaying) ImGui::PopStyleColor(4);
 
 		AddTitleBarInteractiveRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
-		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)" : "Start the game (Ctrl+P)");
+		ImGui::SetItemTooltip(isPlaying ? "Stop and restore the scene (Ctrl+P)"
+		                                : m_playStartPending ? "Cancel Play while scripts are being prepared (Ctrl+P)"
+		                                                     : "Start the game (Ctrl+P)");
+
+		if (m_context->mode != EditorMode::Play) return;
+
+		const char* focusLabel = m_focusPlayViewport ? "Restore Layout###PlayViewportFocus"
+		                                            : "Focus Viewport###PlayViewportFocus";
+		const float focusWidth = ImGui::CalcTextSize(focusLabel, nullptr, true).x + style.FramePadding.x * 2.0f;
+		const float titleHeight = m_titleBar.max.y - m_titleBar.min.y;
+		const float windowButtonsWidth = m_window == nullptr ? 0.0f : ImFloor(titleHeight * kWindowButtonAspect) *
+		                                                                 static_cast<int>(WindowButton::Count);
+		if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + focusWidth > m_titleBar.max.x - windowButtonsWidth) return;
+
+		ImGui::SameLine();
+		if (PillButton(focusLabel)) m_focusPlayViewport = !m_focusPlayViewport;
+		AddTitleBarInteractiveRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 	}
 
 	void EditorLayer::SetWindow(IWindow* window)
@@ -824,15 +1013,32 @@ namespace NeneEngine
 		return WindowHitArea::Caption;
 	}
 
+	void EditorLayer::TogglePlayMode()
+	{
+		if (m_context->mode == EditorMode::Play || m_playStartPending)
+		{
+			SetMode(EditorMode::Edit);
+		}
+		else if (m_context->CanEdit())
+		{
+			CommitPendingEdits();
+			m_scriptEngine->ReloadChangedScripts();
+			if (m_scriptEngine->IsReloadPending())
+				m_playStartPending = true;
+			else
+				SetMode(EditorMode::Play);
+		}
+	}
+
 	void EditorLayer::SetMode(EditorMode mode)
 	{
+		m_playStartPending = false;
 		if (m_context->mode == mode) return;
 		CommitPendingEdits();
 
 		ECS::World& world = m_context->world;
 		if (mode == EditorMode::Play)
 		{
-			m_scriptEngine->ReloadChangedScripts();
 			m_sceneSnapshot.Capture(world, m_context->windowCameras);
 			world.NotifyPlayStarted();
 		}
@@ -841,6 +1047,8 @@ namespace NeneEngine
 			world.NotifyPlayStopping();
 			m_sceneSnapshot.Restore(world);
 			if (!world.GetRegistry().valid(m_context->selectedEntity)) m_context->selectedEntity = ECS::NullEntity;
+			m_focusPlayViewport = false;
+			m_showPlayConsole = false;
 		}
 
 		m_context->mode = mode;
@@ -857,7 +1065,7 @@ namespace NeneEngine
 	void EditorLayer::HandleShortcuts()
 	{
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, ImGuiInputFlags_RouteGlobal))
-			SetMode(m_context->mode == EditorMode::Play ? EditorMode::Edit : EditorMode::Play);
+			TogglePlayMode();
 
 		if (!m_context->CanEdit()) return;
 		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_R, ImGuiInputFlags_RouteGlobal))
@@ -911,6 +1119,16 @@ namespace NeneEngine
 		}
 		m_layoutInitialized = true;
 
+		const ImVec2 workMax(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y + viewport->WorkSize.y);
+		ImGui::GetBackgroundDrawList(viewport)->AddRectFilled(
+		    viewport->WorkPos, workMax, ImGui::GetColorU32(m_themeService.GetColors().backgroundSunken));
+
+		if (m_focusPlayViewport)
+		{
+			ImGui::DockSpace(dockSpaceId, ImVec2(), ImGuiDockNodeFlags_KeepAliveOnly);
+			return;
+		}
+
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(viewport->WorkSize);
 		ImGui::SetNextWindowViewport(viewport->ID);
@@ -924,10 +1142,6 @@ namespace NeneEngine
 		ImGui::DockSpace(dockSpaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 		ImGui::PopStyleColor(2);
 		ImGui::End();
-
-		const ImVec2 workMax(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y + viewport->WorkSize.y);
-		ImGui::GetBackgroundDrawList(viewport)->AddRectFilled(
-		    viewport->WorkPos, workMax, ImGui::GetColorU32(m_themeService.GetColors().backgroundSunken));
 	}
 
 	void EditorLayer::BuildDefaultLayout(ImGuiID dockSpaceId, const ImVec2& size)
@@ -936,9 +1150,12 @@ namespace NeneEngine
 		ImGui::DockBuilderSetNodeSize(dockSpaceId, size);
 
 		ImGuiID centerId = dockSpaceId;
-		const ImGuiID leftId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, kLeftDockRatio, nullptr, &centerId);
-		const ImGuiID rightId =
-		    ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Right, kRightDockRatio, nullptr, &centerId);
+		const float sideDockWidth = ScaledSize(kMinSideDockWidth);
+		const float leftRatio = std::clamp(sideDockWidth / size.x, kLeftDockRatio, kMaxSideDockRatio);
+		const ImGuiID leftId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, leftRatio, nullptr, &centerId);
+		const float remainingWidth = size.x * (1.0f - leftRatio);
+		const float rightRatio = std::clamp(sideDockWidth / remainingWidth, kRightDockRatio, kMaxSideDockRatio);
+		const ImGuiID rightId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Right, rightRatio, nullptr, &centerId);
 		const ImGuiID bottomId =
 		    ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Down, kBottomDockRatio, nullptr, &centerId);
 
@@ -965,21 +1182,42 @@ namespace NeneEngine
 
 		ImGui::DockBuilderFinish(dockSpaceId);
 
-		const auto firstBottomPanel =
+		const auto firstLeftPanel =
 		    std::find_if(m_panels.begin(), m_panels.end(), [](const PanelEntry& entry)
-		                 { return entry.panel->GetDefaultDockSlot() == EditorDockSlot::Bottom; });
-		if (ImGuiDockNode* bottomNode = ImGui::DockBuilderGetNode(bottomId);
-		    bottomNode != nullptr && firstBottomPanel != m_panels.end())
-			bottomNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(firstBottomPanel->windowTitle.c_str()));
+		                 { return entry.isOpen && entry.panel->GetDefaultDockSlot() == EditorDockSlot::Left; });
+		if (ImGuiDockNode* leftNode = ImGui::DockBuilderGetNode(leftId);
+		    leftNode != nullptr && firstLeftPanel != m_panels.end())
+			leftNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(firstLeftPanel->windowTitle.c_str()));
+	}
+
+	bool* EditorLayer::GetSideDockVisibility(EditorDockSlot slot)
+	{
+		if (slot == EditorDockSlot::Left) return &m_showLeftDock;
+		if (slot == EditorDockSlot::Right) return &m_showRightDock;
+		return nullptr;
 	}
 
 	void EditorLayer::DrawPanels()
 	{
 		for (auto& entry : m_panels) entry.panel->Update(*m_context);
+		if (m_focusPlayViewport)
+		{
+			DrawFocusedPlayPanels();
+			return;
+		}
 
+		const char* requestedFocus = nullptr;
 		for (auto& entry : m_panels)
 		{
-			if (!entry.isOpen) continue;
+			const bool* sideVisible = GetSideDockVisibility(entry.panel->GetDefaultDockSlot());
+			if (!entry.isOpen || (sideVisible != nullptr && !*sideVisible)) continue;
+			if (entry.focusRequested)
+			{
+				ImGui::SetNextWindowCollapsed(false);
+				ImGui::SetNextWindowFocus();
+				requestedFocus = entry.windowTitle.c_str();
+				entry.focusRequested = false;
+			}
 
 			if (ImGui::Begin(entry.windowTitle.c_str(), &entry.isOpen, entry.panel->GetWindowFlags()))
 			{
@@ -987,6 +1225,41 @@ namespace NeneEngine
 				DrawDockedPanelCorners();
 			}
 			ImGui::End();
+		}
+
+		// A later tab can take focus as it reappears. Apply the explicit request after all panels are submitted.
+		if (requestedFocus != nullptr) ImGui::SetWindowFocus(requestedFocus);
+	}
+
+	void EditorLayer::DrawFocusedPlayPanels()
+	{
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		const float gap = ImGui::GetStyle().DockingSeparatorSize;
+		const ImVec2 size = ComputeDockSpaceSize();
+		const ImVec2 pos(viewport->WorkPos.x + gap, viewport->WorkPos.y + gap);
+		const float consoleHeight = m_showPlayConsole ? size.y * kFocusedConsoleHeightRatio : 0.0f;
+		const float viewportHeight = (std::max)(1.0f, size.y - consoleHeight - (m_showPlayConsole ? gap : 0.0f));
+
+		for (auto& entry : m_panels)
+		{
+			if (auto* scene = dynamic_cast<ViewportPanel*>(entry.panel.get()))
+			{
+				ImGui::SetNextWindowViewport(viewport->ID);
+				ImGui::SetNextWindowPos(pos);
+				ImGui::SetNextWindowSize(ImVec2(size.x, viewportHeight));
+				const ImGuiWindowFlags flags = kFocusedPanelFlags | ImGuiWindowFlags_NoTitleBar | scene->GetWindowFlags();
+				if (ImGui::Begin(kFocusedViewportName, nullptr, flags)) scene->DrawPlayPreview(*m_context);
+				ImGui::End();
+			}
+			else if (auto* console = dynamic_cast<ConsolePanel*>(entry.panel.get()); console && m_showPlayConsole)
+			{
+				ImGui::SetNextWindowViewport(viewport->ID);
+				ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y + viewportHeight + gap));
+				ImGui::SetNextWindowSize(ImVec2(size.x, consoleHeight));
+				if (ImGui::Begin(kFocusedConsoleName, &m_showPlayConsole, kFocusedPanelFlags)) console->Draw(*m_context);
+				ImGui::End();
+				if (!m_showPlayConsole) ImGui::SetWindowFocus(kFocusedViewportName);
+			}
 		}
 	}
 

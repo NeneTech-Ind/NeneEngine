@@ -103,6 +103,7 @@ namespace NeneEngine
 			if (!windowContext.window) continue;
 
 			windowContext.window->SetMessageHook(nullptr);
+			windowContext.window->SetSizeMoveHandler(nullptr);
 
 			if (windowContext.resizeHandle.IsValid())
 			{
@@ -127,6 +128,10 @@ namespace NeneEngine
 		windowContext->resizeHandle =
 		    windowContext->window->OnResized().AddLambda([this, windowIndex](uint32_t newWidth, uint32_t newHeight)
 		                                                 { HandleWindowResize(windowIndex, newWidth, newHeight); });
+		windowContext->window->SetSizeMoveHandler([this](SizeMoveEvent event)
+		                                         {
+			                                         if (m_sizeMoveHandler != nullptr) (*m_sizeMoveHandler)(event);
+		                                         });
 
 		m_windows.push_back(std::move(*windowContext));
 		auto& storedWindowContext = m_windows.back();
@@ -201,8 +206,16 @@ namespace NeneEngine
 		NENE_LOG_INFO("Window '{}' resized to {}x{}", windowContext.title, width, height);
 	}
 
-	void AppWindowRuntimeService::PumpWindowMessages()
+	void AppWindowRuntimeService::PumpWindowMessages(const IWindow::SizeMoveHandler& sizeMoveHandler)
 	{
+		struct ClearHandlerOnExit
+		{
+			const IWindow::SizeMoveHandler*& handler;
+			~ClearHandlerOnExit() { handler = nullptr; }
+		};
+		m_sizeMoveHandler = &sizeMoveHandler;
+		const ClearHandlerOnExit clearHandler{m_sizeMoveHandler};
+
 		for (auto& windowContext : m_windows)
 		{
 			if (windowContext.window && !windowContext.window->ShouldClose()) windowContext.window->PumpMessages();
@@ -245,7 +258,7 @@ namespace NeneEngine
 		m_world->SyncVisibility(m_assets, m_visibilityRenderers);
 	}
 
-	void AppWindowRuntimeService::Render()
+	void AppWindowRuntimeService::Render(bool allowVsync)
 	{
 		if (m_world == nullptr) return;
 
@@ -272,7 +285,7 @@ namespace NeneEngine
 			if (windowContext.imguiBackend) windowContext.imguiBackend->Render();
 			{
 				NENE_PROFILE_SCOPE("Present");
-				windowContext.renderer->Present(m_vsync && index == lastRenderedIndex ? 1u : 0u);
+				windowContext.renderer->Present(allowVsync && m_vsync && index == lastRenderedIndex ? 1u : 0u);
 			}
 		}
 	}

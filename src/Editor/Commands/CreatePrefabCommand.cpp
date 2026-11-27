@@ -3,7 +3,6 @@
 #include "ECS/Components/HierarchyComponent.h"
 #include "ECS/World.h"
 
-#include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
 #include <stdexcept>
 
@@ -12,22 +11,12 @@ namespace NeneEngine
 
 	CreatePrefabCommand::CreatePrefabCommand(const ECS::World& world, ECS::Entity root) : m_root(root)
 	{
-		eastl::vector<ECS::Entity> pending{root};
-		eastl::unordered_set<ECS::Entity> visited;
-		EntitySerializationMap ids;
-		for (size_t next = 0; next < pending.size(); ++next)
-		{
-			const auto entity = pending[next];
-			if (!world.GetRegistry().valid(entity) || !visited.insert(entity).second)
-				throw std::runtime_error("Cannot record an invalid prefab hierarchy");
-			const auto id = static_cast<uint32_t>(next + 1);
-			ids.emplace(entity, id);
-			m_entities.emplace(id, entity);
-			if (const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(entity))
-				pending.insert(pending.end(), hierarchy->children.begin(), hierarchy->children.end());
-		}
-		m_data = nlohmann::json::array();
-		for (const auto entity : pending) m_data.push_back(SerializeEntity(world, entity, ids));
+		const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(root);
+		if (hierarchy != nullptr && hierarchy->parent != ECS::NullEntity)
+			throw std::runtime_error("Cannot record a prefab instance with a parent");
+		auto serialized = SerializeEntityHierarchy(world, root);
+		m_entities = std::move(serialized.entitiesById);
+		m_data = std::move(serialized.entities);
 	}
 
 	void CreatePrefabCommand::Execute(ECS::World& world)

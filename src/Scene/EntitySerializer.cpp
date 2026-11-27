@@ -14,6 +14,7 @@
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/World.h"
 
+#include <EASTL/vector.h>
 #include <cmath>
 #include <glm/gtc/quaternion.hpp>
 #include <limits>
@@ -245,7 +246,7 @@ namespace NeneEngine
 		}
 
 		nlohmann::json SerializeHierarchy(const ECS::HierarchyComponent& hierarchy,
-		                                  const EntitySerializationMap& sceneIdsByEntity)
+		                                  const EntitySerializationMap& sceneIdsByEntity, bool includeParent)
 		{
 			nlohmann::json children = nlohmann::json::array();
 
@@ -259,7 +260,7 @@ namespace NeneEngine
 			}
 
 			nlohmann::json parent = nullptr;
-			if (hierarchy.parent != ECS::NullEntity)
+			if (includeParent && hierarchy.parent != ECS::NullEntity)
 			{
 				const auto parentIt = sceneIdsByEntity.find(hierarchy.parent);
 				if (parentIt == sceneIdsByEntity.end())
@@ -459,7 +460,8 @@ namespace NeneEngine
 		return {{"scriptPath", script.scriptPath}, {"fields", std::move(fields)}};
 	}
 
-	nlohmann::json SerializeEntity(const ECS::World& world, ECS::Entity entity, const EntitySerializationMap& entityIds)
+	static nlohmann::json SerializeEntityRecord(const ECS::World& world, ECS::Entity entity,
+	                                            const EntitySerializationMap& entityIds, bool includeParent)
 	{
 		if (!world.GetRegistry().valid(entity)) throw std::runtime_error("Cannot serialize an invalid entity");
 		const auto sceneIdIt = entityIds.find(entity);
@@ -482,7 +484,7 @@ namespace NeneEngine
 
 		const auto* hierarchy = world.GetRegistry().try_get<ECS::HierarchyComponent>(entity);
 		if (hierarchy != nullptr)
-			entityJson["components"]["HierarchyComponent"] = SerializeHierarchy(*hierarchy, entityIds);
+			entityJson["components"]["HierarchyComponent"] = SerializeHierarchy(*hierarchy, entityIds, includeParent);
 
 		const auto* meshRenderer = world.GetRegistry().try_get<ECS::MeshRendererComponent>(entity);
 		if (meshRenderer != nullptr) entityJson["components"]["MeshRenderer"] = SerializeMeshRenderer(*meshRenderer);
@@ -507,6 +509,31 @@ namespace NeneEngine
 		const auto* script = world.GetRegistry().try_get<ECS::ScriptComponent>(entity);
 		if (script != nullptr) entityJson["components"]["ScriptComponent"] = SerializeScriptComponent(*script);
 		return entityJson;
+	}
+
+	nlohmann::json SerializeEntity(const ECS::World& world, ECS::Entity entity, const EntitySerializationMap& entityIds)
+	{
+		return SerializeEntityRecord(world, entity, entityIds, true);
+	}
+
+	SerializedEntityHierarchy SerializeEntityHierarchy(const ECS::World& world, ECS::Entity root)
+	{
+		eastl::vector<ECS::Entity> pending{root};
+		EntitySerializationMap ids;
+		SerializedEntityHierarchy hierarchy{nlohmann::json::array(), {}};
+		for (size_t next = 0; next < pending.size(); ++next)
+		{
+			const auto entity = pending[next];
+			const auto id = static_cast<uint32_t>(next + 1);
+			if (!world.GetRegistry().valid(entity) || !ids.emplace(entity, id).second)
+				throw std::runtime_error("Cannot serialize an invalid entity hierarchy");
+			hierarchy.entitiesById.emplace(id, entity);
+			if (const auto* component = world.GetRegistry().try_get<ECS::HierarchyComponent>(entity))
+				pending.insert(pending.end(), component->children.begin(), component->children.end());
+		}
+		for (const auto entity : pending)
+			hierarchy.entities.push_back(SerializeEntityRecord(world, entity, ids, entity != root));
+		return hierarchy;
 	}
 
 	void DeserializeEntity(const nlohmann::json& entityJson, ECS::World& world,
