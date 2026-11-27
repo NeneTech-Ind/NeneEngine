@@ -179,7 +179,8 @@ namespace NeneEngine
 						    const auto tag = *context.world.GetComponent<ECS::TagComponent>(root);
 						    CreateAssetCommand(created).Execute(context.world);
 						    context.world.GetRegistry().remove<ECS::MeshRendererComponent>(root);
-						    *context.world.GetComponent<ECS::TransformComponent>(root) = transform;
+						    context.world.GetRegistry().patch<ECS::TransformComponent>(
+						        root, [&transform](ECS::TransformComponent& current) { current = transform; });
 						    *context.world.GetComponent<ECS::TagComponent>(root) = tag;
 						    context.SetStatus(EditorStatusKind::Success, "Created: " + resolved.filename().string());
 					    }

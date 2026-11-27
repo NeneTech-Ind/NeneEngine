@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "ECS/Entity.h"
 #include "ECS/Systems/ISystem.h"
 
 #include <EASTL/vector.h>
@@ -27,8 +28,10 @@ namespace NeneEngine::ECS
 	  private:
 		struct MovingEntity
 		{
+			Entity entity;
 			TransformComponent* transform;
 			MovementComponent* movement;
+			bool positionChanged = false;
 		};
 
 		JobSystem& m_jobSystem;

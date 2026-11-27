@@ -56,7 +56,7 @@ namespace NeneEngine
 			GameplayPhase(deltaTime, timer, gameStateMachine, runtimeConfigService, applyRuntimeConfig,
 			              isGameplayRunning);
 			EditorPhase(editorLayer);
-			SyncPhase(deltaTime);
+			SyncPhase(windowRuntimeService);
 			{
 				NENE_PROFILE_SCOPE("Render");
 				windowRuntimeService.Render();
@@ -97,10 +97,10 @@ namespace NeneEngine
 		editorLayer.Update();
 	}
 
-	void AppFrameLoopService::SyncPhase(float /*deltaTime*/)
+	void AppFrameLoopService::SyncPhase(AppWindowRuntimeService& windowRuntimeService)
 	{
-		// Reserved explicit phase for synchronizing physics/runtime state back into scene transforms.
 		NENE_PROFILE_SCOPE("Sync");
+		windowRuntimeService.SyncSceneVisibility();
 	}
 
 	void AppFrameLoopService::EndFramePhase(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService)

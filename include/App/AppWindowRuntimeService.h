@@ -22,7 +22,11 @@ namespace NeneEngine
 	class AppWindowRuntimeService final
 	{
 	  public:
-		void SetAssetResolver(SceneAssetResolver& assets) { m_windowContextFactory.SetAssetResolver(assets); }
+		void SetAssetResolver(SceneAssetResolver& assets)
+		{
+			m_assets = &assets;
+			m_windowContextFactory.SetAssetResolver(assets);
+		}
 		void SetJobSystem(JobSystem& jobs) { m_windowContextFactory.SetJobSystem(jobs); }
 		~AppWindowRuntimeService();
 
@@ -36,6 +40,7 @@ namespace NeneEngine
 		void WaitForWindowMessages(uint32_t timeoutMs);
 		void UpdateInputManagers();
 		void UpdateWindowSystems(float deltaTime);
+		void SyncSceneVisibility();
 		void Render();
 		void EndFrameInputs();
 		void UpdateFrameStatsText(const std::string& statsText);
@@ -59,6 +64,8 @@ namespace NeneEngine
 		[[nodiscard]] AppWindowContext* FindMainWindow();
 
 		ECS::World* m_world = nullptr;
+		SceneAssetResolver* m_assets = nullptr;
+		eastl::vector<IRenderAdapter*> m_visibilityRenderers;
 		AppSecondaryCameraFactory m_secondaryCameraFactory;
 		AppWindowContextFactory m_windowContextFactory;
 		eastl::vector<AppWindowContext> m_windows;

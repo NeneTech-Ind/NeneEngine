@@ -1,0 +1,33 @@
+{
+    "version": 2,
+    "root": 1,
+    "entities": [
+        {
+            "id": 1,
+            "components": {
+                "Transform": {
+                    "position": {"x": 20, "y": 0, "z": 0},
+                    "rotation": {"x": 0, "y": 0, "z": 0, "w": 1},
+                    "scale": {"x": 1, "y": 1, "z": 1}
+                }
+            }
+        },
+        {
+            "id": 2,
+            "components": {
+                "Tag": {"name": "Lua Visibility Child"},
+                "Transform": {
+                    "position": {"x": 2, "y": 0, "z": 0},
+                    "rotation": {"x": 0, "y": 0, "z": 0, "w": 1},
+                    "scale": {"x": 1, "y": 1, "z": 1}
+                },
+                "HierarchyComponent": {"parent": 1},
+                "MeshRenderer": {
+                    "primitiveType": "Cube",
+                    "visible": true,
+                    "material": {"tint": {"x": 1, "y": 1, "z": 1, "w": 1}}
+                }
+            }
+        }
+    ]
+}

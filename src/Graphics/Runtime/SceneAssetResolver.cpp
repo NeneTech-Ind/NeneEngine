@@ -101,6 +101,7 @@ namespace NeneEngine
 	struct SceneAssetResolver::Impl
 	{
 		ResourceLoadQueue* loads = nullptr;
+		uint64_t retryRevision = 0;
 		eastl::unordered_map<std::string, eastl::shared_ptr<ModelAsset>> models;
 		eastl::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUMesh>>> meshes;
 		eastl::unordered_map<std::string, eastl::shared_ptr<AssetEntry<GPUTexture>>> textures;
@@ -325,6 +326,12 @@ namespace NeneEngine
 		eastl::erase_if(m_impl->meshes, failed);
 		eastl::erase_if(m_impl->textures, failed);
 		eastl::erase_if(m_impl->shaders, failed);
+		++m_impl->retryRevision;
+	}
+
+	uint64_t SceneAssetResolver::GetRetryRevision() const
+	{
+		return m_impl->retryRevision;
 	}
 
 	MeshGeometryBinding SceneAssetResolver::ResolveGeometry(const std::string& meshPath, int meshPart,

@@ -112,6 +112,7 @@ namespace NeneEngine
 		}
 
 		m_appSystems.clear();
+		m_visibilityRenderers.clear();
 		m_windows.clear();
 		m_world = nullptr;
 	}
@@ -231,6 +232,17 @@ namespace NeneEngine
 	{
 		if (m_world == nullptr) return;
 		for (auto& system : m_appSystems) system->Update(*m_world, deltaTime);
+	}
+
+	void AppWindowRuntimeService::SyncSceneVisibility()
+	{
+		if (m_world == nullptr) return;
+
+		m_visibilityRenderers.clear();
+		for (const auto& window : m_windows)
+			if (window.renderer && window.window && !window.window->ShouldClose())
+				m_visibilityRenderers.push_back(window.renderer.get());
+		m_world->SyncVisibility(m_assets, m_visibilityRenderers);
 	}
 
 	void AppWindowRuntimeService::Render()

@@ -554,13 +554,17 @@ namespace NeneEngine::ECS
 				JPH::Quat rotation;
 				Bodies().GetPositionAndRotation(record.bodyId, position, rotation);
 
-				transform->position = ToGlm(position);
-				transform->rotation = ToGlm(rotation);
+				const glm::vec3 worldPosition = ToGlm(position);
+				const glm::quat worldRotation = ToGlm(rotation);
+				const bool transformChanged = transform->position != worldPosition || transform->rotation != worldRotation;
+				transform->position = worldPosition;
+				transform->rotation = worldRotation;
 				rigidbody->velocity = ToGlm(Bodies().GetLinearVelocity(record.bodyId));
 
 				record.syncedPosition = transform->position;
 				record.syncedRotation = transform->rotation;
 				record.syncedVelocity = rigidbody->velocity;
+				if (transformChanged) world.GetRegistry().patch<TransformComponent>(entity);
 			}
 		}
 

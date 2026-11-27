@@ -336,6 +336,7 @@ namespace NeneEngine
 				transform->scale = scale;
 				break;
 			}
+			context.world.GetRegistry().patch<ECS::TransformComponent>(entity);
 		}
 
 		TrackGizmoUndo(context, ImGuizmo::IsUsing());

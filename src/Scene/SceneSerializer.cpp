@@ -17,7 +17,6 @@
 #include "ECS/Components/TagComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/DebugDrawSettings.h"
-#include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/MovementSettings.h"
 #include "ECS/PhysicsSettings.h"
 #include "ECS/RenderSettings.h"
@@ -179,8 +178,7 @@ namespace NeneEngine
 			target.ctx().emplace<ECS::PhysicsSettings>(*settings);
 		if (const auto* settings = source.ctx().find<ECS::MovementSettings>())
 			target.ctx().emplace<ECS::MovementSettings>(*settings);
-		source.swap(target);
-		world.GetEventBus().Publish(ECS::SceneRestoredEvent{});
+		world.SwapSceneRegistry(*scene.world);
 	}
 
 	void SceneSerializer::SaveToFile(const ECS::World& world, const std::filesystem::path& path)
