@@ -10,6 +10,7 @@
 #include "Scripting/Bindings/EntityBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
 #include "Scripting/Bindings/LogBindings.h"
+#include "Scripting/Bindings/ScriptEntity.h"
 #include "Scripting/Bindings/VectorBindings.h"
 #include "Scripting/Bindings/WorldBindings.h"
 #include "Scripting/LuaInstructionLimit.h"
@@ -438,6 +439,7 @@ namespace NeneEngine
 		if (schema != nullptr)
 		{
 			auto fields = lua.create_table();
+			const auto lifetime = m_impl->worldLifetime.lock();
 			for (const auto& field : *schema)
 			{
 				const auto saved = selectedScript->fields.find(field.name);
@@ -446,7 +448,12 @@ namespace NeneEngine
 				                        : field.defaultValue;
 				std::visit([&](const auto& fieldValue)
 				{
-					if constexpr (!std::is_same_v<std::decay_t<decltype(fieldValue)>, ScriptEntityReference>)
+					if constexpr (std::is_same_v<std::decay_t<decltype(fieldValue)>, ScriptEntityReference>)
+					{
+						if (lifetime && lifetime->world && lifetime->world->GetRegistry().valid(fieldValue.target))
+							fields.raw_set(field.name, ScriptEntity(*lifetime->world, fieldValue.target));
+					}
+					else
 						fields.set(field.name, fieldValue);
 				}, value);
 			}

@@ -2,6 +2,7 @@
 
 #include "Core/NeneLogger.h"
 #include "Core/Profiler.h"
+#include "Scripting/Bindings/ScriptEntity.h"
 #include "Scripting/LuaInstructionLimit.h"
 
 #include <algorithm>
@@ -14,6 +15,34 @@ namespace NeneEngine
 	namespace
 	{
 		constexpr int kBehaviourInstructionLimit = 100'000;
+
+		int LookupBehaviourField(lua_State* state)
+		{
+			lua_pushvalue(state, 2);
+			lua_rawget(state, lua_upvalueindex(1));
+			if (!lua_isnil(state, -1))
+			{
+				if (!sol::stack::get<const ScriptEntity&>(state, -1).IsValid()) lua_pushnil(state);
+				return 1;
+			}
+			lua_pop(state, 1);
+
+			// Delegate everything else to the class's original __index.
+			lua_pushliteral(state, "__index");
+			lua_rawget(state, lua_upvalueindex(2));
+			if (lua_isfunction(state, -1))
+			{
+				lua_pushvalue(state, 1);
+				lua_pushvalue(state, 2);
+				lua_call(state, 2, 1);
+			}
+			else if (!lua_isnil(state, -1))
+			{
+				lua_pushvalue(state, 2);
+				lua_gettable(state, -2);
+			}
+			return 1;
+		}
 
 		int InvokeBehaviourCallback(lua_State* state)
 		{
@@ -33,13 +62,42 @@ namespace NeneEngine
 
 	struct LuaBehaviour::Impl
 	{
+		ECS::World& world;
 		sol::table instance;
+		sol::table entityFields;
 		sol::protected_function invokeCallback;
 		std::string scriptPath;
 		ScriptFieldSchema fieldSchema;
 		bool started = false;
 		bool destroyed = false;
 		bool faulted = false;
+
+		explicit Impl(ECS::World& world) : world(world) {}
+
+		void SetClass(const sol::table& scriptClass, const ScriptFieldSchema& schema)
+		{
+			if (!std::ranges::any_of(schema, [](const auto& field)
+			    { return std::holds_alternative<ScriptEntityReference>(field.defaultValue); }))
+			{
+				instance[sol::metatable_key] = scriptClass;
+				return;
+			}
+
+			sol::state_view lua{instance.lua_state()};
+			auto metatable = lua.create_table();
+			for (const auto& [key, value] : scriptClass) metatable.raw_set(key, value);
+			entityFields.push();
+			scriptClass.push();
+			lua_pushcclosure(lua.lua_state(), &LookupBehaviourField, 2);
+			metatable.raw_set("__index", sol::stack::pop<sol::function>(lua.lua_state()));
+			instance[sol::metatable_key] = metatable;
+		}
+
+		void ClearField(const std::string& name)
+		{
+			instance.raw_set(name, sol::lua_nil);
+			if (entityFields.valid()) entityFields.raw_set(name, sol::lua_nil);
+		}
 
 		void SetField(const ScriptFieldDefinition& definition, const std::map<std::string, ScriptFieldValue>& fields)
 		{
@@ -53,11 +111,18 @@ namespace NeneEngine
 					NENE_LOG_WARN("Script '{}': invalid value for field '{}'; using its default", scriptPath,
 					              definition.name);
 			}
+			if (const auto* reference = std::get_if<ScriptEntityReference>(value))
+			{
+				instance.raw_set(definition.name, sol::lua_nil);
+				if (!entityFields.valid()) entityFields = sol::state_view(instance.lua_state()).create_table();
+				entityFields.raw_set(definition.name, ScriptEntity(world, reference->target));
+				return;
+			}
+
+			if (entityFields.valid()) entityFields.raw_set(definition.name, sol::lua_nil);
 			std::visit([&](const auto& fieldValue)
 			{
-				if constexpr (std::is_same_v<std::decay_t<decltype(fieldValue)>, ScriptEntityReference>)
-					instance.raw_set(definition.name, sol::lua_nil);
-				else
+				if constexpr (!std::is_same_v<std::decay_t<decltype(fieldValue)>, ScriptEntityReference>)
 					instance.raw_set(definition.name, fieldValue);
 			}, *value);
 		}
@@ -79,22 +144,21 @@ namespace NeneEngine
 		}
 	};
 
-	LuaBehaviour::LuaBehaviour(const sol::table& scriptClass, std::string_view scriptPath,
-	                           const ScriptFieldSchema& fieldSchema,
-	                           const std::map<std::string, ScriptFieldValue>& fields, const sol::object& entityApi)
-	    : m_impl(std::make_unique<Impl>())
+	LuaBehaviour::LuaBehaviour(ECS::World& world, ECS::Entity entity, const sol::table& scriptClass,
+	                           std::string_view scriptPath, const ScriptFieldSchema& fieldSchema,
+	                           const std::map<std::string, ScriptFieldValue>& fields)
+	    : m_impl(std::make_unique<Impl>(world))
 	{
 		m_impl->scriptPath = scriptPath;
 		sol::state_view lua{scriptClass.lua_state()};
 		m_impl->instance = lua.create_table();
 		m_impl->invokeCallback = sol::make_reference<sol::protected_function>(lua.lua_state(), &InvokeBehaviourCallback);
-		m_impl->instance[sol::metatable_key] = scriptClass;
-
 		// Initialize engine-owned fields without invoking a script's __newindex.
 		for (const auto& definition : fieldSchema)
 			m_impl->SetField(definition, fields);
 
-		m_impl->instance.raw_set("entity", entityApi);
+		m_impl->instance.raw_set("entity", ScriptEntity(world, entity));
+		m_impl->SetClass(scriptClass, fieldSchema);
 		m_impl->fieldSchema = fieldSchema;
 	}
 
@@ -112,7 +176,7 @@ namespace NeneEngine
 		{
 			if (previous.name != "entity" &&
 			    std::ranges::find(fieldSchema, previous.name, &ScriptFieldDefinition::name) == fieldSchema.end())
-				m_impl->instance.raw_set(previous.name, sol::lua_nil);
+				m_impl->ClearField(previous.name);
 		}
 		for (const auto& definition : fieldSchema)
 		{
@@ -123,7 +187,7 @@ namespace NeneEngine
 			    previous->options != definition.options)
 				m_impl->SetField(definition, fields);
 		}
-		m_impl->instance[sol::metatable_key] = scriptClass;
+		m_impl->SetClass(scriptClass, fieldSchema);
 		m_impl->fieldSchema = fieldSchema;
 		m_impl->faulted = false;
 	}
