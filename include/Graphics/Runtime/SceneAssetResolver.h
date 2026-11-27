@@ -37,6 +37,7 @@ namespace NeneEngine
 		[[nodiscard]] ResourceLoadState GetTextureState(const std::string& path, const IRenderAdapter& renderer) const;
 		[[nodiscard]] ResourceLoadState GetShaderState(const std::string& path, const IRenderAdapter& renderer) const;
 		void RetryFailed();
+		[[nodiscard]] uint64_t GetRetryRevision() const;
 
 	  private:
 		MeshGeometryBinding ResolveMesh(const std::string& path, int part, IRenderAdapter& renderer);

@@ -7,7 +7,10 @@
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
 #include "Graphics/Runtime/GeometryBounds.h"
+#include "Graphics/Runtime/SceneAssetResolver.h"
 
+#include <EASTL/map.h>
+#include <algorithm>
 #include <chrono>
 
 namespace NeneEngine::ECS
@@ -59,6 +62,127 @@ namespace NeneEngine::ECS
 		eastl::vector<Entity> m_path;
 	};
 
+	class World::VisibilityGeometry
+	{
+	  public:
+		void SetSources(SceneAssetResolver& assets, eastl::span<IRenderAdapter* const> renderers, EntitySet& dirty)
+		{
+			const uint64_t retryRevision = assets.GetRetryRevision();
+			if (m_assets != &assets ||
+			    !std::equal(m_renderers.begin(), m_renderers.end(), renderers.begin(), renderers.end()))
+			{
+				m_assets = &assets;
+				m_renderers.assign(renderers.begin(), renderers.end());
+				m_failed.clear();
+				for (auto& binding : m_bindings)
+				{
+					binding.second.bounds.reset();
+					m_pending.insert(&binding);
+					dirty.insert(binding.second.entities.begin(), binding.second.entities.end());
+				}
+			}
+			else if (m_retryRevision != retryRevision)
+			{
+				m_pending.insert(m_failed.begin(), m_failed.end());
+				m_failed.clear();
+			}
+			m_retryRevision = retryRevision;
+		}
+
+		void Clear()
+		{
+			m_entities.clear();
+			m_pending.clear();
+			m_failed.clear();
+			m_bindings.clear();
+		}
+
+		std::optional<LocalAabb> Track(Entity entity, const std::string& path, int part)
+		{
+			if (const auto existing = m_entities.find(entity); existing != m_entities.end())
+			{
+				const auto& [key, entry] = *existing->second;
+				if (key.first == path && key.second == part) return entry.bounds;
+				Forget(entity);
+			}
+			const auto [binding, inserted] = m_bindings.try_emplace(Key{path, part});
+			if (inserted) m_pending.insert(&*binding);
+			binding->second.entities.insert(entity);
+			m_entities.emplace(entity, binding);
+			return binding->second.bounds;
+		}
+
+		void Forget(Entity entity)
+		{
+			const auto existing = m_entities.find(entity);
+			if (existing == m_entities.end()) return;
+
+			const auto binding = existing->second;
+			m_entities.erase(existing);
+			binding->second.entities.erase(entity);
+			if (!binding->second.entities.empty()) return;
+
+			m_pending.erase(&*binding);
+			m_failed.erase(&*binding);
+			m_bindings.erase(binding);
+		}
+
+		bool HasPending() const { return !m_renderers.empty() && !m_pending.empty(); }
+
+		void Poll(SceneAssetResolver& assets, World& world, VisibilityMatrices& matrices)
+		{
+			for (auto it = m_pending.begin(); it != m_pending.end();)
+			{
+				auto* binding = *it;
+				const auto& [path, part] = binding->first;
+				auto& entry = binding->second;
+				bool loading = false;
+				bool failed = false;
+				bool allBoundsKnown = true;
+				std::optional<LocalAabb> bounds;
+				for (auto* renderer : m_renderers)
+				{
+					const auto geometry = assets.ResolveGeometry(path, part, PrimitiveType::Triangle, *renderer);
+					loading |= geometry.state == ResourceLoadState::Loading;
+					failed |= geometry.state == ResourceLoadState::Failed;
+					allBoundsKnown &= geometry.state == ResourceLoadState::Ready && geometry.mesh.localBounds.has_value();
+					if (geometry.mesh.localBounds) bounds = geometry.mesh.localBounds;
+				}
+				if (loading)
+				{
+					++it;
+					continue;
+				}
+
+				if (failed) m_failed.insert(binding);
+				if (allBoundsKnown && bounds)
+				{
+					entry.bounds = bounds;
+					for (const Entity entity : entry.entities) world.UpdateVisibilityBounds(entity, bounds, matrices);
+				}
+				it = m_pending.erase(it);
+			}
+		}
+
+	  private:
+		using Key = eastl::pair<std::string, int>;
+		struct Entry
+		{
+			EntitySet entities;
+			std::optional<LocalAabb> bounds;
+		};
+		using Bindings = eastl::map<Key, Entry>;
+		using Binding = Bindings::value_type;
+
+		Bindings m_bindings;
+		eastl::unordered_map<Entity, Bindings::iterator, std::hash<Entity>> m_entities;
+		eastl::unordered_set<Binding*> m_pending;
+		eastl::unordered_set<Binding*> m_failed;
+		eastl::vector<IRenderAdapter*> m_renderers;
+		const SceneAssetResolver* m_assets = nullptr;
+		uint64_t m_retryRevision = 0;
+	};
+
 	World::World() : m_lifetime(std::make_shared<WorldLifetime>())
 	{
 		m_lifetime->world = this;
@@ -102,6 +226,7 @@ namespace NeneEngine::ECS
 	void World::InvalidateVisibility()
 	{
 		m_visibilityRegistry.Clear();
+		if (m_visibilityGeometry) m_visibilityGeometry->Clear();
 		m_visibilityChanges.clear();
 		m_visibilityTransformChanges.clear();
 		m_visibilityParents.clear();
@@ -125,9 +250,21 @@ namespace NeneEngine::ECS
 		m_eventBus.Publish(SceneRestoredEvent{});
 	}
 
-	void World::SyncVisibility()
+	void World::SyncVisibility(SceneAssetResolver* assets, eastl::span<IRenderAdapter* const> renderers)
 	{
-		if (!m_rebuildVisibility && m_visibilityChanges.empty() && m_visibilityTransformChanges.empty()) return;
+		if (assets != nullptr)
+		{
+			if (!m_visibilityGeometry)
+			{
+				m_visibilityGeometry = eastl::make_unique<VisibilityGeometry>();
+				InvalidateVisibility();
+			}
+			m_visibilityGeometry->SetSources(*assets, renderers, m_visibilityChanges);
+		}
+		const bool hasPendingGeometry = assets != nullptr && m_visibilityGeometry->HasPending();
+		if (!m_rebuildVisibility && m_visibilityChanges.empty() && m_visibilityTransformChanges.empty() &&
+		    !hasPendingGeometry)
+			return;
 
 		VisibilityMatrices matrices(m_registry);
 		if (m_rebuildVisibility)
@@ -144,6 +281,9 @@ namespace NeneEngine::ECS
 		}
 		if (!m_visibilityChanges.empty()) m_visibilityChanges.clear();
 		if (!m_visibilityTransformChanges.empty()) m_visibilityTransformChanges.clear();
+		// Resolve the current bindings after applying ECS changes, including removals and scene restores.
+		if (assets != nullptr && m_visibilityGeometry->HasPending())
+			m_visibilityGeometry->Poll(*assets, *this, matrices);
 	}
 
 	void World::RefreshVisibilityParent(Entity entity)
@@ -187,6 +327,7 @@ namespace NeneEngine::ECS
 	{
 		if (!m_registry.valid(entity))
 		{
+			if (m_visibilityGeometry) m_visibilityGeometry->Forget(entity);
 			(void)m_visibilityRegistry.Remove(entity);
 			return;
 		}
@@ -195,12 +336,29 @@ namespace NeneEngine::ECS
 		const auto* mesh = m_registry.try_get<MeshRendererComponent>(entity);
 		if (transform == nullptr || mesh == nullptr || !mesh->visible)
 		{
+			if (m_visibilityGeometry) m_visibilityGeometry->Forget(entity);
 			(void)m_visibilityRegistry.Remove(entity);
 			return;
 		}
 
 		(void)m_visibilityRegistry.Register(entity);
-		const auto localBounds = mesh->meshPath.empty() ? GetPrimitiveLocalBounds(mesh->primitiveType) : std::nullopt;
+		if (mesh->meshPath.empty())
+		{
+			if (m_visibilityGeometry) m_visibilityGeometry->Forget(entity);
+			UpdateVisibilityBounds(entity, GetPrimitiveLocalBounds(mesh->primitiveType), matrices);
+		}
+		else
+		{
+			const auto bounds = m_visibilityGeometry
+			                        ? m_visibilityGeometry->Track(entity, mesh->meshPath, mesh->meshPart)
+			                        : std::nullopt;
+			UpdateVisibilityBounds(entity, bounds, matrices);
+		}
+	}
+
+	void World::UpdateVisibilityBounds(Entity entity, const std::optional<LocalAabb>& localBounds,
+	                                   VisibilityMatrices& matrices)
+	{
 		const auto worldMatrix = localBounds ? matrices.Get(entity) : std::nullopt;
 		if (worldMatrix)
 		{

@@ -8,6 +8,7 @@
 #include "VisibilityRegistry.h"
 
 #include <EASTL/deque.h>
+#include <EASTL/span.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
@@ -18,6 +19,12 @@
 #include <memory>
 #include <string>
 #include <utility>
+
+namespace NeneEngine
+{
+	class IRenderAdapter;
+	class SceneAssetResolver;
+}
 
 namespace NeneEngine::ECS
 {
@@ -69,7 +76,7 @@ namespace NeneEngine::ECS
 
 		// ===== Update =====
 		void Update(float deltaTime);
-		void SyncVisibility();
+		void SyncVisibility(SceneAssetResolver* assets = nullptr, eastl::span<IRenderAdapter* const> renderers = {});
 		void SwapSceneRegistry(World& preparedScene);
 
 		// ===== Play =====
@@ -90,6 +97,7 @@ namespace NeneEngine::ECS
 	  private:
 		using EntitySet = eastl::unordered_set<Entity, std::hash<Entity>>;
 		class VisibilityMatrices;
+		class VisibilityGeometry;
 
 		void DetachFromParent(Entity entity);
 		void FlushDeferredDestruction();
@@ -100,10 +108,13 @@ namespace NeneEngine::ECS
 		void RefreshVisibilityParent(Entity entity);
 		void CollectVisibilityTransformChanges();
 		void SyncEntityVisibility(Entity entity, VisibilityMatrices& matrices);
+		void UpdateVisibilityBounds(Entity entity, const std::optional<LocalAabb>& localBounds,
+		                            VisibilityMatrices& matrices);
 
 		EventBus m_eventBus;
 		entt::registry m_registry;
 		VisibilityRegistry m_visibilityRegistry;
+		eastl::unique_ptr<VisibilityGeometry> m_visibilityGeometry;
 		EntitySet m_visibilityChanges;
 		EntitySet m_visibilityTransformChanges;
 		eastl::unordered_map<Entity, Entity, std::hash<Entity>> m_visibilityParents;

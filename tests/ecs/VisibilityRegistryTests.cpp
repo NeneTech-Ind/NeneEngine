@@ -37,6 +37,7 @@
 #include <thread>
 
 void TestAsyncMeshGeometry();
+void TestAsyncVisibilityBounds();
 
 namespace
 {
@@ -816,6 +817,7 @@ int main()
 	TestLocalGeometryBounds();
 	TestImportedModelBounds();
 	TestAsyncMeshGeometry();
+	TestAsyncVisibilityBounds();
 	TestCameraQueries();
 	TestFrustumBoundaries();
 	TestWorldBoundsFromGeometry();
