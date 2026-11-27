@@ -149,7 +149,14 @@ namespace NeneEngine::ECS
 		const glm::mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
 		const VisibilityCamera visibilityCamera{viewProjectionMatrix, cameraPosition, cameraForward, activeCamera->farPlane};
-		world.GetVisibilityRegistry().QueryVisible(visibilityCamera, m_visibleEntities);
+		{
+			NENE_PROFILE_SCOPE("Visibility Query");
+			const auto& visibility = world.GetVisibilityRegistry();
+			if (m_useJobs)
+				visibility.QueryVisible(visibilityCamera, m_visibleEntities, *m_jobs);
+			else
+				visibility.QueryVisible(visibilityCamera, m_visibleEntities);
+		}
 		CollectDrawRecords(world);
 		BuildRenderItems(viewMatrix, projectionMatrix, viewProjectionMatrix);
 		SubmitRenderItems();
