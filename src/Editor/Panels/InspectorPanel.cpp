@@ -246,6 +246,11 @@ namespace NeneEngine
 					                          [&](const char* id) { return ImGui::InputText(id, &current); });
 				    else if constexpr (std::is_same_v<Value, glm::vec3>)
 					    return DragVec3(label, current, kPositionDragSpeed, edits);
+				    else if constexpr (std::is_same_v<Value, ScriptEntityReference>)
+				    {
+					    ImGui::Text("%s: %s", label, current.target == ECS::NullEntity ? "None" : "Assigned");
+					    return false;
+				    }
 			    },
 			    value);
 		}

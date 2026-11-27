@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <sol/sol.hpp>
+#include <type_traits>
 #include <utility>
 
 namespace NeneEngine
@@ -52,7 +53,13 @@ namespace NeneEngine
 					NENE_LOG_WARN("Script '{}': invalid value for field '{}'; using its default", scriptPath,
 					              definition.name);
 			}
-			std::visit([&](const auto& fieldValue) { instance.raw_set(definition.name, fieldValue); }, *value);
+			std::visit([&](const auto& fieldValue)
+			{
+				if constexpr (std::is_same_v<std::decay_t<decltype(fieldValue)>, ScriptEntityReference>)
+					instance.raw_set(definition.name, sol::lua_nil);
+				else
+					instance.raw_set(definition.name, fieldValue);
+			}, *value);
 		}
 
 		[[nodiscard]] bool CanInvoke() const { return !destroyed && !faulted; }

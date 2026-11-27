@@ -24,7 +24,8 @@ namespace NeneEngine
 		EntityDeserializationMap entitiesById;
 	};
 
-	[[nodiscard]] nlohmann::json SerializeScriptComponent(const ECS::ScriptComponent& script);
+	[[nodiscard]] nlohmann::json SerializeScriptComponent(const ECS::ScriptComponent& script,
+	                                                       const EntitySerializationMap* entityIds = nullptr);
 	[[nodiscard]] nlohmann::json SerializeEntity(const ECS::World& world, ECS::Entity entity,
 	                                             const EntitySerializationMap& entityIds);
 	[[nodiscard]] SerializedEntityHierarchy SerializeEntityHierarchy(const ECS::World& world, ECS::Entity root);

@@ -24,6 +24,7 @@
 #include <sol/sol.hpp>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -119,33 +120,31 @@ namespace NeneEngine
 		{
 			const auto fields = scriptClass.raw_get<sol::object>("fields");
 			ScriptFieldSchema schema;
-			if (fields == sol::nil)
-			{
-				if (scriptClass.raw_get<sol::object>("field_metadata") != sol::nil) return eastl::nullopt;
-				return schema;
-			}
-			if (fields.get_type() != sol::type::table)
+			if (fields != sol::nil && fields.get_type() != sol::type::table)
 			{
 				NENE_LOG_ERROR("Script '{}': fields must be a table", fileName);
 				return eastl::nullopt;
 			}
 
-			for (const auto& [key, value] : fields.as<sol::table>())
+			if (fields != sol::nil)
 			{
-				if (key.get_type() != sol::type::string)
+				for (const auto& [key, value] : fields.as<sol::table>())
 				{
-					NENE_LOG_ERROR("Script '{}': field names must be strings", fileName);
-					return eastl::nullopt;
-				}
+					if (key.get_type() != sol::type::string)
+					{
+						NENE_LOG_ERROR("Script '{}': field names must be strings", fileName);
+						return eastl::nullopt;
+					}
 
-				auto name = key.as<std::string>();
-				auto defaultValue = ReadFieldValue(value);
-				if (!defaultValue || !IsValidScriptFieldValue({name, *defaultValue}, *defaultValue))
-				{
-					NENE_LOG_ERROR("Script '{}': invalid default value for field '{}'", fileName, name);
-					return eastl::nullopt;
+					auto name = key.as<std::string>();
+					auto defaultValue = ReadFieldValue(value);
+					if (!defaultValue || !IsValidScriptFieldValue({name, *defaultValue}, *defaultValue))
+					{
+						NENE_LOG_ERROR("Script '{}': invalid default value for field '{}'", fileName, name);
+						return eastl::nullopt;
+					}
+					schema.push_back({std::move(name), std::move(*defaultValue)});
 				}
-				schema.push_back({std::move(name), std::move(*defaultValue)});
 			}
 
 			const auto metadata = scriptClass.raw_get<sol::object>("field_metadata");
@@ -164,14 +163,26 @@ namespace NeneEngine
 						return eastl::nullopt;
 					}
 					const auto name = key.as<std::string>();
+					const auto spec = value.as<sol::table>();
+					const auto type = spec.raw_get<sol::object>("type");
 					auto it = std::find_if(schema.begin(), schema.end(), [&](const auto& f) { return f.name == name; });
+					if (type.get_type() == sol::type::string && type.as<std::string>() == "entity")
+					{
+						if (it != schema.end() || name == "entity" || spec.raw_get<sol::object>("min") != sol::nil ||
+						    spec.raw_get<sol::object>("max") != sol::nil ||
+						    spec.raw_get<sol::object>("options") != sol::nil)
+						{
+							NENE_LOG_ERROR("Script '{}': invalid entity field '{}'", fileName, name);
+							return eastl::nullopt;
+						}
+						schema.push_back({name, ScriptEntityReference{}});
+						continue;
+					}
 					if (it == schema.end())
 					{
 						NENE_LOG_ERROR("Script '{}': metadata refers to unknown field '{}'", fileName, name);
 						return eastl::nullopt;
 					}
-					const sol::table spec = value.as<sol::table>();
-					const auto type = spec.raw_get<sol::object>("type");
 					const char* expected[] = {"bool", "int", "float", "string", "vec3"};
 					if (type.get_type() != sol::type::string ||
 					    (type.as<std::string>() != expected[it->defaultValue.index()] &&
@@ -433,7 +444,11 @@ namespace NeneEngine
 				const auto& value = saved != selectedScript->fields.end() && IsValidScriptFieldValue(field, saved->second)
 				                        ? saved->second
 				                        : field.defaultValue;
-				std::visit([&](const auto& fieldValue) { fields.set(field.name, fieldValue); }, value);
+				std::visit([&](const auto& fieldValue)
+				{
+					if constexpr (!std::is_same_v<std::decay_t<decltype(fieldValue)>, ScriptEntityReference>)
+						fields.set(field.name, fieldValue);
+				}, value);
 			}
 			selectedFields = std::move(fields);
 		}
