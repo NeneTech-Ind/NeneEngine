@@ -9,6 +9,7 @@
 
 #include <EASTL/deque.h>
 #include <EASTL/unique_ptr.h>
+#include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
 #include <array>
@@ -87,18 +88,27 @@ namespace NeneEngine::ECS
 		[[nodiscard]] std::weak_ptr<const WorldLifetime> GetLifetime() const { return m_lifetime; }
 
 	  private:
+		using EntitySet = eastl::unordered_set<Entity, std::hash<Entity>>;
+		class VisibilityMatrices;
+
 		void DetachFromParent(Entity entity);
 		void FlushDeferredDestruction();
 		void ConnectVisibilityObservers();
 		void OnVisibilityComponentChanged(entt::registry&, Entity entity);
+		void OnVisibilityTransformChanged(entt::registry&, Entity entity);
 		void InvalidateVisibility();
-		void SyncEntityVisibility(Entity entity);
+		void RefreshVisibilityParent(Entity entity);
+		void CollectVisibilityTransformChanges();
+		void SyncEntityVisibility(Entity entity, VisibilityMatrices& matrices);
 
 		EventBus m_eventBus;
 		entt::registry m_registry;
 		VisibilityRegistry m_visibilityRegistry;
-		eastl::unordered_set<Entity, std::hash<Entity>> m_visibilityChanges;
-		std::array<entt::scoped_connection, 6> m_visibilityObservers;
+		EntitySet m_visibilityChanges;
+		EntitySet m_visibilityTransformChanges;
+		eastl::unordered_map<Entity, Entity, std::hash<Entity>> m_visibilityParents;
+		eastl::unordered_map<Entity, EntitySet, std::hash<Entity>> m_visibilityChildren;
+		std::array<entt::scoped_connection, 9> m_visibilityObservers;
 		bool m_rebuildVisibility = false;
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
 		eastl::deque<Entity> m_pendingDestruction;

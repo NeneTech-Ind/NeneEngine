@@ -1,6 +1,7 @@
 // VisibilityRegistryTests.cpp
 
 #include "ECS/Components/CameraComponent.h"
+#include "ECS/Components/HierarchyComponent.h"
 #include "ECS/Components/TransformComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/VisibilityRegistry.h"
@@ -399,6 +400,82 @@ namespace
 		}
 	}
 
+	void TestVisibilityHierarchyChanges()
+	{
+		World world;
+		auto& registry = world.GetRegistry();
+		const auto& visibility = world.GetVisibilityRegistry();
+		const auto camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		eastl::vector<Entity> visible;
+
+		const Entity root = world.CreateEntity();
+		const Entity middle = world.CreateEntity();
+		const Entity leaf = world.CreateEntity();
+		const Entity neighbor = world.CreateEntity();
+		const Entity otherParent = world.CreateEntity();
+		world.AddComponent<TransformComponent>(root).position.z = -5.0f;
+		world.AddComponent<TransformComponent>(middle).position.x = 1.0f;
+		world.AddComponent<TransformComponent>(leaf).position.x = 1.0f;
+		world.AddComponent<TransformComponent>(neighbor).position.z = -5.0f;
+		world.AddComponent<TransformComponent>(otherParent).position = {-20.0f, 0.0f, -5.0f};
+		world.AddComponent<HierarchyComponent>(middle, HierarchyComponent{root, {leaf}});
+		world.AddComponent<HierarchyComponent>(leaf, HierarchyComponent{middle});
+		world.AddComponent<MeshRendererComponent>(leaf);
+		world.AddComponent<MeshRendererComponent>(neighbor);
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {leaf, neighbor}, "A three-level hierarchy must use world-space bounds");
+		const WorldAabb neighborBounds{{-0.5f, -0.5f, -5.0f}, {0.5f, 0.5f, -5.0f}};
+
+		registry.patch<TransformComponent>(root, [](auto& transform) {
+			transform.position.x = 20.0f;
+			transform.rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3{0.0f, 0.0f, 1.0f});
+			transform.scale = {2.0f, 3.0f, 1.0f};
+		});
+		world.SyncVisibility();
+		const auto* leafBounds = visibility.FindBounds(leaf);
+		const auto near = [](const glm::vec3& actual, const glm::vec3& expected) {
+			return glm::all(glm::lessThan(glm::abs(actual - expected), glm::vec3(0.0001f)));
+		};
+		Check(leafBounds && *leafBounds && near((*leafBounds)->min, {18.5f, 3.0f, -5.0f}) &&
+		          near((*leafBounds)->max, {21.5f, 5.0f, -5.0f}),
+		      "Moving, rotating and scaling a parent must update the descendant's AABB");
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {neighbor}, "Moving a non-renderable parent must cull its descendants");
+		Check(HasBounds(visibility, neighbor, neighborBounds), "An independent neighbor must keep its bounds");
+
+		registry.patch<HierarchyComponent>(middle, [otherParent](auto& hierarchy) { hierarchy.parent = otherParent; });
+		world.SyncVisibility();
+		Check(HasBounds(visibility, leaf, {{-18.5f, -0.5f, -5.0f}, {-17.5f, 0.5f, -5.0f}}),
+		      "Changing the parent must invalidate descendant bounds");
+		world.RemoveComponent<TransformComponent>(otherParent);
+		world.SyncVisibility();
+		Check(HasBounds(visibility, leaf, {{1.5f, -0.5f, 0.0f}, {2.5f, 0.5f, 0.0f}}),
+		      "A parent with no transform must terminate the transform chain");
+		world.AddComponent<TransformComponent>(otherParent).position.z = -5.0f;
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {leaf, neighbor}, "Restoring a parent's transform must restore descendant visibility");
+
+		world.AddComponent<HierarchyComponent>(otherParent, HierarchyComponent{leaf});
+		world.SyncVisibility();
+		Check(HasUnknownBounds(visibility, leaf), "A hierarchy cycle must have unknown bounds");
+		world.RemoveComponent<HierarchyComponent>(otherParent);
+		world.SyncVisibility();
+		Check(HasBounds(visibility, leaf, {{1.5f, -0.5f, -5.0f}, {2.5f, 0.5f, -5.0f}}),
+		      "Removing the cyclic parent link must restore the descendant's bounds");
+		world.GetEventBus().Publish(SceneRestoredEvent{});
+		world.SyncVisibility();
+		registry.patch<TransformComponent>(otherParent, [](auto& transform) { transform.position.x = 20.0f; });
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {neighbor}, "Scene restore must rebuild the hierarchy for later parent movement");
+
+		world.DestroyEntity(middle);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(leaf) == nullptr, "Destroying a subtree must remove descendant entries");
+	}
+
 	void TestVisibilityAfterPlayStop()
 	{
 		World world;
@@ -477,5 +554,6 @@ int main()
 	TestWorldVisibility();
 	TestVisibilityComponentChanges();
 	TestVisibilityAfterRegistrySwap();
+	TestVisibilityHierarchyChanges();
 	TestVisibilityAfterPlayStop();
 }

@@ -151,11 +151,8 @@ namespace NeneEngine::DemoScene
 		    CreatePrimitiveEntity(world, "SceneCube", PrimitiveType::Cube, {1.5f, -1.2f, 0.0f}, {0.9f, 0.9f, 0.9f},
 		                          {1.0f, 0.85f, 0.3f, 1.0f});
 
-		auto& quadHierarchy = world.AddComponent<ECS::HierarchyComponent>(movingQuad);
-		quadHierarchy.children.push_back(sceneCube);
-
-		auto& cubeHierarchy = world.AddComponent<ECS::HierarchyComponent>(sceneCube);
-		cubeHierarchy.parent = movingQuad;
+		world.AddComponent<ECS::HierarchyComponent>(movingQuad, ECS::HierarchyComponent{ECS::NullEntity, {sceneCube}});
+		world.AddComponent<ECS::HierarchyComponent>(sceneCube, ECS::HierarchyComponent{movingQuad});
 
 		CreatePhysicsDemo(world);
 	}

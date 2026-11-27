@@ -185,7 +185,7 @@ namespace NeneEngine
 							        world.AddComponent<ECS::TransformComponent>(entity) = source.transform;
 							        world.AddComponent<ECS::MeshRendererComponent>(entity) = source.renderer;
 							        if (root == ECS::NullEntity) continue;
-							        world.AddComponent<ECS::HierarchyComponent>(entity).parent = root;
+							        world.AddComponent<ECS::HierarchyComponent>(entity, ECS::HierarchyComponent{root});
 							        world.GetComponent<ECS::HierarchyComponent>(root)->children.push_back(entity);
 						        }
 						        return next == prepared->parts.size();

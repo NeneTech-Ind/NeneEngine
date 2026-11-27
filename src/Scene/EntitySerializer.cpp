@@ -392,7 +392,7 @@ namespace NeneEngine
 		void DeserializeHierarchy(const nlohmann::json& value, ECS::World& world, ECS::Entity entity,
 		                          const EntityDeserializationMap& entitiesBySceneId)
 		{
-			auto& hierarchy = world.AddComponent<ECS::HierarchyComponent>(entity);
+			ECS::HierarchyComponent hierarchy;
 			if (value.contains("parent") && !value.at("parent").is_null())
 			{
 				const uint32_t parentSceneId = value.at("parent").get<uint32_t>();
@@ -406,7 +406,6 @@ namespace NeneEngine
 				hierarchy.parent = parentIt->second;
 			}
 
-			hierarchy.children.clear();
 			if (value.contains("children"))
 			{
 				for (const auto& childValue : value.at("children"))
@@ -422,6 +421,7 @@ namespace NeneEngine
 					hierarchy.children.push_back(childIt->second);
 				}
 			}
+			world.AddComponent<ECS::HierarchyComponent>(entity, std::move(hierarchy));
 		}
 
 	}
