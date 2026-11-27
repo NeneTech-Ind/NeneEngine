@@ -233,6 +233,11 @@ namespace NeneEngine
 		for (auto& system : m_appSystems) system->Update(*m_world, deltaTime);
 	}
 
+	void AppWindowRuntimeService::SyncSceneVisibility()
+	{
+		if (m_world != nullptr) m_world->SyncVisibility();
+	}
+
 	void AppWindowRuntimeService::Render()
 	{
 		if (m_world == nullptr) return;

@@ -5,6 +5,7 @@
 #include "ECS/Events/SceneRestoredEvent.h"
 #include "ECS/VisibilityRegistry.h"
 #include "ECS/World.h"
+#include "Editor/EditorSceneSnapshot.h"
 #include "Graphics/Loaders/MeshLoader.h"
 #include "Graphics/Runtime/GeometryBounds.h"
 
@@ -311,6 +312,124 @@ namespace
 		otherWorld.GetVisibilityRegistry().QueryVisible(rightCamera, rightVisible);
 		CheckVisible(rightVisible, {otherEntity}, "Restoring one world must preserve another world's entries");
 	}
+
+	void TestVisibilityComponentChanges()
+	{
+		World world;
+		auto& registry = world.GetRegistry();
+		const auto& visibility = world.GetVisibilityRegistry();
+		const auto camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		eastl::vector<Entity> visible;
+
+		const Entity first = world.CreateEntity();
+		world.AddComponent<MeshRendererComponent>(first);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(first) == nullptr, "A mesh without a transform must be skipped");
+		world.AddComponent<TransformComponent>(first).position.z = -5.0f;
+		const Entity second = world.CreateEntity();
+		world.AddComponent<TransformComponent>(second).position = {20.0f, 0.0f, -5.0f};
+		world.AddComponent<MeshRendererComponent>(second);
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {first}, "Visibility must use final component values in both construction orders");
+
+		registry.patch<TransformComponent>(first, [](auto& transform) { transform.position.x = 20.0f; });
+		registry.patch<TransformComponent>(second, [](auto& transform) { transform.position.x = 0.0f; });
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {second}, "Patched transforms must change the visible set");
+
+		registry.patch<MeshRendererComponent>(first, [](auto& mesh) { mesh.meshPath = "pending.gltf"; });
+		registry.patch<MeshRendererComponent>(second, [](auto& mesh) { mesh.visible = false; });
+		world.SyncVisibility();
+		Check(HasUnknownBounds(visibility, first), "An imported mesh must clear the previous primitive bounds");
+		Check(visibility.FindBounds(second) == nullptr, "Hiding an entity must remove its entry");
+		registry.patch<MeshRendererComponent>(second, [](auto& mesh) { mesh.visible = true; });
+		world.SyncVisibility();
+		Check(visibility.FindBounds(second) != nullptr, "Showing an entity must restore its entry");
+		world.RemoveComponent<MeshRendererComponent>(second);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(second) == nullptr, "Removing the mesh must remove its entry");
+
+		world.DeferDestroyEntity(first);
+		world.Update(0.0f);
+		const Entity replacement = world.CreateEntity();
+		Check(entt::to_entity(first) == entt::to_entity(replacement) && first != replacement,
+		      "The replacement must reuse the destroyed entity's slot with a new version");
+		world.AddComponent<TransformComponent>(replacement).position.z = -5.0f;
+		world.AddComponent<MeshRendererComponent>(replacement);
+		world.SyncVisibility();
+		Check(visibility.FindBounds(first) == nullptr, "Destruction must remove the old entity version");
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {replacement}, "The old entity version must not interfere with the replacement");
+		world.RemoveComponent<TransformComponent>(replacement);
+		world.SyncVisibility();
+		Check(visibility.Size() == 0, "Removing the transform must remove its entry");
+	}
+
+	void TestVisibilityAfterRegistrySwap()
+	{
+		World world;
+		const auto& visibility = world.GetVisibilityRegistry();
+		for (int load = 0; load < 2; ++load)
+		{
+			const Entity previous = world.CreateEntity();
+			world.AddComponent<TransformComponent>(previous).position.z = -5.0f;
+			world.AddComponent<MeshRendererComponent>(previous);
+			world.SyncVisibility();
+
+			Entity loaded;
+			{
+				World prepared;
+				prepared.CreateEntity();
+				loaded = prepared.CreateEntity();
+				prepared.AddComponent<TransformComponent>(loaded).position = {20.0f, 0.0f, -5.0f};
+				prepared.AddComponent<MeshRendererComponent>(loaded);
+				world.SwapSceneRegistry(prepared);
+			}
+			Check(visibility.Size() == 0, "A scene swap must clear the old visibility state immediately");
+			world.SyncVisibility();
+			Check(visibility.Size() == 1 && visibility.FindBounds(loaded) != nullptr,
+			      "The first synchronization after a scene swap must rebuild the new scene");
+			world.GetRegistry().patch<TransformComponent>(loaded, [](auto& transform) { transform.position.x = 0.0f; });
+			world.SyncVisibility();
+			eastl::vector<Entity> visible;
+			visibility.QueryVisible(MakeCamera({0.0f, 0.0f, 0.0f}), visible);
+			CheckVisible(visible, {loaded}, "Observers must track component updates after each scene swap");
+		}
+	}
+
+	void TestVisibilityAfterPlayStop()
+	{
+		World world;
+		const auto& visibility = world.GetVisibilityRegistry();
+		const Entity moved = world.CreateEntity();
+		world.AddComponent<TransformComponent>(moved).position.z = -5.0f;
+		world.AddComponent<MeshRendererComponent>(moved);
+		const Entity removed = world.CreateEntity();
+		world.AddComponent<TransformComponent>(removed).position.z = -5.0f;
+		world.AddComponent<MeshRendererComponent>(removed);
+		world.SyncVisibility();
+
+		NeneEngine::EditorSceneSnapshot snapshot;
+		snapshot.Capture(world, {});
+		world.GetRegistry().patch<TransformComponent>(moved, [](auto& transform) { transform.position.x = 20.0f; });
+		world.DestroyEntity(removed);
+		const Entity spawned = world.CreateEntity();
+		world.AddComponent<TransformComponent>(spawned).position.z = -5.0f;
+		world.AddComponent<MeshRendererComponent>(spawned);
+		world.SyncVisibility();
+
+		const auto camera = MakeCamera({0.0f, 0.0f, 0.0f});
+		eastl::vector<Entity> visible;
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {spawned}, "The running scene must reflect changes made in play");
+		snapshot.Restore(world);
+		world.SyncVisibility();
+		visibility.QueryVisible(camera, visible);
+		CheckVisible(visible, {moved, removed}, "Stop must restore the original scene and its visible set");
+		Check(visibility.FindBounds(spawned) == nullptr, "Stop must discard entries created in play");
+	}
 } // namespace
 
 int main()
@@ -356,4 +475,7 @@ int main()
 	TestWorldBoundsFromGeometry();
 	TestFarPlanePrecision();
 	TestWorldVisibility();
+	TestVisibilityComponentChanges();
+	TestVisibilityAfterRegistrySwap();
+	TestVisibilityAfterPlayStop();
 }

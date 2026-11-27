@@ -36,6 +36,7 @@ namespace NeneEngine
 		void WaitForWindowMessages(uint32_t timeoutMs);
 		void UpdateInputManagers();
 		void UpdateWindowSystems(float deltaTime);
+		void SyncSceneVisibility();
 		void Render();
 		void EndFrameInputs();
 		void UpdateFrameStatsText(const std::string& statsText);

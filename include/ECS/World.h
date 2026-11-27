@@ -9,7 +9,9 @@
 
 #include <EASTL/deque.h>
 #include <EASTL/unique_ptr.h>
+#include <EASTL/unordered_set.h>
 #include <EASTL/vector.h>
+#include <array>
 #include <cstdint>
 #include <entt/entt.hpp>
 #include <memory>
@@ -66,6 +68,8 @@ namespace NeneEngine::ECS
 
 		// ===== Update =====
 		void Update(float deltaTime);
+		void SyncVisibility();
+		void SwapSceneRegistry(World& preparedScene);
 
 		// ===== Play =====
 		void NotifyPlayStarted();
@@ -85,10 +89,17 @@ namespace NeneEngine::ECS
 	  private:
 		void DetachFromParent(Entity entity);
 		void FlushDeferredDestruction();
+		void ConnectVisibilityObservers();
+		void OnVisibilityComponentChanged(entt::registry&, Entity entity);
+		void InvalidateVisibility();
+		void SyncEntityVisibility(Entity entity);
 
 		EventBus m_eventBus;
 		entt::registry m_registry;
 		VisibilityRegistry m_visibilityRegistry;
+		eastl::unordered_set<Entity, std::hash<Entity>> m_visibilityChanges;
+		std::array<entt::scoped_connection, 6> m_visibilityObservers;
+		bool m_rebuildVisibility = false;
 		eastl::vector<eastl::unique_ptr<ISystem>> m_systems;
 		eastl::deque<Entity> m_pendingDestruction;
 		std::shared_ptr<WorldLifetime> m_lifetime;

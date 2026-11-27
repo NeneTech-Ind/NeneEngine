@@ -37,7 +37,7 @@ namespace NeneEngine
 		                   AppRuntimeConfigService& runtimeConfigService, ApplyConfigCallback applyRuntimeConfig,
 		                   bool isGameplayRunning);
 		void EditorPhase(EditorLayer& editorLayer);
-		void SyncPhase(float deltaTime);
+		void SyncPhase(AppWindowRuntimeService& windowRuntimeService);
 		void EndFramePhase(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService);
 		void CalculateFrameStats(GameTimer& timer, AppWindowRuntimeService& windowRuntimeService);
 		void LogDeltaTimeStats(GameTimer& timer, float deltaTime);

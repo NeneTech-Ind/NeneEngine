@@ -2,8 +2,11 @@
 
 #include "ECS/World.h"
 #include "ECS/Components/HierarchyComponent.h"
+#include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TagComponent.h"
+#include "ECS/Components/TransformComponent.h"
 #include "ECS/Events/SceneRestoredEvent.h"
+#include "Graphics/Runtime/GeometryBounds.h"
 
 #include <chrono>
 
@@ -18,13 +21,14 @@ namespace NeneEngine::ECS
 	World::World() : m_lifetime(std::make_shared<WorldLifetime>())
 	{
 		m_lifetime->world = this;
+		ConnectVisibilityObservers();
 		m_eventBus.Subscribe<SceneRestoredEvent>(
 		    [this](const SceneRestoredEvent&)
 		    {
 			    ++m_lifetime->sceneGeneration;
 			    m_pendingDestruction.clear();
 			    m_playStopRequested = false;
-			    m_visibilityRegistry.Clear();
+			    InvalidateVisibility();
 			    for (auto& system : m_systems) system->OnSceneRestored(*this);
 		    });
 	}
@@ -32,6 +36,85 @@ namespace NeneEngine::ECS
 	World::~World()
 	{
 		m_lifetime->world = nullptr;
+	}
+
+	void World::ConnectVisibilityObservers()
+	{
+		m_visibilityObservers = {
+		    m_registry.on_construct<TransformComponent>().connect<&World::OnVisibilityComponentChanged>(*this),
+		    m_registry.on_update<TransformComponent>().connect<&World::OnVisibilityComponentChanged>(*this),
+		    m_registry.on_destroy<TransformComponent>().connect<&World::OnVisibilityComponentChanged>(*this),
+		    m_registry.on_construct<MeshRendererComponent>().connect<&World::OnVisibilityComponentChanged>(*this),
+		    m_registry.on_update<MeshRendererComponent>().connect<&World::OnVisibilityComponentChanged>(*this),
+		    m_registry.on_destroy<MeshRendererComponent>().connect<&World::OnVisibilityComponentChanged>(*this),
+		};
+	}
+
+	void World::OnVisibilityComponentChanged(entt::registry&, Entity entity)
+	{
+		m_visibilityChanges.insert(entity);
+	}
+
+	void World::InvalidateVisibility()
+	{
+		m_visibilityRegistry.Clear();
+		m_visibilityChanges.clear();
+		m_rebuildVisibility = true;
+	}
+
+	void World::SwapSceneRegistry(World& preparedScene)
+	{
+		for (auto& observer : m_visibilityObservers) observer.release();
+		for (auto& observer : preparedScene.m_visibilityObservers) observer.release();
+		m_registry.swap(preparedScene.m_registry);
+		ConnectVisibilityObservers();
+		preparedScene.ConnectVisibilityObservers();
+		preparedScene.InvalidateVisibility();
+		m_eventBus.Publish(SceneRestoredEvent{});
+	}
+
+	void World::SyncVisibility()
+	{
+		if (m_rebuildVisibility)
+		{
+			for (const Entity entity : m_registry.view<const MeshRendererComponent, const TransformComponent>())
+				SyncEntityVisibility(entity);
+			m_rebuildVisibility = false;
+		}
+		else
+		{
+			if (m_visibilityChanges.empty()) return;
+			for (const Entity entity : m_visibilityChanges) SyncEntityVisibility(entity);
+		}
+		m_visibilityChanges.clear();
+	}
+
+	void World::SyncEntityVisibility(Entity entity)
+	{
+		if (!m_registry.valid(entity))
+		{
+			(void)m_visibilityRegistry.Remove(entity);
+			return;
+		}
+
+		const auto* transform = m_registry.try_get<TransformComponent>(entity);
+		const auto* mesh = m_registry.try_get<MeshRendererComponent>(entity);
+		if (transform == nullptr || mesh == nullptr || !mesh->visible)
+		{
+			(void)m_visibilityRegistry.Remove(entity);
+			return;
+		}
+
+		(void)m_visibilityRegistry.Register(entity);
+		const auto* hierarchy = m_registry.try_get<HierarchyComponent>(entity);
+		if (!mesh->meshPath.empty() || (hierarchy != nullptr && hierarchy->parent != NullEntity))
+		{
+			(void)m_visibilityRegistry.UpdateBounds(entity, std::nullopt);
+			return;
+		}
+
+		(void)m_visibilityRegistry.UpdateGeometryBounds(entity, GetPrimitiveLocalBounds(mesh->primitiveType),
+		                                                transform->GetModelMatrix());
 	}
 
 	Entity World::CreateEntity(const std::string& name)
